@@ -1,26 +1,102 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #000000;
+  --foreground: #F5F5F0;
+
+  --void: #000000;
+  --space: #0A0A0F;
+  --cyan: #00E5FF;
+  --cyan-dim: rgba(0, 229, 255, 0.15);
+  --gold: #F59E0B;
+  --purple: #8B5CF6;
+  --ghost: #F5F5F0;
+  --muted: rgba(245, 245, 240, 0.45);
+  --horizon: #2A2A35;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-void: var(--void);
+  --color-space: var(--space);
+  --color-cyan: var(--cyan);
+  --color-gold: var(--gold);
+  --color-purple: var(--purple);
+  --color-ghost: var(--ghost);
+  --color-horizon: var(--horizon);
+
+  --font-bebas: var(--font-bebas), cursive;
+  --font-syncopate: var(--font-syncopate), sans-serif;
+  --font-karla: var(--font-karla), sans-serif;
+  --font-syne: var(--font-syne), sans-serif;
+  --font-mono: var(--font-syne-mono), monospace;
+  --font-serif: var(--font-dm-serif), serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--void);
+  color: var(--ghost);
+  font-family: var(--font-syne), sans-serif;
+}
+
+.font-bebas {
+  font-family: var(--font-bebas), cursive;
+}
+
+.font-syne {
+  font-family: var(--font-syne), sans-serif;
+}
+
+.font-mono {
+  font-family: var(--font-syne-mono), monospace;
+}
+
+.font-serif {
+  font-family: var(--font-dm-serif), serif;
+}
+
+.font-syncopate {
+  font-family: var(--font-syncopate), sans-serif;
+}
+
+.font-karla {
+  font-family: var(--font-karla), sans-serif;
+}
+
+@keyframes sparkleFloat {
+
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5);
+  }
+
+  25% {
+    opacity: 0.8;
+    transform: translateY(-10px) scale(1.2);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: translateY(-20px) scale(0.8);
+  }
+
+  75% {
+    opacity: 0.9;
+    transform: translateY(-8px) scale(1);
+  }
+}
+
+.syncopate-regular {
+  font-family: "Syncopate", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.syncopate-bold {
+  font-family: "Syncopate", sans-serif;
+  font-weight: 700;
+  font-style: normal;
 }
