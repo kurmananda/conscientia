@@ -30,11 +30,23 @@ const Nav = () => {
     { label: "CONTACT US", path: "/contact-us" },
   ];
 
-  const socialLinks = [
-    { label: "Instagram", href: "https://www.instagram.com/conscientia.iist/" },
-    { label: "LinkedIn", href: "https://in.linkedin.com/company/conscientia-iist-thiruvananthapuram" },
-    { label: "YouTube", href: "https://www.youtube.com/channel/UCx47j3_OXElUMTBbMe-jYjw" },
-  ];
+ const socialLinks = [
+  {
+    label: "Instagram",
+    href: "https://www.instagram.com/conscientia.iist/",
+    icon: "/icons/instagram.svg",
+  },
+  {
+    label: "LinkedIn",
+    href: "https://in.linkedin.com/company/conscientia-iist-thiruvananthapuram",
+    icon: "/icons/linkedin.svg",
+  },
+  {
+    label: "YouTube",
+    href: "https://www.youtube.com/channel/UCx47j3_OXElUMTBbMe-jYjw",
+    icon: "/icons/youtube.svg",
+  },
+];
 
   // The "Lando" Easing - Heavy start, smooth finish
   const expoTransition = { duration: 0.9, ease: [0.85, 0, 0.15, 1] };
@@ -190,9 +202,22 @@ const Nav = () => {
                       href={social.href}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[10px] font-syncopate uppercase tracking-[0.5em] text-white/20 hover:text-cyan-400 hover:tracking-[0.6em] transition-all duration-500 "
-                    >
-                      {social.label}
+                      className="group text-[10px] font-syncopate uppercase tracking-[0.5em] text-white/20 hover:text-cyan-400 hover:tracking-[0.6em] transition-all duration-500">
+                      <div className="flex items-center gap-2">
+                    <img
+                      src={social.icon}
+                      alt={social.label}
+                      className="
+                        w-5 h-5
+                        transition-all
+                        duration-300
+                        group-hover:scale-125
+                        group-hover:-translate-y-1
+                      "
+                    />
+
+                    <span>{social.label}</span>
+                </div>
                     </Link>
                   ))}
                 </div>
