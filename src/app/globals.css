@@ -15,7 +15,8 @@
   --horizon: #2A2A35;
 }
 
-@theme inline {
+/* Move theme variables into :root to avoid unknown at-rule errors */
+:root {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
