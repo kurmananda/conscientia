@@ -24,7 +24,7 @@ const Nav = () => {
   const navLinks = [
     { label: "HOME", path: "/" },
     { label: "ABOUT", path: "/about" },
-    { label: "WORKSHOPS", path: "/online-workshops" },
+    { label: "WORKSHOPS", path: "/workshop" },
     { label: "EVENTS", path: "/events" },
     { label: "ACCOMMODATION", path: "/accommodation" },
     { label: "CONTACT US", path: "/contact-us" },

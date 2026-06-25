@@ -169,7 +169,7 @@ const Nav = () => {
               <div className="flex flex-col items-center gap-6 md:gap-8">
                 {[
                   { label: "HOME", path: "/" },
-                  { label: "ON TRACK", path: "/online-workshops" },
+                  { label: "ON TRACK", path: "/workshop" },
                   { label: "OFF TRACK", path: "/events" },
                   { label: "CALENDAR", path: "/accommodation" },
                 ].map((item, i) => (
