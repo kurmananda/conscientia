@@ -41,11 +41,11 @@ export default function TimeFallScene() {
         width: '100vw',
         height: '100vh',
         background: '#000000',
-        zIndex: 0,
+        zIndex: 1,
         overflow: 'hidden',
       }}
     >
-      <Canvas camera={{ position: [0, 0, 18], fov: 60 }}>
+      <Canvas camera={{ position: [0, 0, 1], fov: 60 }}>
     <CameraRig mouse={mouse} />
     <ParticleField count={20000} mouse={mouse} />
 </Canvas>

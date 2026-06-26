@@ -3,19 +3,17 @@
 /**
  * IntroController
  * ─────────────────────────────────────────────────────────────────────────────
- * Client component that manages whether the intro or the main page is shown.
+ * Manages the intro sequence: Logo → Text Animation → Workshop Page
  *
  * State machine:
- *   "intro"    → CinematicIntro is rendered over the top
- *   "revealed" → CinematicIntro is unmounted, MainPage is visible
- *
- * The transition is seamless: the intro's exit animation fades to black,
- * onComplete fires (setting state to "revealed"), the black overlay disappears
- * as the intro unmounts, and the MainPage is already rendered underneath.
+ *   "logo"    → CinematicIntro (logo video) plays
+ *   "text"    → WorkshopIntro (cinematic text) plays
+ *   "revealed" → Workshop page is visible
  */
 
 import React, { useState, useCallback, useEffect } from "react";
 import { CinematicIntro } from "./intro";
+import WorkshopIntro from "./intro/WorkshopIntro";
 
 import { ReactNode } from "react";
 
@@ -26,11 +24,11 @@ interface IntroControllerProps {
 export default function IntroController({
   children,
 }: IntroControllerProps) {
-  const [phase, setPhase] = useState<"intro" | "revealed">("intro");
+  const [phase, setPhase] = useState<"logo" | "text" | "revealed">("logo");
 
   // Prevent scroll during intro
   useEffect(() => {
-    if (phase === "intro") {
+    if (phase !== "revealed") {
       document.documentElement.style.overflow = "hidden";
     } else {
       document.documentElement.style.overflow = "";
@@ -40,7 +38,11 @@ export default function IntroController({
     };
   }, [phase]);
 
-  const handleIntroComplete = useCallback(() => {
+  const handleLogoComplete = useCallback(() => {
+    setPhase("text");
+  }, []);
+
+  const handleTextComplete = useCallback(() => {
     setPhase("revealed");
   }, []);
 
@@ -49,16 +51,21 @@ export default function IntroController({
     {/* Main page is always mounted so it can load while the intro plays */}
     <div
       style={{
-        opacity: phase === "intro" ? 0 : 1,
-        transition: "opacity 400ms ease",
+        opacity: phase === "revealed" ? 1 : 0,
+        transition: "opacity 0.4s ease-out",
       }}
     >
       {children}
     </div>
 
-    {/* Intro sits on top; unmounted once animation completes */}
-    {phase === "intro" && (
-      <CinematicIntro onComplete={handleIntroComplete} />
+    {/* Phase 1: Logo video */}
+    {phase === "logo" && (
+      <CinematicIntro onComplete={handleLogoComplete} />
+    )}
+
+    {/* Phase 2: Cinematic text animation */}
+    {phase === "text" && (
+      <WorkshopIntro onComplete={handleTextComplete} />
     )}
   </>
 );
