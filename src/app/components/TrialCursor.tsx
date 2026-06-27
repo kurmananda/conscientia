@@ -2,160 +2,159 @@
 
 import { useEffect, useRef } from "react";
 
-/* ── Types ───────────────────────────────────────────────────── */
 interface TrailPoint {
   x: number;
   y: number;
-  lifetime: number;
-  maxLife: number;
+  life: number;    // 0 → 1 as it dies
   size: number;
-  hue: number;       // HSL hue — drifts across the timeline palette
+  hue: number;
   sat: number;
   lit: number;
 }
 
-/* ── Constants ───────────────────────────────────────────────── */
-const MAX_POINTS   = 120;   // trail length
-const BASE_LIFE    = 38;    // frames each point lives
-const LIFE_RAND    = 18;    // random jitter on lifetime
-const BASE_SIZE    = 7;     // starting radius of each particle
-const SIZE_RAND    = 5;
-const SPAWN_EVERY  = 1;     // add a point every N mousemove events
-const GLOW_BLUR    = 18;    // canvas shadowBlur
+const MAX_POINTS = 100;
+const POINT_LIFE = 0.012;   // how fast each point dies per frame (~83 frames to die)
+const BASE_SIZE  = 5;
+const GLOW       = 16;
 
-// Colour stops that represent Past → Present → Future
-// We'll cycle through them based on trail position
 const ERA_HUES = [
-  { hue: 270, sat: 90, lit: 65 },  // Past    — violet
-  { hue: 240, sat: 80, lit: 60 },  // Past    — indigo
-  { hue: 45,  sat: 100, lit: 60 }, // Present — amber
-  { hue: 36,  sat: 100, lit: 55 }, // Present — gold
-  { hue: 185, sat: 90, lit: 55 },  // Future  — teal
-  { hue: 200, sat: 100, lit: 60 }, // Future  — cyan
+  { hue: 270, sat: 85, lit: 70 },
+  { hue: 240, sat: 75, lit: 60 },
+  { hue: 45,  sat: 100, lit: 65 },
+  { hue: 36,  sat: 100, lit: 55 },
+  { hue: 185, sat: 85, lit: 60 },
+  { hue: 200, sat: 100, lit: 65 },
 ];
 
+function lerp(a: number, b: number, t: number) {
+  return a + (b - a) * t;
+}
+
 export default function TrialCursor() {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const pointsRef = useRef<TrailPoint[]>([]);
-  const rafRef    = useRef<number>(0);
-  const spawnRef  = useRef(0);
-  const hueIdxRef = useRef(0);
+  const rafRef = useRef<number>(0);
 
   useEffect(() => {
-    // ── Canvas setup ──────────────────────────────────────────
     const canvas = document.createElement("canvas");
-    canvas.style.cssText = [
-      "position:fixed",
-      "inset:0",
-      "width:100vw",
-      "height:100vh",
-      "pointer-events:none",
-      "z-index:99998",
-      "mix-blend-mode:screen",
-    ].join(";");
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.style.cssText =
+      "position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:99998;mix-blend-mode:screen";
     document.body.appendChild(canvas);
-    canvasRef.current = canvas;
 
     const ctx = canvas.getContext("2d")!;
+    let w = (canvas.width = window.innerWidth);
+    let h = (canvas.height = window.innerHeight);
 
-    // ── Resize ────────────────────────────────────────────────
     const onResize = () => {
-      canvas.width  = window.innerWidth;
-      canvas.height = window.innerHeight;
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
     };
     window.addEventListener("resize", onResize);
 
-    // ── Mouse tracking ────────────────────────────────────────
+    const points: TrailPoint[] = [];
+    let hueIdx = 0;
+    let prevX = -1;
+    let prevY = -1;
+
     const onMouseMove = (e: MouseEvent) => {
-      spawnRef.current++;
-      if (spawnRef.current % SPAWN_EVERY !== 0) return;
+      const mx = e.clientX;
+      const my = e.clientY;
 
-      // Advance hue slowly — time drifting
-      hueIdxRef.current = (hueIdxRef.current + 0.3) % ERA_HUES.length;
-      const eraA = ERA_HUES[Math.floor(hueIdxRef.current) % ERA_HUES.length];
-      const eraB = ERA_HUES[(Math.floor(hueIdxRef.current) + 1) % ERA_HUES.length];
-      const t    = hueIdxRef.current - Math.floor(hueIdxRef.current);
-      const hue  = eraA.hue + (eraB.hue - eraA.hue) * t;
-      const sat  = eraA.sat + (eraB.sat - eraA.sat) * t;
-      const lit  = eraA.lit + (eraB.lit - eraA.lit) * t;
+      // Interpolate between previous and current mouse to fill gaps
+      const dist = prevX < 0 ? 0 : Math.sqrt((mx - prevX) ** 2 + (my - prevY) ** 2);
+      const steps = Math.max(1, Math.floor(dist / 4)); // one point every ~4px
 
-      const maxLife = BASE_LIFE + Math.random() * LIFE_RAND;
+      for (let s = 0; s < steps; s++) {
+        const t = s / steps;
+        const px = lerp(prevX < 0 ? mx : prevX, mx, t);
+        const py = lerp(prevY < 0 ? my : prevY, my, t);
 
-      pointsRef.current.push({
-        x:       e.clientX,
-        y:       e.clientY,
-        lifetime: 0,
-        maxLife,
-        size:    BASE_SIZE + Math.random() * SIZE_RAND,
-        hue,
-        sat,
-        lit,
-      });
+        hueIdx = (hueIdx + 0.18) % ERA_HUES.length;
+        const i0 = Math.floor(hueIdx) % ERA_HUES.length;
+        const i1 = (i0 + 1) % ERA_HUES.length;
+        const frac = hueIdx - Math.floor(hueIdx);
 
-      // Trim oldest points if buffer full
-      if (pointsRef.current.length > MAX_POINTS) {
-        pointsRef.current.shift();
+        points.push({
+          x: px,
+          y: py,
+          life: 0,
+          size: BASE_SIZE + Math.random() * 3,
+          hue: lerp(ERA_HUES[i0].hue, ERA_HUES[i1].hue, frac),
+          sat: lerp(ERA_HUES[i0].sat, ERA_HUES[i1].sat, frac),
+          lit: lerp(ERA_HUES[i0].lit, ERA_HUES[i1].lit, frac),
+        });
+
+        if (points.length > MAX_POINTS) points.shift();
       }
+
+      prevX = mx;
+      prevY = my;
     };
     window.addEventListener("mousemove", onMouseMove);
 
-    // ── Animation loop ────────────────────────────────────────
     const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const pts = pointsRef.current;
+      ctx.clearRect(0, 0, w, h);
 
-      for (let i = pts.length - 1; i >= 0; i--) {
-        const p = pts[i];
-        p.lifetime++;
+      // ── Draw trail as a smooth connected stroke ─────────────
+      if (points.length > 1) {
+        // Build the main glowing stroke
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
 
-        if (p.lifetime > p.maxLife) {
-          pts.splice(i, 1);
-          continue;
-        }
+        for (let i = 1; i < points.length; i++) {
+          const p = points[i];
+          p.life += POINT_LIFE;
 
-        const life    = p.lifetime / p.maxLife;          // 0→1
-        const alpha   = Math.pow(1 - life, 1.6);         // fast fade
-        const radius  = p.size * (1 - life * 0.7);       // shrink
+          if (p.life >= 1) {
+            points.splice(i, 1);
+            i--;
+            continue;
+          }
 
-        // Glow
-        ctx.shadowBlur  = GLOW_BLUR * (1 - life);
-        ctx.shadowColor = `hsla(${p.hue},${p.sat}%,${p.lit}%,1)`;
+          const prev = points[i - 1];
+          const alpha = Math.pow(1 - p.life, 2.5); // smooth ease-out fade
 
-        // Draw circle
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, Math.max(0.5, radius), 0, Math.PI * 2);
+          // Segment glow
+          ctx.shadowBlur  = GLOW * (1 - p.life);
+          ctx.shadowColor = `hsla(${p.hue},${p.sat}%,${p.lit}%,${alpha * 0.6})`;
 
-        // Radial gradient per particle — inner bright, outer transparent
-        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius);
-        grad.addColorStop(0,   `hsla(${p.hue},${p.sat}%,${Math.min(p.lit + 20, 95)}%,${alpha})`);
-        grad.addColorStop(0.5, `hsla(${p.hue},${p.sat}%,${p.lit}%,${alpha * 0.6})`);
-        grad.addColorStop(1,   `hsla(${p.hue},${p.sat}%,${p.lit}%,0)`);
+          // Gradient along segment
+          const grad = ctx.createLinearGradient(prev.x, prev.y, p.x, p.y);
+          grad.addColorStop(0, `hsla(${prev.hue},${prev.sat}%,${prev.lit}%,${alpha * 0.5})`);
+          grad.addColorStop(1, `hsla(${p.hue},${p.sat}%,${p.lit}%,${alpha * 0.9})`);
 
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.closePath();
-
-        // Connecting line to previous point (comet tail)
-        if (i > 0) {
-          const prev = pts[i - 1];
           ctx.beginPath();
           ctx.moveTo(prev.x, prev.y);
           ctx.lineTo(p.x, p.y);
-          ctx.strokeStyle = `hsla(${p.hue},${p.sat}%,${p.lit}%,${alpha * 0.25})`;
-          ctx.lineWidth   = radius * 0.5;
-          ctx.lineCap     = "round";
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = p.size * (1 - p.life * 0.6);
           ctx.stroke();
           ctx.closePath();
         }
+
+        ctx.shadowBlur = 0;
+      }
+
+      // ── Draw soft orbs at each point ────────────────────────
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        const alpha = Math.pow(1 - p.life, 2.5);
+        const r = p.size * (1 - p.life * 0.5);
+
+        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2);
+        grad.addColorStop(0, `hsla(${p.hue},${p.sat}%,${Math.min(p.lit + 20, 95)}%,${alpha * 0.7})`);
+        grad.addColorStop(0.4, `hsla(${p.hue},${p.sat}%,${p.lit}%,${alpha * 0.3})`);
+        grad.addColorStop(1, `hsla(${p.hue},${p.sat}%,${p.lit}%,0)`);
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r * 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
       }
 
       rafRef.current = requestAnimationFrame(animate);
     };
     rafRef.current = requestAnimationFrame(animate);
 
-    // ── Cleanup ───────────────────────────────────────────────
     return () => {
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener("mousemove", onMouseMove);
@@ -164,5 +163,5 @@ export default function TrialCursor() {
     };
   }, []);
 
-  return null; // renders nothing into React tree — canvas appended to body
+  return null;
 }
