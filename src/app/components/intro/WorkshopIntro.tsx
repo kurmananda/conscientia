@@ -5,17 +5,19 @@ import gsap from "gsap";
 
 interface WorkshopIntroProps {
   onComplete: () => void;
+  risersRef?: React.MutableRefObject<HTMLAudioElement | null>;
 }
 
 const LAYERS = 5;
 const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*";
 
-export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
+export default function WorkshopIntro({ onComplete, risersRef: externalRisersRef }: WorkshopIntroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const topRefs = useRef<(HTMLDivElement | null)[]>([]);
   const botRefs = useRef<(HTMLDivElement | null)[]>([]);
   const lineRef = useRef<HTMLDivElement>(null);
-  const risersRef = useRef<HTMLAudioElement | null>(null);
+  const localRisersRef = useRef<HTMLAudioElement | null>(null);
+  const risersRef = externalRisersRef ?? localRisersRef;
   const [done, setDone] = useState(false);
   const [progress, setProgress] = useState(0);
   const [glitchText, setGlitchText] = useState("WORKSHOPS");
@@ -63,22 +65,23 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
     return () => clearInterval(iv);
   }, [done]);
 
-  // Start risers immediately on mount
+  // Start risers if not already started by IntroController
   useEffect(() => {
     if (done) return;
+    if (risersRef.current) return; // already started
 
     const audio = new Audio("/sounds/risers.mp3");
     audio.loop = true;
     audio.volume = 0;
     audio.play().then(() => {
       // Fade in
-      const fadeIn = setInterval(() => {
-        if (audio.volume < 0.29) {
-          audio.volume = Math.min(0.3, audio.volume + 0.01);
-        } else {
-          clearInterval(fadeIn);
-        }
-      }, 30);
+    const fadeIn = setInterval(() => {
+      if (audio.volume < 0.69) {
+        audio.volume = Math.min(0.7, audio.volume + 0.02);
+      } else {
+        clearInterval(fadeIn);
+      }
+    }, 30);
       risersRef.current = audio;
     }).catch(() => {});
 
@@ -95,7 +98,7 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         }, 30);
       }
     };
-  }, [done]);
+  }, [done, risersRef]);
 
   // GSAP timeline
   useEffect(() => {
@@ -161,7 +164,7 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
             }, 30);
           }
         },
-      }, 2.1);
+      }, 3.2);
     }, containerRef);
 
     return () => innerCtx.revert();

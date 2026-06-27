@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import TimeFallScene from "@/app/components/TimeFallScene";
 import { workshopCards } from "@/app/workshop/workshopData";
 import useSound from "@/app/hooks/useSound";
+import AmbientMusic from "@/app/components/AmbientMusic";
 
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
@@ -345,6 +346,9 @@ export default function WorkshopDetailPage() {
 
   return (
     <div style={{ position: "relative", minHeight: "100vh", color: "#fff" }}>
+      {/* Ambient background music — loops while on this page */}
+      <AmbientMusic src="/sounds/ambient.mp3" volume={0.2} start={true} />
+
       {/* Background */}
       <div style={{ position: "fixed", inset: 0, zIndex: -10 }}>
         <TimeFallScene />

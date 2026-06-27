@@ -48,12 +48,13 @@ export default function WorkshopPage() {
         <TimeFallScene />
       </div>
 
-      <IntroController>
+      <IntroController ambientMusicSrc="/sounds/ambient.mp3">
 
       {/* ── Back to Home Button ───────────────────────────────── */}
       <div style={{ position: "fixed", bottom: "1.5rem", left: "1.5rem", zIndex: 50, perspective: "600px" }}>
         <Link
           href="/"
+          onClick={() => playClick()}
           style={{
             display: "flex",
             alignItems: "center",

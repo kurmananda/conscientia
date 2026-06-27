@@ -5,9 +5,10 @@ import gsap from "gsap";
 
 interface CinematicIntroProps {
   onComplete: () => void;
+  onLogoEnd?: () => void;
 }
 
-export function CinematicIntro({ onComplete }: CinematicIntroProps) {
+export function CinematicIntro({ onComplete, onLogoEnd = () => {} }: CinematicIntroProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
 
@@ -33,7 +34,13 @@ export function CinematicIntro({ onComplete }: CinematicIntroProps) {
     tl.to(overlay, { opacity: 0, duration: 1.2, ease: "power2.out" }, 0)
       .to(logo, { opacity: 1, scale: 1, duration: 1.4, ease: "power3.out" }, 0)
       .to({}, { duration: 1.5 })
-      .to(logo, { opacity: 0, scale: 1.05, duration: 0.9, ease: "power2.inOut" });
+      .to(logo, {
+        opacity: 0,
+        scale: 1.05,
+        duration: 0.9,
+        ease: "power2.inOut",
+        onComplete: onLogoEnd,
+      });
 
     return () => {
       tl.kill();
