@@ -9,6 +9,7 @@ import HeroGallery from "../components/HeroGallery";
 import CategoryBox from "../components/CategoryBox";
 import { ParallaxCard } from "../components/parallax";
 import { workshopCards } from "./workshopData";
+import useSound from "../hooks/useSound";
 
 const preCards = workshopCards.filter((c) => c.category === "pre");
 const liveCards = workshopCards.filter((c) => c.category === "live");
@@ -17,6 +18,9 @@ export default function WorkshopPage() {
   const [showModels, setShowModels] = useState(false);
   const [galleryRevealed, setGalleryRevealed] = useState(false);
   const galleryRef = useRef<HTMLDivElement>(null);
+
+  const playGlitch = useSound("/sounds/glitch.wav", 0.2, 0.15);
+  const playClick = useSound("/sounds/click.mp3", 0.25, 0.08);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -74,6 +78,7 @@ export default function WorkshopPage() {
             fontFamily: 'var(--font-display), sans-serif',
           }}
           onMouseEnter={(e) => {
+            playGlitch();
             e.currentTarget.style.transform = "translateZ(20px) scale(1.06) translateX(-6px)";
             e.currentTarget.style.background = "linear-gradient(135deg, rgba(51,214,255,0.35), rgba(51,214,255,0.1))";
             e.currentTarget.style.borderColor = "rgba(51,214,255,0.7)";

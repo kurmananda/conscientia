@@ -15,6 +15,7 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
   const topRefs = useRef<(HTMLDivElement | null)[]>([]);
   const botRefs = useRef<(HTMLDivElement | null)[]>([]);
   const lineRef = useRef<HTMLDivElement>(null);
+  const risersRef = useRef<HTMLAudioElement | null>(null);
   const [done, setDone] = useState(false);
   const [progress, setProgress] = useState(0);
   const [glitchText, setGlitchText] = useState("WORKSHOPS");
@@ -62,15 +63,49 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
     return () => clearInterval(iv);
   }, [done]);
 
+  // Start risers immediately on mount
   useEffect(() => {
     if (done) return;
 
-    const ctx = gsap.context(() => {
+    const audio = new Audio("/sounds/risers.mp3");
+    audio.loop = true;
+    audio.volume = 0;
+    audio.play().then(() => {
+      // Fade in
+      const fadeIn = setInterval(() => {
+        if (audio.volume < 0.29) {
+          audio.volume = Math.min(0.3, audio.volume + 0.01);
+        } else {
+          clearInterval(fadeIn);
+        }
+      }, 30);
+      risersRef.current = audio;
+    }).catch(() => {});
+
+    return () => {
+      // Fade out
+      if (risersRef.current) {
+        const fadeOut = setInterval(() => {
+          if (risersRef.current && risersRef.current.volume > 0.01) {
+            risersRef.current.volume *= 0.8;
+          } else {
+            clearInterval(fadeOut);
+            risersRef.current?.pause();
+          }
+        }, 30);
+      }
+    };
+  }, [done]);
+
+  // GSAP timeline
+  useEffect(() => {
+    if (done) return;
+
+    const innerCtx = gsap.context(() => {
       const tl = gsap.timeline({
         onComplete: () => setDone(true),
       });
 
-      // Set all layers at center
       for (let i = 0; i < LAYERS; i++) {
         const top = topRefs.current[i];
         const bot = botRefs.current[i];
@@ -79,7 +114,6 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         gsap.set(bot, { y: 0, opacity: 1 - i * 0.15 });
       }
 
-      // Animate center line
       tl.fromTo(
         lineRef.current,
         { scaleX: 0, opacity: 0 },
@@ -87,29 +121,16 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         0
       );
 
-      // Staggered layer reveal with accelerating speed
       for (let i = 0; i < LAYERS; i++) {
         const top = topRefs.current[i];
         const bot = botRefs.current[i];
         if (!top || !bot) continue;
-
         const delay = i * 0.45;
         const duration = 2.0 + (LAYERS - i) * 0.2;
-
-        tl.to(top, {
-          y: -1200,
-          duration,
-          ease: "power3.in",
-        }, delay);
-
-        tl.to(bot, {
-          y: 1200,
-          duration,
-          ease: "power3.in",
-        }, delay);
+        tl.to(top, { y: -1200, duration, ease: "power3.in" }, delay);
+        tl.to(bot, { y: 1200, duration, ease: "power3.in" }, delay);
       }
 
-      // Flash effect before zoom
       tl.to(containerRef.current, {
         filter: "brightness(3)",
         duration: 0.15,
@@ -122,23 +143,32 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         ease: "none",
       }, 1.95);
 
-      // Zoom into center
       tl.to(containerRef.current, {
         scale: 8,
         opacity: 0,
         duration: 0.6,
         ease: "power2.in",
+        onStart: () => {
+          // Fade risers out
+          if (risersRef.current) {
+            const fadeOut = setInterval(() => {
+              if (risersRef.current && risersRef.current.volume > 0.01) {
+                risersRef.current.volume *= 0.8;
+              } else {
+                clearInterval(fadeOut);
+                risersRef.current?.pause();
+              }
+            }, 30);
+          }
+        },
       }, 2.1);
-
     }, containerRef);
 
-    return () => ctx.revert();
+    return () => innerCtx.revert();
   }, [done]);
 
   useEffect(() => {
-    if (done) {
-      onComplete();
-    }
+    if (done) onComplete();
   }, [done, onComplete]);
 
   const wordStyle: React.CSSProperties = {
@@ -167,7 +197,6 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         transformOrigin: "center center",
       }}
     >
-      {/* Background ambient glow */}
       <div
         style={{
           position: "absolute",
@@ -177,7 +206,6 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         }}
       />
 
-      {/* Animated grid */}
       <div
         style={{
           position: "absolute",
@@ -191,7 +219,6 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         }}
       />
 
-      {/* Horizontal scan lines */}
       <div
         style={{
           position: "absolute",
@@ -203,7 +230,6 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         }}
       />
 
-      {/* Moving scan line */}
       <div
         style={{
           position: "absolute",
@@ -217,7 +243,6 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         }}
       />
 
-      {/* TOP HALF */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "50%", overflow: "hidden" }}>
         {Array.from({ length: LAYERS }).map((_, i) => (
           <div
@@ -238,7 +263,6 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         ))}
       </div>
 
-      {/* BOTTOM HALF */}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "50%", overflow: "hidden" }}>
         {Array.from({ length: LAYERS }).map((_, i) => (
           <div
@@ -261,7 +285,6 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         ))}
       </div>
 
-      {/* Center line */}
       <div
         ref={lineRef}
         style={{
@@ -278,7 +301,6 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         }}
       />
 
-      {/* Glowing dot at center of line */}
       <div
         style={{
           position: "absolute",
@@ -296,7 +318,6 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         }}
       />
 
-      {/* Corner brackets */}
       {[
         { top: "2rem", left: "2rem", borderTop: "2px solid rgba(51,214,255,0.3)", borderLeft: "2px solid rgba(51,214,255,0.3)" },
         { top: "2rem", right: "2rem", borderTop: "2px solid rgba(51,214,255,0.3)", borderRight: "2px solid rgba(51,214,255,0.3)" },
@@ -316,7 +337,6 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         />
       ))}
 
-      {/* Tagline */}
       <div
         style={{
           position: "absolute",
@@ -342,7 +362,6 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         </span>
       </div>
 
-      {/* Progress indicator */}
       <div
         style={{
           position: "absolute",

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParallaxTilt } from "../../hooks/useParallaxTilt";
+import useSound from "../../hooks/useSound";
 
 export interface CardData {
   id: string;
@@ -37,6 +38,10 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
   const cardWidth = card.layout?.width || "500px";
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
+
+  const playGlitch = useSound("/sounds/glitch.wav", 0.2, 0.15);
+  const playClick = useSound("/sounds/click.mp3", 0.25, 0.08);
+  const playTap = useSound("/sounds/tap.mp3", 0.3, undefined, true);
 
   useEffect(() => {
     const el = wrapperRef.current;
@@ -137,7 +142,7 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
       {/* Main Card */}
       <div
         ref={ref}
-        onMouseEnter={handleMouseEnter}
+        onMouseEnter={() => { playTap(); handleMouseEnter(); }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         className="relative select-none overflow-hidden rounded-2xl"
@@ -157,8 +162,13 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
 
         {/* Card Border */}
         <div
-          className="absolute inset-0 rounded-2xl"
+          className="absolute rounded-2xl"
           style={{
+            top: "-2px",
+            left: "-2px",
+            right: "-2px",
+            bottom: "-2px",
+            borderRadius: "18px",
             background: `linear-gradient(135deg, ${card.accentColor}88 0%, transparent 50%, ${card.accentColor}44 100%)`,
             padding: "1.5px",
           }}
@@ -168,8 +178,13 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
 
         {/* Inner border line */}
         <div
-          className="absolute inset-[1.5px] rounded-2xl"
+          className="absolute rounded-2xl"
           style={{
+            top: "-0.5px",
+            left: "-0.5px",
+            right: "-0.5px",
+            bottom: "-0.5px",
+            borderRadius: "15px",
             border: `1px solid ${card.accentColor}55`,
           }}
         />
@@ -324,6 +339,7 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
                   boxShadow: `0 4px 15px ${card.accentColor}15`,
                 }}
                 onMouseEnter={(e) => {
+                  playGlitch();
                   e.currentTarget.style.background = card.accentColor;
                   e.currentTarget.style.color = "#000";
                   e.currentTarget.style.transform = "translateZ(20px) scale(1.05)";
@@ -335,6 +351,7 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
                   e.currentTarget.style.transform = "translateZ(0) scale(1)";
                   e.currentTarget.style.boxShadow = `0 4px 15px ${card.accentColor}15`;
                 }}
+                onClick={() => playClick()}
               >
                 View
               </a>
@@ -348,7 +365,9 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
                   transformStyle: "preserve-3d",
                   boxShadow: `0 4px 20px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`,
                 }}
+                onClick={() => playClick()}
                 onMouseEnter={(e) => {
+                  playGlitch();
                   e.currentTarget.style.transform = "translateZ(25px) scale(1.08)";
                   e.currentTarget.style.boxShadow = `0 12px 40px ${card.glowColor}, 0 0 60px ${card.glowColor}40, inset 0 1px 0 rgba(255,255,255,0.3)`;
                 }}
@@ -386,14 +405,14 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
       </div>
 
       {/* ── Side Fire / Aura Effects ───────────────────────────── */}
-      {/* Left fire column */}
+      {/* Left fire column — positioned fully outside the card */}
       <div
         className="absolute pointer-events-none"
         style={{
-          left: "-50px",
-          top: "5%",
-          bottom: "5%",
-          width: "100px",
+          right: "100%",
+          top: "-5%",
+          bottom: "-5%",
+          width: "200px",
           zIndex: 5,
         }}
       >
@@ -402,11 +421,11 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
           style={{
             position: "absolute",
             right: 0,
-            top: "-20%",
-            bottom: "-20%",
-            width: "80px",
-            background: `radial-gradient(ellipse at 80% 50%, ${card.accentColor}${tilt.isHovered ? "55" : "15"}, transparent 70%)`,
-            filter: `blur(${tilt.isHovered ? "8px" : "20px"})`,
+            top: "-25%",
+            bottom: "-25%",
+            width: "180px",
+            background: `radial-gradient(ellipse at 90% 50%, ${card.accentColor}${tilt.isHovered ? "70" : "30"}, transparent 65%)`,
+            filter: `blur(${tilt.isHovered ? "10px" : "22px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
           }}
         />
@@ -414,13 +433,13 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
         <div
           style={{
             position: "absolute",
-            right: "10px",
-            top: 0,
-            bottom: 0,
-            width: "12px",
-            background: `linear-gradient(to bottom, transparent 5%, ${card.accentColor}cc 30%, ${card.accentColor} 50%, ${card.accentColor}cc 70%, transparent 95%)`,
-            opacity: tilt.isHovered ? 1 : 0.35,
-            filter: `blur(${tilt.isHovered ? "1px" : "3px"})`,
+            right: "0px",
+            top: "5%",
+            bottom: "5%",
+            width: "24px",
+            background: `linear-gradient(to bottom, transparent 2%, ${card.accentColor}bb 20%, ${card.accentColor} 45%, ${card.accentColor}ff 50%, ${card.accentColor} 55%, ${card.accentColor}bb 80%, transparent 98%)`,
+            opacity: tilt.isHovered ? 1 : 0.55,
+            filter: `blur(${tilt.isHovered ? "1px" : "2px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireStripLeft 1.8s ease-in-out infinite",
           }}
@@ -429,77 +448,92 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
         <div
           style={{
             position: "absolute",
-            right: "8px",
-            top: "10%",
-            bottom: "10%",
-            width: "18px",
-            background: `linear-gradient(to bottom, transparent, ${card.accentColor}90, ${card.accentColor}dd, ${card.accentColor}90, transparent)`,
-            opacity: tilt.isHovered ? 0.8 : 0.2,
-            filter: `blur(${tilt.isHovered ? "3px" : "8px"})`,
+            right: "-8px",
+            top: "8%",
+            bottom: "8%",
+            width: "40px",
+            background: `linear-gradient(to bottom, transparent, ${card.accentColor}99, ${card.accentColor}ee, ${card.accentColor}99, transparent)`,
+            opacity: tilt.isHovered ? 0.9 : 0.4,
+            filter: `blur(${tilt.isHovered ? "4px" : "8px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireFlickerInner 1.2s ease-in-out infinite alternate",
+          }}
+        />
+        {/* Outer flame haze */}
+        <div
+          style={{
+            position: "absolute",
+            right: "-20px",
+            top: "3%",
+            bottom: "3%",
+            width: "60px",
+            background: `linear-gradient(to bottom, transparent 5%, ${card.accentColor}66 30%, ${card.accentColor}88 50%, ${card.accentColor}66 70%, transparent 95%)`,
+            opacity: tilt.isHovered ? 0.7 : 0.25,
+            filter: `blur(${tilt.isHovered ? "8px" : "14px"})`,
+            transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
+            animation: "fireFlickerInner 1.6s ease-in-out 0.2s infinite alternate",
           }}
         />
         {/* Smoke / mist layer */}
         <div
           style={{
             position: "absolute",
-            right: 0,
-            top: "-10%",
-            bottom: "-10%",
-            width: "60px",
-            background: `radial-gradient(ellipse at 70% 50%, ${card.accentColor}${tilt.isHovered ? "40" : "08"}, transparent 60%)`,
-            filter: `blur(${tilt.isHovered ? "10px" : "25px"})`,
+            right: "-10px",
+            top: "-15%",
+            bottom: "-15%",
+            width: "140px",
+            background: `radial-gradient(ellipse at 70% 50%, ${card.accentColor}${tilt.isHovered ? "55" : "18"}, transparent 55%)`,
+            filter: `blur(${tilt.isHovered ? "12px" : "28px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "smokeDrift 3s ease-in-out infinite",
           }}
         />
         {/* Large flowing embers */}
-        {[...Array(8)].map((_, i) => (
+        {[...Array(10)].map((_, i) => (
           <div
             key={`left-big-${i}`}
             style={{
               position: "absolute",
-              right: "5px",
-              width: `${4 + (i % 4) * 2}px`,
-              height: `${4 + (i % 4) * 2}px`,
+              right: "-5px",
+              width: `${5 + (i % 5) * 3}px`,
+              height: `${5 + (i % 5) * 3}px`,
               borderRadius: "50%",
               background: `radial-gradient(circle, #fff 0%, ${card.accentColor} 40%, transparent 70%)`,
-              boxShadow: `0 0 ${8 + i * 2}px ${card.accentColor}, 0 0 ${16 + i * 3}px ${card.accentColor}80, 0 0 ${24 + i * 4}px ${card.accentColor}40`,
-              opacity: tilt.isHovered ? 0.9 : 0.15,
-              animation: `emberLeft${i % 4} ${2 + i * 0.25}s ease-out ${i * 0.15}s infinite`,
+              boxShadow: `0 0 ${10 + i * 3}px ${card.accentColor}, 0 0 ${20 + i * 4}px ${card.accentColor}80, 0 0 ${30 + i * 5}px ${card.accentColor}40`,
+              opacity: tilt.isHovered ? 1 : 0.35,
+              animation: `emberLeft${i % 4} ${2 + i * 0.2}s ease-out ${i * 0.12}s infinite`,
               transition: "opacity 0.5s ease",
             }}
           />
         ))}
         {/* Small spark particles */}
-        {[...Array(12)].map((_, i) => (
+        {[...Array(14)].map((_, i) => (
           <div
             key={`left-spark-${i}`}
             style={{
               position: "absolute",
               right: "0px",
-              width: "2px",
-              height: "2px",
+              width: "3px",
+              height: "3px",
               borderRadius: "50%",
               background: "#fff",
-              boxShadow: `0 0 4px ${card.accentColor}, 0 0 8px ${card.accentColor}`,
-              opacity: tilt.isHovered ? 0.7 : 0.1,
-              animation: `sparkLeft${i % 3} ${1 + i * 0.15}s linear ${i * 0.1}s infinite`,
+              boxShadow: `0 0 6px ${card.accentColor}, 0 0 14px ${card.accentColor}`,
+              opacity: tilt.isHovered ? 0.9 : 0.2,
+              animation: `sparkLeft${i % 3} ${1 + i * 0.12}s linear ${i * 0.08}s infinite`,
               transition: "opacity 0.4s ease",
             }}
           />
         ))}
       </div>
 
-      {/* Right fire column */}
+      {/* Right fire column — positioned fully outside the card */}
       <div
         className="absolute pointer-events-none"
         style={{
-          right: "-50px",
-          top: "5%",
-          bottom: "5%",
-          width: "100px",
+          left: "100%",
+          top: "-5%",
+          bottom: "-5%",
+          width: "200px",
           zIndex: 5,
         }}
       >
@@ -508,11 +542,11 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
           style={{
             position: "absolute",
             left: 0,
-            top: "-20%",
-            bottom: "-20%",
-            width: "80px",
-            background: `radial-gradient(ellipse at 20% 50%, ${card.accentColor}${tilt.isHovered ? "55" : "15"}, transparent 70%)`,
-            filter: `blur(${tilt.isHovered ? "8px" : "20px"})`,
+            top: "-25%",
+            bottom: "-25%",
+            width: "180px",
+            background: `radial-gradient(ellipse at 10% 50%, ${card.accentColor}${tilt.isHovered ? "70" : "30"}, transparent 65%)`,
+            filter: `blur(${tilt.isHovered ? "10px" : "22px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
           }}
         />
@@ -520,13 +554,13 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
         <div
           style={{
             position: "absolute",
-            left: "10px",
-            top: 0,
-            bottom: 0,
-            width: "12px",
-            background: `linear-gradient(to bottom, transparent 5%, ${card.accentColor}cc 30%, ${card.accentColor} 50%, ${card.accentColor}cc 70%, transparent 95%)`,
-            opacity: tilt.isHovered ? 1 : 0.35,
-            filter: `blur(${tilt.isHovered ? "1px" : "3px"})`,
+            left: "0px",
+            top: "5%",
+            bottom: "5%",
+            width: "24px",
+            background: `linear-gradient(to bottom, transparent 2%, ${card.accentColor}bb 20%, ${card.accentColor} 45%, ${card.accentColor}ff 50%, ${card.accentColor} 55%, ${card.accentColor}bb 80%, transparent 98%)`,
+            opacity: tilt.isHovered ? 1 : 0.55,
+            filter: `blur(${tilt.isHovered ? "1px" : "2px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireStripRight 1.8s ease-in-out 0.4s infinite",
           }}
@@ -535,77 +569,92 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
         <div
           style={{
             position: "absolute",
-            left: "8px",
-            top: "10%",
-            bottom: "10%",
-            width: "18px",
-            background: `linear-gradient(to bottom, transparent, ${card.accentColor}90, ${card.accentColor}dd, ${card.accentColor}90, transparent)`,
-            opacity: tilt.isHovered ? 0.8 : 0.2,
-            filter: `blur(${tilt.isHovered ? "3px" : "8px"})`,
+            left: "-8px",
+            top: "8%",
+            bottom: "8%",
+            width: "40px",
+            background: `linear-gradient(to bottom, transparent, ${card.accentColor}99, ${card.accentColor}ee, ${card.accentColor}99, transparent)`,
+            opacity: tilt.isHovered ? 0.9 : 0.4,
+            filter: `blur(${tilt.isHovered ? "4px" : "8px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireFlickerInner 1.4s ease-in-out 0.3s infinite alternate",
+          }}
+        />
+        {/* Outer flame haze */}
+        <div
+          style={{
+            position: "absolute",
+            left: "-20px",
+            top: "3%",
+            bottom: "3%",
+            width: "60px",
+            background: `linear-gradient(to bottom, transparent 5%, ${card.accentColor}66 30%, ${card.accentColor}88 50%, ${card.accentColor}66 70%, transparent 95%)`,
+            opacity: tilt.isHovered ? 0.7 : 0.25,
+            filter: `blur(${tilt.isHovered ? "8px" : "14px"})`,
+            transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
+            animation: "fireFlickerInner 1.6s ease-in-out 0.2s infinite alternate",
           }}
         />
         {/* Smoke / mist layer */}
         <div
           style={{
             position: "absolute",
-            left: 0,
-            top: "-10%",
-            bottom: "-10%",
-            width: "60px",
-            background: `radial-gradient(ellipse at 30% 50%, ${card.accentColor}${tilt.isHovered ? "40" : "08"}, transparent 60%)`,
-            filter: `blur(${tilt.isHovered ? "10px" : "25px"})`,
+            left: "-10px",
+            top: "-15%",
+            bottom: "-15%",
+            width: "140px",
+            background: `radial-gradient(ellipse at 30% 50%, ${card.accentColor}${tilt.isHovered ? "55" : "18"}, transparent 55%)`,
+            filter: `blur(${tilt.isHovered ? "12px" : "28px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "smokeDrift 3.2s ease-in-out 0.5s infinite",
           }}
         />
         {/* Large flowing embers */}
-        {[...Array(8)].map((_, i) => (
+        {[...Array(10)].map((_, i) => (
           <div
             key={`right-big-${i}`}
             style={{
               position: "absolute",
-              left: "5px",
-              width: `${4 + (i % 4) * 2}px`,
-              height: `${4 + (i % 4) * 2}px`,
+              left: "-5px",
+              width: `${5 + (i % 5) * 3}px`,
+              height: `${5 + (i % 5) * 3}px`,
               borderRadius: "50%",
               background: `radial-gradient(circle, #fff 0%, ${card.accentColor} 40%, transparent 70%)`,
-              boxShadow: `0 0 ${8 + i * 2}px ${card.accentColor}, 0 0 ${16 + i * 3}px ${card.accentColor}80, 0 0 ${24 + i * 4}px ${card.accentColor}40`,
-              opacity: tilt.isHovered ? 0.9 : 0.15,
-              animation: `emberRight${i % 4} ${2 + i * 0.25}s ease-out ${i * 0.15 + 0.1}s infinite`,
+              boxShadow: `0 0 ${10 + i * 3}px ${card.accentColor}, 0 0 ${20 + i * 4}px ${card.accentColor}80, 0 0 ${30 + i * 5}px ${card.accentColor}40`,
+              opacity: tilt.isHovered ? 1 : 0.35,
+              animation: `emberRight${i % 4} ${2 + i * 0.2}s ease-out ${i * 0.12 + 0.1}s infinite`,
               transition: "opacity 0.5s ease",
             }}
           />
         ))}
         {/* Small spark particles */}
-        {[...Array(12)].map((_, i) => (
+        {[...Array(14)].map((_, i) => (
           <div
             key={`right-spark-${i}`}
             style={{
               position: "absolute",
               left: "0px",
-              width: "2px",
-              height: "2px",
+              width: "3px",
+              height: "3px",
               borderRadius: "50%",
               background: "#fff",
-              boxShadow: `0 0 4px ${card.accentColor}, 0 0 8px ${card.accentColor}`,
-              opacity: tilt.isHovered ? 0.7 : 0.1,
-              animation: `sparkRight${i % 3} ${1 + i * 0.15}s linear ${i * 0.1 + 0.05}s infinite`,
+              boxShadow: `0 0 6px ${card.accentColor}, 0 0 14px ${card.accentColor}`,
+              opacity: tilt.isHovered ? 0.9 : 0.2,
+              animation: `sparkRight${i % 3} ${1 + i * 0.12}s linear ${i * 0.08 + 0.05}s infinite`,
               transition: "opacity 0.4s ease",
             }}
           />
         ))}
       </div>
 
-      {/* Top aura */}
+      {/* Top aura — positioned fully above the card */}
       <div
         className="absolute pointer-events-none"
         style={{
-          top: "-25px",
-          left: "10%",
-          right: "10%",
-          height: "50px",
+          bottom: "100%",
+          left: "5%",
+          right: "5%",
+          height: "100px",
           zIndex: 5,
         }}
       >
@@ -615,10 +664,10 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
             bottom: 0,
             left: 0,
             right: 0,
-            height: "8px",
-            background: `linear-gradient(to right, transparent, ${card.accentColor}cc, transparent)`,
-            opacity: tilt.isHovered ? 0.8 : 0.2,
-            filter: `blur(${tilt.isHovered ? "1px" : "4px"})`,
+            height: "16px",
+            background: `linear-gradient(to right, transparent, ${card.accentColor}dd, transparent)`,
+            opacity: tilt.isHovered ? 0.9 : 0.4,
+            filter: `blur(${tilt.isHovered ? "1px" : "3px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireStripTop 2s ease-in-out infinite",
           }}
@@ -626,25 +675,25 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
         <div
           style={{
             position: "absolute",
-            bottom: 0,
-            left: "-15%",
-            right: "-15%",
-            height: "40px",
-            background: `radial-gradient(ellipse at center bottom, ${card.accentColor}${tilt.isHovered ? "45" : "10"}, transparent 65%)`,
-            filter: `blur(${tilt.isHovered ? "6px" : "14px"})`,
+            bottom: "8px",
+            left: "-20%",
+            right: "-20%",
+            height: "70px",
+            background: `radial-gradient(ellipse at center bottom, ${card.accentColor}${tilt.isHovered ? "60" : "22"}, transparent 60%)`,
+            filter: `blur(${tilt.isHovered ? "6px" : "16px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
           }}
         />
       </div>
 
-      {/* Bottom aura */}
+      {/* Bottom aura — positioned fully below the card */}
       <div
         className="absolute pointer-events-none"
         style={{
-          bottom: "-25px",
-          left: "10%",
-          right: "10%",
-          height: "50px",
+          top: "100%",
+          left: "5%",
+          right: "5%",
+          height: "100px",
           zIndex: 5,
         }}
       >
@@ -654,10 +703,10 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
             top: 0,
             left: 0,
             right: 0,
-            height: "8px",
-            background: `linear-gradient(to right, transparent, ${card.accentColor}cc, transparent)`,
-            opacity: tilt.isHovered ? 0.8 : 0.2,
-            filter: `blur(${tilt.isHovered ? "1px" : "4px"})`,
+            height: "16px",
+            background: `linear-gradient(to right, transparent, ${card.accentColor}dd, transparent)`,
+            opacity: tilt.isHovered ? 0.9 : 0.4,
+            filter: `blur(${tilt.isHovered ? "1px" : "3px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireStripBottom 2s ease-in-out 0.6s infinite",
           }}
@@ -665,12 +714,12 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
         <div
           style={{
             position: "absolute",
-            top: 0,
-            left: "-15%",
-            right: "-15%",
-            height: "40px",
-            background: `radial-gradient(ellipse at center top, ${card.accentColor}${tilt.isHovered ? "45" : "10"}, transparent 65%)`,
-            filter: `blur(${tilt.isHovered ? "6px" : "14px"})`,
+            top: "8px",
+            left: "-20%",
+            right: "-20%",
+            height: "70px",
+            background: `radial-gradient(ellipse at center top, ${card.accentColor}${tilt.isHovered ? "60" : "22"}, transparent 60%)`,
+            filter: `blur(${tilt.isHovered ? "6px" : "16px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
           }}
         />
@@ -710,72 +759,72 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
         @keyframes emberLeft0 {
           0% { transform: translate(0, 0) scale(1); opacity: 0; }
           10% { opacity: 0.9; }
-          100% { transform: translate(-40px, -120px) scale(0.2); opacity: 0; }
+          100% { transform: translate(-70px, -180px) scale(0.2); opacity: 0; }
         }
         @keyframes emberLeft1 {
           0% { transform: translate(0, 0) scale(1); opacity: 0; }
           10% { opacity: 0.85; }
-          100% { transform: translate(-30px, -140px) scale(0.15); opacity: 0; }
+          100% { transform: translate(-55px, -200px) scale(0.15); opacity: 0; }
         }
         @keyframes emberLeft2 {
           0% { transform: translate(0, 0) scale(1); opacity: 0; }
           10% { opacity: 0.95; }
-          100% { transform: translate(-50px, -100px) scale(0.25); opacity: 0; }
+          100% { transform: translate(-80px, -160px) scale(0.25); opacity: 0; }
         }
         @keyframes emberLeft3 {
           0% { transform: translate(0, 0) scale(1); opacity: 0; }
           10% { opacity: 0.8; }
-          100% { transform: translate(-35px, -130px) scale(0.1); opacity: 0; }
+          100% { transform: translate(-60px, -190px) scale(0.1); opacity: 0; }
         }
         @keyframes emberRight0 {
           0% { transform: translate(0, 0) scale(1); opacity: 0; }
           10% { opacity: 0.9; }
-          100% { transform: translate(40px, -120px) scale(0.2); opacity: 0; }
+          100% { transform: translate(70px, -180px) scale(0.2); opacity: 0; }
         }
         @keyframes emberRight1 {
           0% { transform: translate(0, 0) scale(1); opacity: 0; }
           10% { opacity: 0.85; }
-          100% { transform: translate(30px, -140px) scale(0.15); opacity: 0; }
+          100% { transform: translate(55px, -200px) scale(0.15); opacity: 0; }
         }
         @keyframes emberRight2 {
           0% { transform: translate(0, 0) scale(1); opacity: 0; }
           10% { opacity: 0.95; }
-          100% { transform: translate(50px, -100px) scale(0.25); opacity: 0; }
+          100% { transform: translate(80px, -160px) scale(0.25); opacity: 0; }
         }
         @keyframes emberRight3 {
           0% { transform: translate(0, 0) scale(1); opacity: 0; }
           10% { opacity: 0.8; }
-          100% { transform: translate(35px, -130px) scale(0.1); opacity: 0; }
+          100% { transform: translate(60px, -190px) scale(0.1); opacity: 0; }
         }
         @keyframes sparkLeft0 {
           0% { transform: translate(0, 0); opacity: 0; }
           15% { opacity: 0.8; }
-          100% { transform: translate(-25px, -80px); opacity: 0; }
+          100% { transform: translate(-45px, -120px); opacity: 0; }
         }
         @keyframes sparkLeft1 {
           0% { transform: translate(0, 0); opacity: 0; }
           15% { opacity: 0.7; }
-          100% { transform: translate(-18px, -95px); opacity: 0; }
+          100% { transform: translate(-35px, -140px); opacity: 0; }
         }
         @keyframes sparkLeft2 {
           0% { transform: translate(0, 0); opacity: 0; }
           15% { opacity: 0.9; }
-          100% { transform: translate(-30px, -70px); opacity: 0; }
+          100% { transform: translate(-50px, -110px); opacity: 0; }
         }
         @keyframes sparkRight0 {
           0% { transform: translate(0, 0); opacity: 0; }
           15% { opacity: 0.8; }
-          100% { transform: translate(25px, -80px); opacity: 0; }
+          100% { transform: translate(45px, -120px); opacity: 0; }
         }
         @keyframes sparkRight1 {
           0% { transform: translate(0, 0); opacity: 0; }
           15% { opacity: 0.7; }
-          100% { transform: translate(18px, -95px); opacity: 0; }
+          100% { transform: translate(35px, -140px); opacity: 0; }
         }
         @keyframes sparkRight2 {
           0% { transform: translate(0, 0); opacity: 0; }
           15% { opacity: 0.9; }
-          100% { transform: translate(30px, -70px); opacity: 0; }
+          100% { transform: translate(50px, -110px); opacity: 0; }
         }
       `}</style>
     </div>

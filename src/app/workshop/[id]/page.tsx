@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import TimeFallScene from "@/app/components/TimeFallScene";
 import { workshopCards } from "@/app/workshop/workshopData";
+import useSound from "@/app/hooks/useSound";
 
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
@@ -87,6 +88,8 @@ function CinematicBox({
   const { ref, visible } = useReveal(0.05);
   const boxRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
+  const playGlass = useSound("/sounds/glass.mp3", 0.05);
+  const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
     const el = boxRef.current;
@@ -109,32 +112,44 @@ function CinematicBox({
     <div ref={ref}>
       <div
         ref={boxRef}
+        onMouseEnter={() => { playGlass(); setHovered(true); }}
+        onMouseLeave={() => setHovered(false)}
         style={{
           position: "relative",
           borderRadius: "24px",
-          overflow: "hidden",
+          overflow: "visible",
           padding: "2.5rem",
           opacity: visible ? 1 : 0,
           transform: visible
-            ? `perspective(1200px) rotateX(${tx}deg) rotateY(${ty}deg) translateY(0) scale(1)`
+            ? hovered
+              ? `perspective(1200px) rotateX(${tx * 0.5}deg) rotateY(${ty * 0.5}deg) translateY(-12px) scale(1.03) translateZ(30px)`
+              : `perspective(1200px) rotateX(${tx}deg) rotateY(${ty}deg) translateY(0) scale(1)`
             : `perspective(1200px) rotateX(0deg) rotateY(0deg) translateY(50px) scale(0.9)`,
           clipPath: visible ? "inset(0 0 0 0)" : "inset(0 100% 0 0)",
           transition: visible
-            ? `transform 0.12s ease-out, opacity 0.8s cubic-bezier(0.23,1,0.32,1) ${delay}s, clip-path 1s cubic-bezier(0.23,1,0.32,1) ${delay}s`
+            ? hovered
+              ? "transform 0.4s cubic-bezier(0.23,1,0.32,1), opacity 0.8s cubic-bezier(0.23,1,0.32,1), box-shadow 0.4s ease, clip-path 1s cubic-bezier(0.23,1,0.32,1)"
+              : "transform 0.5s cubic-bezier(0.23,1,0.32,1), opacity 0.8s cubic-bezier(0.23,1,0.32,1), box-shadow 0.5s ease, clip-path 1s cubic-bezier(0.23,1,0.32,1)"
             : "transform 0.12s ease-out, opacity 0.3s ease-in, clip-path 0.3s ease-in",
           willChange: "transform, opacity",
           background: `linear-gradient(135deg, ${accentColor}25 0%, rgba(0,0,0,0.88) 50%, ${accentColor}18 100%)`,
           backgroundSize: "200% 200%",
           animation: visible ? "boxGradientShift 4s ease-in-out infinite alternate" : "none",
-          border: `1px solid ${accentColor}55`,
+          border: `1px solid ${hovered ? accentColor + "99" : accentColor + "55"}`,
+          boxShadow: hovered
+            ? `0 20px 60px ${accentColor}40, 0 0 40px ${accentColor}20, inset 0 1px 0 rgba(255,255,255,0.1)`
+            : `0 4px 20px ${accentColor}15`,
         }}
       >
         {/* Animated border */}
         <div
           style={{
             position: "absolute",
-            inset: 0,
-            borderRadius: "24px",
+            top: "-2px",
+            left: "-2px",
+            right: "-2px",
+            bottom: "-2px",
+            borderRadius: "26px",
             padding: "1.5px",
             background: `conic-gradient(from ${(mousePos.x * 360)}deg, ${accentColor}00, ${accentColor}55, ${accentColor}00, ${accentColor}33, ${accentColor}00)`,
             WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
@@ -304,6 +319,9 @@ export default function WorkshopDetailPage() {
   const card = workshopCards.find((c) => c.id === id);
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
 
+  const playGlitch = useSound("/sounds/glitch.wav", 0.2, 0.15);
+  const playClick = useSound("/sounds/click.mp3", 0.25, 0.08);
+
   useEffect(() => {
     const handle = (e: MouseEvent) => {
       setMousePos({ x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight });
@@ -348,6 +366,7 @@ export default function WorkshopDetailPage() {
       <div style={{ position: "fixed", bottom: "1.5rem", left: "1.5rem", zIndex: 50, perspective: "600px" }}>
         <Link
           href="/workshop"
+          onClick={() => playClick()}
           style={{
             display: "flex",
             alignItems: "center",
@@ -370,6 +389,7 @@ export default function WorkshopDetailPage() {
             fontFamily: 'var(--font-display), sans-serif',
           }}
           onMouseEnter={(e) => {
+            playGlitch();
             e.currentTarget.style.transform = "translateZ(20px) scale(1.06) translateX(-6px)";
             e.currentTarget.style.background = `linear-gradient(135deg, ${card.accentColor}40, ${card.accentColor}15)`;
             e.currentTarget.style.borderColor = card.accentColor;
@@ -613,6 +633,7 @@ export default function WorkshopDetailPage() {
                 </div>
               </div>
               <button
+                onClick={() => playClick()}
                 style={{
                   width: "100%",
                   padding: "0.85rem",
@@ -631,6 +652,7 @@ export default function WorkshopDetailPage() {
                   boxShadow: `0 4px 25px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`,
                 }}
                 onMouseEnter={(e) => {
+                  playGlitch();
                   e.currentTarget.style.transform = "translateZ(30px) scale(1.08)";
                   e.currentTarget.style.boxShadow = `0 15px 50px ${card.glowColor}, 0 0 70px ${card.glowColor}50, inset 0 1px 0 rgba(255,255,255,0.3)`;
                 }}

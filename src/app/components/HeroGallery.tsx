@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
+import useSound from "../hooks/useSound";
 
 const IMAGES = [
   { src: "/tiles/tile-01.jpg", title: "Rocketry", color: "#33d6ff" },
@@ -49,11 +50,17 @@ export default function HeroGallery() {
   const [dragX, setDragX] = useState(0);
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
   const [hovered, setHovered] = useState<number | null>(null);
+  const [isCenterHovered, setIsCenterHovered] = useState(false);
   const [paused, setPaused] = useState(false);
   const [cardTilt, setCardTilt] = useState({ x: 0, y: 0 });
   const startX = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const activeCardRef = useRef<HTMLDivElement>(null);
+
+  const playGlitch = useSound("/sounds/glitch.wav", 0.2, 0.15);
+  const playClick = useSound("/sounds/click.mp3", 0.25, 0.08);
+  const playWhoosh = useSound("/sounds/whoosh.mp3", 0.85);
+  const playTap = useSound("/sounds/tapgallery.mp3", 0.3, undefined, true);
 
   const goTo = useCallback((index: number) => {
     setActive(Math.max(0, Math.min(IMAGES.length - 1, index)));
@@ -90,10 +97,10 @@ export default function HeroGallery() {
 
   const handlePointerUp = useCallback(() => {
     setIsDragging(false);
-    if (dragX < -80) next();
-    else if (dragX > 80) prev();
+    if (dragX < -80) { next(); playWhoosh(); }
+    else if (dragX > 80) { prev(); playWhoosh(); }
     setDragX(0);
-  }, [dragX, next, prev]);
+  }, [dragX, next, prev, playWhoosh]);
 
   // Mouse position for ambient light + card tilt
   useEffect(() => {
@@ -411,11 +418,17 @@ export default function HeroGallery() {
             style={{
               ...getSlideStyle(i),
               ...(isActive ? {
-                transform: `translateX(calc(-50% + ${isDragging ? dragX * 0.3 : 0}vw)) translateY(-50%) translateZ(10px) rotateX(${cardTilt.x}deg) rotateY(${cardTilt.y}deg) scale(1)`,
+                transform: isCenterHovered
+                  ? `translateX(calc(-50% + ${isDragging ? dragX * 0.3 : 0}vw)) translateY(-50%) translateZ(40px) rotateX(${cardTilt.x * 0.5}deg) rotateY(${cardTilt.y * 0.5}deg) scale(1.06)`
+                  : `translateX(calc(-50% + ${isDragging ? dragX * 0.3 : 0}vw)) translateY(-50%) translateZ(10px) rotateX(${cardTilt.x}deg) rotateY(${cardTilt.y}deg) scale(1)`,
+                transition: isCenterHovered
+                  ? "transform 0.4s cubic-bezier(0.23,1,0.32,1), box-shadow 0.4s ease"
+                  : "transform 0.5s cubic-bezier(0.23,1,0.32,1), box-shadow 0.5s ease",
               } : {}),
             }}
-            onMouseEnter={() => { setHovered(i); setPaused(true); }}
-            onMouseLeave={() => { setHovered(null); setPaused(false); }}
+            onMouseEnter={() => { setHovered(i); setPaused(true); playTap(); if (isActive) setIsCenterHovered(true); }}
+            onMouseLeave={() => { setHovered(null); setPaused(false); if (isActive) setIsCenterHovered(false); }}
+            onClick={() => { if (!isDragging && Math.abs(dragX) < 5) { goTo(i); playClick(); playWhoosh(); } }}
           >
             {/* ── Animated gradient border ──────────────────── */}
             <div
@@ -625,7 +638,7 @@ export default function HeroGallery() {
       >
         {/* Left arrow */}
         <button
-          onClick={prev}
+          onClick={() => { prev(); playWhoosh(); }}
           style={{
             width: "40px",
             height: "40px",
@@ -646,6 +659,7 @@ export default function HeroGallery() {
             overflow: "hidden",
           }}
           onMouseEnter={(e) => {
+            playGlitch();
             e.currentTarget.style.transform = "translateZ(15px) scale(1.12) rotate(-5deg)";
             e.currentTarget.style.background = `linear-gradient(135deg, ${activeColor}40, ${activeColor}15)`;
             e.currentTarget.style.borderColor = activeColor;
@@ -668,7 +682,7 @@ export default function HeroGallery() {
             return (
               <button
                 key={i}
-                onClick={() => goTo(i)}
+                onClick={() => { goTo(i); playClick(); }}
                 style={{
                   width: isActive ? "32px" : "8px",
                   height: "8px",
@@ -687,6 +701,7 @@ export default function HeroGallery() {
                   overflow: "hidden",
                 }}
                 onMouseEnter={(e) => {
+                  playGlitch();
                   if (!isActive) {
                     e.currentTarget.style.background = "rgba(255,255,255,0.3)";
                     e.currentTarget.style.transform = "scaleY(1.3) scaleX(1.2)";
@@ -707,7 +722,7 @@ export default function HeroGallery() {
 
         {/* Right arrow */}
         <button
-          onClick={next}
+          onClick={() => { next(); playWhoosh(); }}
           style={{
             width: "40px",
             height: "40px",
@@ -728,6 +743,7 @@ export default function HeroGallery() {
             overflow: "hidden",
           }}
           onMouseEnter={(e) => {
+            playGlitch();
             e.currentTarget.style.transform = "translateZ(15px) scale(1.12) rotate(5deg)";
             e.currentTarget.style.background = `linear-gradient(135deg, ${activeColor}40, ${activeColor}15)`;
             e.currentTarget.style.borderColor = activeColor;

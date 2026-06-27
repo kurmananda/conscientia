@@ -124,7 +124,7 @@ export default function CategoryBox({
           minHeight: "500px",
           padding: "3rem 2.5rem 2.5rem",
           borderRadius: "24px",
-          overflow: "hidden",
+          overflow: "visible",
           transform: revealed
             ? `perspective(1200px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) translateX(0)`
             : "perspective(1200px) rotateX(0deg) rotateY(0deg) translateX(-80px)",
@@ -145,8 +145,11 @@ export default function CategoryBox({
         <div
           style={{
             position: "absolute",
-            inset: 0,
-            borderRadius: "24px",
+            top: "-2px",
+            left: "-2px",
+            right: "-2px",
+            bottom: "-2px",
+            borderRadius: "26px",
             padding: "1.5px",
             background: `conic-gradient(from ${scrollProgress * 360}deg, ${accentColor}00, ${accentColor}66, ${accentColor}00, ${accentColor}44, ${accentColor}00)`,
             WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
