@@ -15,6 +15,33 @@ const IMAGES = [
 ];
 
 const AUTO_INTERVAL = 2200;
+const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*";
+
+function ScrambleText({ text, delay = 0 }: { text: string; delay?: number }) {
+  const [display, setDisplay] = useState(text.split("").map(() => "\u00A0").join(""));
+
+  useEffect(() => {
+    setDisplay(text.split("").map(() => CHARS[Math.floor(Math.random() * CHARS.length)]).join(""));
+    const target = text.split("");
+    let frame = 0;
+    const total = 28;
+    const timer = setTimeout(() => {
+      const iv = setInterval(() => {
+        frame++;
+        const p = frame / total;
+        setDisplay(target.map((c, i) => {
+          if (c === " ") return " ";
+          if (p > (i / target.length) * 0.6 + 0.35) return c;
+          return CHARS[Math.floor(Math.random() * CHARS.length)];
+        }).join(""));
+        if (frame >= total) { clearInterval(iv); setDisplay(text); }
+      }, 35);
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [text, delay]);
+
+  return <span>{display}</span>;
+}
 
 export default function HeroGallery() {
   const [active, setActive] = useState(0);
@@ -146,7 +173,7 @@ export default function HeroGallery() {
     return {
       position: "absolute",
       left: "50%",
-      top: "42%",
+      top: "50%",
       width: "clamp(280px, 40vw, 500px)",
       height: "clamp(350px, 55vh, 600px)",
       transform: `translateX(calc(-50% + ${translateX}vw)) translateY(-50%) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
@@ -248,6 +275,131 @@ export default function HeroGallery() {
           zIndex: 15,
         }}
       />
+
+      {/* ── Main Gallery Title ──────────────────────────────── */}
+      <div
+        style={{
+          position: "absolute",
+          top: "4vh",
+          left: 0,
+          right: 0,
+          zIndex: 25,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          pointerEvents: "none",
+        }}
+      >
+        {/* Top line accent */}
+        <div
+          style={{
+            width: "120px",
+            height: "1px",
+            background: `linear-gradient(90deg, transparent, ${activeColor}, transparent)`,
+            marginBottom: "1rem",
+            boxShadow: `0 0 20px ${activeColor}60`,
+            animation: "titleLineExpand 1s ease forwards",
+          }}
+        />
+
+        {/* Subtitle label */}
+        <div
+          className="digital-interference digital-flicker"
+          style={{
+            fontFamily: "var(--font-display), sans-serif",
+            fontSize: "0.55rem",
+            letterSpacing: "0.5em",
+            color: `${activeColor}aa`,
+            textTransform: "uppercase",
+            marginBottom: "0.6rem",
+          }}
+        >
+          <span className="glitch-text" data-text="Conscientia 2025 Showcase">
+            Conscientia 2025 Showcase
+          </span>
+        </div>
+
+        {/* Main title */}
+        <div
+          style={{
+            fontFamily: "'Black Mustang', sans-serif",
+            fontSize: "clamp(2rem, 6vw, 4.5rem)",
+            fontWeight: 400,
+            letterSpacing: "0.25em",
+            textTransform: "uppercase",
+            color: "#fff",
+            textShadow: `0 0 40px ${activeColor}60, 0 0 80px ${activeColor}30`,
+            lineHeight: 1,
+            textAlign: "center",
+          }}
+        >
+          <span className="digital-interference scanline-sweep digital-flicker" style={{ position: "relative" }}>
+            <span className="glitch-text" data-text="Previous Workshops">
+              <ScrambleText text="Previous Workshops" delay={200} />
+            </span>
+          </span>
+        </div>
+
+        {/* Bottom accent line */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            marginTop: "1rem",
+          }}
+        >
+          <div
+            style={{
+              width: "40px",
+              height: "1px",
+              background: `linear-gradient(90deg, transparent, ${activeColor}80)`,
+            }}
+          />
+          <div
+            className="digital-flicker"
+            style={{
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              background: activeColor,
+              boxShadow: `0 0 12px ${activeColor}, 0 0 24px ${activeColor}60`,
+              animation: "glowPulse 2s ease-in-out infinite",
+            }}
+          />
+          <div
+            style={{
+              width: "40px",
+              height: "1px",
+              background: `linear-gradient(90deg, ${activeColor}80, transparent)`,
+            }}
+          />
+        </div>
+
+        {/* Year badges */}
+        <div
+          style={{
+            display: "flex",
+            gap: "1.5rem",
+            marginTop: "0.8rem",
+            fontFamily: "var(--font-display), sans-serif",
+            fontSize: "0.5rem",
+            letterSpacing: "0.3em",
+            color: `${activeColor}66`,
+            textTransform: "uppercase",
+          }}
+        >
+          <span className="digital-flicker" style={{ opacity: 0.5 }}>
+            <span className="glitch-text" data-text="2023">2023</span>
+          </span>
+          <span style={{ color: activeColor, opacity: 0.8 }}>
+            <span className="glitch-text" data-text="2024">2024</span>
+          </span>
+          <span className="digital-flicker" style={{ opacity: 0.5 }}>
+            <span className="glitch-text" data-text="2025">2025</span>
+          </span>
+        </div>
+      </div>
 
       {/* ── Slides ─────────────────────────────────────────── */}
       {IMAGES.map((img, i) => {
@@ -397,18 +549,22 @@ export default function HeroGallery() {
               >
                 <h2
                   style={{
-                    fontFamily: "'Syncopate', sans-serif",
-                    fontSize: "clamp(1rem, 2.5vw, 1.5rem)",
-                    fontWeight: 700,
+                    fontFamily: "'Black Mustang', sans-serif",
+                    fontSize: "clamp(1.2rem, 3vw, 1.8rem)",
+                    fontWeight: 400,
                     color: "#fff",
-                    letterSpacing: "0.1em",
+                    letterSpacing: "0.2em",
                     textTransform: "uppercase",
                     textShadow: `0 2px 20px rgba(0,0,0,0.5), 0 0 40px ${img.color}50`,
                     margin: 0,
                     animation: "titleSlide 0.5s ease forwards",
+                    fontStyle: "italic",
+                    transform: "skewX(-1deg)",
                   }}
                 >
-                  {img.title}
+                  <span className="digital-interference scanline-sweep digital-flicker" style={{ position: "relative" }}>
+                    <span className="glitch-text" data-text={img.title}>{img.title}</span>
+                  </span>
                 </h2>
                 <div
                   style={{
@@ -422,18 +578,24 @@ export default function HeroGallery() {
                 />
                 <span
                   style={{
-                    fontFamily: "'Syncopate', sans-serif",
+                    fontFamily: "'Black Mustang', sans-serif",
                     fontSize: "0.6rem",
-                    letterSpacing: "0.25em",
+                    letterSpacing: "0.3em",
                     color: `${img.color}cc`,
                     textTransform: "uppercase",
                     marginTop: "0.4rem",
                     display: "block",
                     opacity: 0,
                     animation: "fadeInUp 0.5s ease 0.3s forwards",
+                    fontStyle: "italic",
+                    transform: "skewX(-1deg)",
                   }}
                 >
-                  Workshop {String(active + 1).padStart(2, "0")} / {String(IMAGES.length).padStart(2, "0")}
+                  <span className="digital-interference digital-flicker" style={{ position: "relative" }}>
+                    <span className="glitch-text" data-text={`Workshop ${String(active + 1).padStart(2, "0")} / ${String(IMAGES.length).padStart(2, "0")}`}>
+                      Workshop {String(active + 1).padStart(2, "0")} / {String(IMAGES.length).padStart(2, "0")}
+                    </span>
+                  </span>
                 </span>
               </div>
             )}
@@ -445,102 +607,140 @@ export default function HeroGallery() {
       <div
         style={{
           position: "absolute",
-          bottom: "1.5rem",
+          bottom: "6rem",
           left: "50%",
           transform: "translateX(-50%)",
           display: "flex",
           alignItems: "center",
-          gap: "16px",
+          gap: "20px",
           zIndex: 20,
-          padding: "10px 20px",
-          background: "rgba(0,0,0,0.3)",
-          backdropFilter: "blur(12px)",
-          borderRadius: "40px",
-          border: `1px solid ${activeColor}20`,
+          padding: "12px 28px",
+          background: "rgba(0,0,0,0.5)",
+          backdropFilter: "blur(16px)",
+          borderRadius: "50px",
+          border: `1px solid ${activeColor}30`,
+          boxShadow: `0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 ${activeColor}15`,
+          perspective: "800px",
         }}
       >
+        {/* Left arrow */}
         <button
           onClick={prev}
           style={{
-            width: "36px",
-            height: "36px",
+            width: "40px",
+            height: "40px",
             borderRadius: "50%",
-            border: `1px solid ${activeColor}44`,
-            background: "rgba(0,0,0,0.4)",
+            border: `1.5px solid ${activeColor}55`,
+            background: `linear-gradient(135deg, ${activeColor}15, rgba(0,0,0,0.5))`,
             color: activeColor,
-            fontSize: "0.9rem",
+            fontSize: "1rem",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            transition: "all 0.3s ease",
-            boxShadow: `0 0 12px ${activeColor}15`,
+            transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
+            boxShadow: `0 4px 15px ${activeColor}20, inset 0 1px 0 rgba(255,255,255,0.05)`,
             flexShrink: 0,
+            transformStyle: "preserve-3d",
+            position: "relative",
+            overflow: "hidden",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = `${activeColor}33`;
-            e.currentTarget.style.boxShadow = `0 0 25px ${activeColor}40`;
-            e.currentTarget.style.transform = "scale(1.1)";
+            e.currentTarget.style.transform = "translateZ(15px) scale(1.12) rotate(-5deg)";
+            e.currentTarget.style.background = `linear-gradient(135deg, ${activeColor}40, ${activeColor}15)`;
+            e.currentTarget.style.borderColor = activeColor;
+            e.currentTarget.style.boxShadow = `0 8px 30px ${activeColor}50, 0 0 40px ${activeColor}30, inset 0 1px 0 rgba(255,255,255,0.15)`;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(0,0,0,0.4)";
-            e.currentTarget.style.boxShadow = `0 0 12px ${activeColor}15`;
-            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.transform = "translateZ(0) scale(1) rotate(0deg)";
+            e.currentTarget.style.background = `linear-gradient(135deg, ${activeColor}15, rgba(0,0,0,0.5))`;
+            e.currentTarget.style.borderColor = `${activeColor}55`;
+            e.currentTarget.style.boxShadow = `0 4px 15px ${activeColor}20, inset 0 1px 0 rgba(255,255,255,0.05)`;
           }}
         >
-          &#8592;
+          <span style={{ transition: "transform 0.3s ease" }}>&#8592;</span>
         </button>
 
-        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-          {IMAGES.map((img, i) => (
-            <button
-              key={i}
-              onClick={() => goTo(i)}
-              style={{
-                width: i === active ? "24px" : "6px",
-                height: "6px",
-                borderRadius: "3px",
-                background: i === active ? img.color : "rgba(255,255,255,0.2)",
-                border: "none",
-                cursor: "pointer",
-                transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
-                boxShadow: i === active ? `0 0 14px ${img.color}80` : "none",
-                transform: i === active ? "scaleY(1.2)" : "scaleY(1)",
-              }}
-            />
-          ))}
+        {/* Dots */}
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {IMAGES.map((img, i) => {
+            const isActive = i === active;
+            return (
+              <button
+                key={i}
+                onClick={() => goTo(i)}
+                style={{
+                  width: isActive ? "32px" : "8px",
+                  height: "8px",
+                  borderRadius: "4px",
+                  background: isActive
+                    ? `linear-gradient(90deg, ${img.color}, ${img.color}cc)`
+                    : "rgba(255,255,255,0.15)",
+                  border: isActive ? `1px solid ${img.color}88` : "1px solid rgba(255,255,255,0.08)",
+                  cursor: "pointer",
+                  transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
+                  boxShadow: isActive
+                    ? `0 0 12px ${img.color}60, 0 0 24px ${img.color}30, inset 0 1px 0 rgba(255,255,255,0.2)`
+                    : "none",
+                  transform: isActive ? "scaleY(1.3)" : "scaleY(1)",
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.3)";
+                    e.currentTarget.style.transform = "scaleY(1.3) scaleX(1.2)";
+                    e.currentTarget.style.boxShadow = `0 0 8px ${img.color}30`;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.15)";
+                    e.currentTarget.style.transform = "scaleY(1) scaleX(1)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }
+                }}
+              />
+            );
+          })}
         </div>
 
+        {/* Right arrow */}
         <button
           onClick={next}
           style={{
-            width: "36px",
-            height: "36px",
+            width: "40px",
+            height: "40px",
             borderRadius: "50%",
-            border: `1px solid ${activeColor}44`,
-            background: "rgba(0,0,0,0.4)",
+            border: `1.5px solid ${activeColor}55`,
+            background: `linear-gradient(135deg, ${activeColor}15, rgba(0,0,0,0.5))`,
             color: activeColor,
-            fontSize: "0.9rem",
+            fontSize: "1rem",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            transition: "all 0.3s ease",
-            boxShadow: `0 0 12px ${activeColor}15`,
+            transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
+            boxShadow: `0 4px 15px ${activeColor}20, inset 0 1px 0 rgba(255,255,255,0.05)`,
             flexShrink: 0,
+            transformStyle: "preserve-3d",
+            position: "relative",
+            overflow: "hidden",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = `${activeColor}33`;
-            e.currentTarget.style.boxShadow = `0 0 25px ${activeColor}40`;
-            e.currentTarget.style.transform = "scale(1.1)";
+            e.currentTarget.style.transform = "translateZ(15px) scale(1.12) rotate(5deg)";
+            e.currentTarget.style.background = `linear-gradient(135deg, ${activeColor}40, ${activeColor}15)`;
+            e.currentTarget.style.borderColor = activeColor;
+            e.currentTarget.style.boxShadow = `0 8px 30px ${activeColor}50, 0 0 40px ${activeColor}30, inset 0 1px 0 rgba(255,255,255,0.15)`;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(0,0,0,0.4)";
-            e.currentTarget.style.boxShadow = `0 0 12px ${activeColor}15`;
-            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.transform = "translateZ(0) scale(1) rotate(0deg)";
+            e.currentTarget.style.background = `linear-gradient(135deg, ${activeColor}15, rgba(0,0,0,0.5))`;
+            e.currentTarget.style.borderColor = `${activeColor}55`;
+            e.currentTarget.style.boxShadow = `0 4px 15px ${activeColor}20, inset 0 1px 0 rgba(255,255,255,0.05)`;
           }}
         >
-          &#8594;
+          <span style={{ transition: "transform 0.3s ease" }}>&#8594;</span>
         </button>
       </div>
 
@@ -548,11 +748,13 @@ export default function HeroGallery() {
       <div
         style={{
           position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
+          bottom: "4rem",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "200px",
           height: "2px",
           background: "rgba(255,255,255,0.05)",
+          borderRadius: "1px",
           zIndex: 20,
         }}
       >
@@ -569,12 +771,14 @@ export default function HeroGallery() {
 
       {/* ── Slide counter ──────────────────────────────────── */}
       <div
+        className="digital-interference digital-flicker"
         style={{
           position: "absolute",
-          top: "2rem",
+          top: "50%",
           right: "2rem",
+          transform: "translateY(-50%)",
           zIndex: 20,
-          fontFamily: "'Syncopate', sans-serif",
+          fontFamily: 'var(--font-display), sans-serif',
           fontSize: "0.7rem",
           letterSpacing: "0.2em",
           color: `${activeColor}aa`,
@@ -583,7 +787,7 @@ export default function HeroGallery() {
           gap: "8px",
         }}
       >
-        <span style={{ fontSize: "1.2rem", color: activeColor, fontWeight: 700 }}>
+        <span className="glitch-text" data-text={String(active + 1).padStart(2, "0")} style={{ fontSize: "1.2rem", color: activeColor, fontWeight: 700 }}>
           {String(active + 1).padStart(2, "0")}
         </span>
         <span style={{ opacity: 0.4 }}>/</span>
@@ -627,6 +831,10 @@ export default function HeroGallery() {
         @keyframes fadeInUp {
           0% { opacity: 0; transform: translateY(8px); }
           100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes titleLineExpand {
+          0% { width: 0px; opacity: 0; }
+          100% { width: 120px; opacity: 1; }
         }
       `}</style>
     </div>

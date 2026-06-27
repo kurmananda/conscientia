@@ -18,7 +18,7 @@ export default function WorkshopExperience() {
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 5,
+        zIndex: 20,
         pointerEvents: "none",
       }}
     >

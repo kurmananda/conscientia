@@ -134,6 +134,10 @@ export default function CategoryBox({
             ? "transform 0.15s ease-out, opacity 0.8s cubic-bezier(0.23, 1, 0.32, 1), clip-path 1.1s cubic-bezier(0.23, 1, 0.32, 1)"
             : "transform 0.15s ease-out, opacity 0.3s ease-in, clip-path 0.4s ease-in",
           willChange: "transform, opacity",
+          background: `linear-gradient(135deg, ${accentColor}18 0%, rgba(0,0,0,0.82) 50%, ${accentColor}10 100%)`,
+          backgroundSize: "200% 200%",
+          animation: revealed ? "catBoxGradient 5s ease-in-out infinite alternate" : "none",
+          border: `1px solid ${accentColor}35`,
           ...style,
         }}
       >
@@ -181,9 +185,34 @@ export default function CategoryBox({
             position: "absolute",
             inset: "-50%",
             background: `radial-gradient(circle at ${mousePos.x * 100}% ${mousePos.y * 100}%, ${glowColor} 0%, transparent 40%)`,
-            opacity: revealed ? 0.12 : 0,
+            opacity: revealed ? 0.2 : 0,
             transition: "opacity 1.5s ease",
             pointerEvents: "none",
+          }}
+        />
+
+        {/* ── Mouse spotlight ─────────────────────────────── */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: `radial-gradient(circle 200px at ${mousePos.x * 100}% ${mousePos.y * 100}%, ${accentColor}45 0%, ${accentColor}18 30%, transparent 70%)`,
+            opacity: revealed ? 1 : 0,
+            transition: "opacity 0.6s ease",
+            pointerEvents: "none",
+            borderRadius: "24px",
+          }}
+        />
+
+        {/* ── Mouse edge highlight ────────────────────────── */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: `radial-gradient(circle 120px at ${mousePos.x * 100}% ${mousePos.y * 100}%, rgba(255,255,255,0.07) 0%, transparent 60%)`,
+            opacity: revealed ? 1 : 0,
+            pointerEvents: "none",
+            borderRadius: "24px",
           }}
         />
 
@@ -284,18 +313,20 @@ export default function CategoryBox({
 
             <h2
               style={{
-                fontFamily: "'Syncopate', sans-serif",
-                fontSize: "clamp(1.2rem, 3vw, 2rem)",
-                fontWeight: 700,
+                fontFamily: "'Black Mustang', sans-serif",
+                fontSize: "clamp(1.4rem, 3.5vw, 2.2rem)",
+                fontWeight: 400,
                 color: accentColor,
-                letterSpacing: "0.15em",
+                letterSpacing: "0.2em",
                 textTransform: "uppercase",
                 margin: 0,
                 textShadow: `0 0 40px ${glowColor}, 0 0 80px ${accentColor}30`,
                 whiteSpace: "nowrap",
               }}
             >
-              {displayText}
+              <span className="digital-interference scanline-sweep digital-flicker" style={{ position: "relative" }}>
+                <span className="glitch-text" data-text={displayText}>{displayText}</span>
+              </span>
             </h2>
           </div>
 
@@ -321,7 +352,7 @@ export default function CategoryBox({
             />
             <span
               style={{
-                fontFamily: "'Syncopate', sans-serif",
+                fontFamily: 'var(--font-display), sans-serif',
                 fontSize: "0.55rem",
                 letterSpacing: "0.3em",
                 color: `${accentColor}88`,
@@ -353,6 +384,11 @@ export default function CategoryBox({
         @keyframes dotPulse {
           0%, 100% { transform: scale(1); opacity: 1; }
           50% { transform: scale(1.5); opacity: 0.6; }
+        }
+        @keyframes catBoxGradient {
+          0% { background-position: 0% 0%; }
+          50% { background-position: 100% 100%; }
+          100% { background-position: 0% 0%; }
         }
       `}</style>
     </>

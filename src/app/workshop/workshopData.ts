@@ -21,7 +21,7 @@ export const workshopCards: CardData[] = [
     tags: ["Rocketry", "Hands-on", "IIST", "Workshop"],
     price: "\u20B92,499",
     layout: {
-      top: "0vh",
+      top: "130vh",
       left: "43%",
       width: "500px",
     },
@@ -45,7 +45,7 @@ export const workshopCards: CardData[] = [
     tags: ["AI", "Python", "Deep Learning", "GPU"],
     price: "\u20B93,999",
     layout: {
-      top: "45vh",
+      top: "175vh",
       right: "10%",
       width: "450px",
     },
@@ -69,7 +69,7 @@ export const workshopCards: CardData[] = [
     tags: ["CyberSec", "CTF", "Ethical Hacking", "Linux"],
     price: "\u20B93,499",
     layout: {
-      top: "90vh",
+      top: "220vh",
       left: "35%",
       width: "480px",
     },
@@ -93,7 +93,7 @@ export const workshopCards: CardData[] = [
     tags: ["Robotics", "Arduino", "ROS", "Mechatronics"],
     price: "\u20B94,499",
     layout: {
-      top: "135vh",
+      top: "265vh",
       right: "45%",
       width: "520px",
     },
@@ -117,8 +117,8 @@ export const workshopCards: CardData[] = [
     tags: ["Quantum", "Qiskit", "Physics", "Research"],
     price: "\u20B95,999",
     layout: {
-      top: "180vh",
-      left: "8%",
+      top: "310vh",
+      left: "10%",
       width: "460px",
     },
   },
@@ -141,8 +141,8 @@ export const workshopCards: CardData[] = [
     tags: ["Data Science", "Python", "SQL", "Analytics"],
     price: "\u20B93,199",
     layout: {
-      top: "222.5vh",
-      right: "40%",
+      top: "352.5vh",
+      right: "50%",
       width: "470px",
     },
   },
@@ -165,8 +165,8 @@ export const workshopCards: CardData[] = [
     tags: ["Cloud", "AWS", "Docker", "Kubernetes"],
     price: "\u20B93,699",
     layout: {
-      top: "265vh",
-      left: "40%",
+      top: "395vh",
+      left: "30%",
       width: "480px",
     },
   },
@@ -191,7 +191,7 @@ export const workshopCards: CardData[] = [
     tags: ["Aerospace", "CFD", "CAD", "Simulation"],
     price: "\u20B93,799",
     layout: {
-      top: "0vh",
+      top: "470vh",
       right: "20%",
       width: "490px",
     },
@@ -215,7 +215,7 @@ export const workshopCards: CardData[] = [
     tags: ["Blockchain", "Solidity", "Web3", "Crypto"],
     price: "\u20B93,299",
     layout: {
-      top: "50vh",
+      top: "520vh",
       left: "55%",
       width: "470px",
     },
@@ -239,8 +239,8 @@ export const workshopCards: CardData[] = [
     tags: ["IoT", "Arduino", "Sensors", "Edge"],
     price: "\u20B92,999",
     layout: {
-      top: "100vh",
-      right: "5%",
+      top: "570vh",
+      right: "10%",
       width: "510px",
     },
   },
@@ -263,8 +263,8 @@ export const workshopCards: CardData[] = [
     tags: ["Biotech", "Genomics", "Python", "Research"],
     price: "\u20B94,799",
     layout: {
-      top: "145vh",
-      left: "35%",
+      top: "615vh",
+      left: "45%",
       width: "480px",
     },
   },

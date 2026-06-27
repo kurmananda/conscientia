@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import IntroController from "../components/IntroController";
 import TimeFallScene from "../components/TimeFallScene";
@@ -15,6 +15,8 @@ const liveCards = workshopCards.filter((c) => c.category === "live");
 
 export default function WorkshopPage() {
   const [showModels, setShowModels] = useState(false);
+  const [galleryRevealed, setGalleryRevealed] = useState(false);
+  const galleryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -25,56 +27,69 @@ export default function WorkshopPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Trigger cinematic gallery reveal after intro
+  useEffect(() => {
+    const timer = setTimeout(() => setGalleryRevealed(true), 150);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <>
-      <style>{`@keyframes homeBtnSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
-      <IntroController>
-      {/* BACKGROUND */}
+      <style>{`
+        @keyframes homeBtnSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
+
+      {/* BACKGROUND — outside IntroController to match detail page */}
       <div style={{ position: "fixed", inset: 0, zIndex: -10 }}>
         <TimeFallScene />
       </div>
 
+      <IntroController>
+
       {/* ── Back to Home Button ───────────────────────────────── */}
-      <div style={{ position: "fixed", bottom: "1.5rem", left: "1.5rem", zIndex: 50 }}>
+      <div style={{ position: "fixed", bottom: "1.5rem", left: "1.5rem", zIndex: 50, perspective: "600px" }}>
         <Link
           href="/"
           style={{
             display: "flex",
             alignItems: "center",
             gap: "0.6rem",
-            padding: "0.65rem 1.3rem",
+            padding: "0.7rem 1.5rem",
             borderRadius: "40px",
-            border: "1px solid rgba(51,214,255,0.25)",
-            background: "rgba(0,0,0,0.5)",
-            backdropFilter: "blur(12px)",
+            border: "1.5px solid rgba(51,214,255,0.35)",
+            background: "linear-gradient(135deg, rgba(51,214,255,0.15), rgba(0,0,0,0.6))",
+            backdropFilter: "blur(16px)",
             color: "#33d6ff",
-            fontSize: "0.7rem",
+            fontSize: "0.75rem",
             fontWeight: 600,
             letterSpacing: "0.1em",
             textTransform: "uppercase",
             textDecoration: "none",
             transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
-            boxShadow: "0 0 20px rgba(51,214,255,0.1), inset 0 0 20px rgba(51,214,255,0.03)",
+            boxShadow: "0 4px 25px rgba(51,214,255,0.15), inset 0 1px 0 rgba(255,255,255,0.05)",
             position: "relative",
             overflow: "hidden",
+            transformStyle: "preserve-3d",
+            fontStyle: "italic",
+            fontFamily: 'var(--font-display), sans-serif',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(51,214,255,0.12)";
-            e.currentTarget.style.borderColor = "rgba(51,214,255,0.5)";
-            e.currentTarget.style.boxShadow = "0 0 35px rgba(51,214,255,0.25), inset 0 0 30px rgba(51,214,255,0.06)";
-            e.currentTarget.style.transform = "translateX(4px)";
+            e.currentTarget.style.transform = "translateZ(20px) scale(1.06) translateX(-6px)";
+            e.currentTarget.style.background = "linear-gradient(135deg, rgba(51,214,255,0.35), rgba(51,214,255,0.1))";
+            e.currentTarget.style.borderColor = "rgba(51,214,255,0.7)";
+            e.currentTarget.style.boxShadow = "0 12px 45px rgba(51,214,255,0.4), 0 0 50px rgba(51,214,255,0.2), inset 0 1px 0 rgba(255,255,255,0.15)";
             const arrow = e.currentTarget.querySelector("[data-arrow]") as HTMLElement;
-            if (arrow) arrow.style.transform = "translateX(-3px)";
+            if (arrow) arrow.style.transform = "translateX(-4px) scale(1.15)";
             const line = e.currentTarget.querySelector("[data-line]") as HTMLElement;
-            if (line) line.style.width = "30px";
+            if (line) line.style.width = "35px";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(0,0,0,0.5)";
-            e.currentTarget.style.borderColor = "rgba(51,214,255,0.25)";
-            e.currentTarget.style.boxShadow = "0 0 20px rgba(51,214,255,0.1), inset 0 0 20px rgba(51,214,255,0.03)";
-            e.currentTarget.style.transform = "translateX(0)";
+            e.currentTarget.style.transform = "translateZ(0) scale(1) translateX(0)";
+            e.currentTarget.style.background = "linear-gradient(135deg, rgba(51,214,255,0.15), rgba(0,0,0,0.6))";
+            e.currentTarget.style.borderColor = "rgba(51,214,255,0.35)";
+            e.currentTarget.style.boxShadow = "0 4px 25px rgba(51,214,255,0.15), inset 0 1px 0 rgba(255,255,255,0.05)";
             const arrow = e.currentTarget.querySelector("[data-arrow]") as HTMLElement;
-            if (arrow) arrow.style.transform = "translateX(0)";
+            if (arrow) arrow.style.transform = "translateX(0) scale(1)";
             const line = e.currentTarget.querySelector("[data-line]") as HTMLElement;
             if (line) line.style.width = "0px";
           }}
@@ -126,8 +141,19 @@ export default function WorkshopPage() {
         </Link>
       </div>
 
-      {/* Hero Gallery */}
-      <div style={{ position: "relative", zIndex: 5 }}>
+      {/* Hero Gallery — Cinematic Reveal */}
+      <div
+        ref={galleryRef}
+        style={{
+          position: "relative",
+          zIndex: 5,
+          opacity: galleryRevealed ? 1 : 0,
+          transform: galleryRevealed
+            ? "translateY(0)"
+            : "translateY(40px)",
+          transition: "opacity 0.8s cubic-bezier(0.23, 1, 0.32, 1), transform 0.8s cubic-bezier(0.23, 1, 0.32, 1)",
+        }}
+      >
         <HeroGallery />
       </div>
 
@@ -144,56 +170,56 @@ export default function WorkshopPage() {
           glowColor="rgba(51,214,255,0.5)"
           style={{ marginTop: "5vh" }}
         >
-          <div style={{ position: "relative", minHeight: "300vh" }}>
-            {preCards.map((card, index) => (
-              <div
-                key={card.id}
-                style={{
-                  position: "absolute",
-                  top: card.layout?.top || "0",
-                  left: card.layout?.left,
-                  right: card.layout?.right,
-                  bottom: card.layout?.bottom,
-                  width: card.layout?.width,
-                  zIndex: 10,
-                  pointerEvents: "auto",
-                }}
-              >
-                <ParallaxCard card={card} index={index} />
-              </div>
-            ))}
-          </div>
+          <div style={{ position: "relative", minHeight: "300vh" }} />
         </CategoryBox>
       </div>
 
       {/* ── Live-Conscientia Workshops ────────────────────────── */}
-      <div style={{ position: "relative", zIndex: 10 }}>
+      <div style={{ position: "relative", zIndex: 10, marginBottom: "10vh" }}>
         <CategoryBox
           title="Live-Conscientia"
           accentColor="#a855f7"
           glowColor="rgba(168,85,247,0.5)"
-          style={{ marginTop: "5vh", marginBottom: "10vh" }}
+          style={{ marginTop: "5vh" }}
         >
-          <div style={{ position: "relative", minHeight: "180vh" }}>
-            {liveCards.map((card, index) => (
-              <div
-                key={card.id}
-                style={{
-                  position: "absolute",
-                  top: card.layout?.top || "0",
-                  left: card.layout?.left,
-                  right: card.layout?.right,
-                  bottom: card.layout?.bottom,
-                  width: card.layout?.width,
-                  zIndex: 10,
-                  pointerEvents: "auto",
-                }}
-              >
-                <ParallaxCard card={card} index={index + preCards.length} />
-              </div>
-            ))}
-          </div>
+          <div style={{ position: "relative", minHeight: "180vh" }} />
         </CategoryBox>
+      </div>
+
+      {/* ── All Cards — topmost layer ─────────────────────────── */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 30, pointerEvents: "none" }}>
+        {preCards.map((card, index) => (
+          <div
+            key={card.id}
+            style={{
+              position: "absolute",
+              top: card.layout?.top || "0",
+              left: card.layout?.left,
+              right: card.layout?.right,
+              bottom: card.layout?.bottom,
+              width: card.layout?.width,
+              pointerEvents: "auto",
+            }}
+          >
+            <ParallaxCard card={card} index={index} />
+          </div>
+        ))}
+        {liveCards.map((card, index) => (
+          <div
+            key={card.id}
+            style={{
+              position: "absolute",
+              top: card.layout?.top || "0",
+              left: card.layout?.left,
+              right: card.layout?.right,
+              bottom: card.layout?.bottom,
+              width: card.layout?.width,
+              pointerEvents: "auto",
+            }}
+          >
+            <ParallaxCard card={card} index={index + preCards.length} />
+          </div>
+        ))}
       </div>
     </IntroController>
     </>

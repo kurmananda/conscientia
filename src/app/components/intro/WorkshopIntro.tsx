@@ -142,7 +142,7 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
   }, [done, onComplete]);
 
   const wordStyle: React.CSSProperties = {
-    fontFamily: "'Syncopate', sans-serif",
+    fontFamily: 'var(--font-display), sans-serif',
     fontSize: "clamp(3rem, 13vw, 10rem)",
     fontWeight: 900,
     letterSpacing: "0.07em",
@@ -329,7 +329,7 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
       >
         <span
           style={{
-            fontFamily: "'Syncopate', sans-serif",
+            fontFamily: 'var(--font-display), sans-serif',
             fontSize: "0.6rem",
             letterSpacing: "0.4em",
             color: "rgba(51,214,255,0.5)",
@@ -380,7 +380,7 @@ export default function WorkshopIntro({ onComplete }: WorkshopIntroProps) {
         </div>
         <span
           style={{
-            fontFamily: "'Syncopate', sans-serif",
+            fontFamily: 'var(--font-display), sans-serif',
             fontSize: "0.55rem",
             letterSpacing: "0.15em",
             color: "rgba(51,214,255,0.4)",

@@ -8,6 +8,25 @@ import { workshopCards } from "@/app/workshop/workshopData";
 
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
+/* ── Digital Interference Text Wrapper ─────────────────────── */
+function InterferenceText({
+  children,
+  className = "",
+  style = {},
+}: {
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <span className={`digital-interference scanline-sweep digital-flicker ${className}`} style={{ ...style, position: "relative" }}>
+      <span className="glitch-text" data-text={typeof children === "string" ? children : ""}>
+        {children}
+      </span>
+    </span>
+  );
+}
+
 function useReveal(threshold = 0.1) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -104,8 +123,10 @@ function CinematicBox({
             ? `transform 0.12s ease-out, opacity 0.8s cubic-bezier(0.23,1,0.32,1) ${delay}s, clip-path 1s cubic-bezier(0.23,1,0.32,1) ${delay}s`
             : "transform 0.12s ease-out, opacity 0.3s ease-in, clip-path 0.3s ease-in",
           willChange: "transform, opacity",
-          background: `linear-gradient(135deg, ${accentColor}08 0%, rgba(0,0,0,0.4) 50%, ${accentColor}05 100%)`,
-          border: `1px solid ${accentColor}20`,
+          background: `linear-gradient(135deg, ${accentColor}25 0%, rgba(0,0,0,0.88) 50%, ${accentColor}18 100%)`,
+          backgroundSize: "200% 200%",
+          animation: visible ? "boxGradientShift 4s ease-in-out infinite alternate" : "none",
+          border: `1px solid ${accentColor}55`,
         }}
       >
         {/* Animated border */}
@@ -120,19 +141,44 @@ function CinematicBox({
             WebkitMaskComposite: "xor",
             maskComposite: "exclude",
             pointerEvents: "none",
-            opacity: 0.7,
+            opacity: 0.85,
           }}
         />
 
-        {/* Ambient glow */}
+        {/* Ambient glow — broad */}
         <div
           style={{
             position: "absolute",
             inset: "-50%",
             background: `radial-gradient(circle at ${mousePos.x * 100}% ${mousePos.y * 100}%, ${glowColor} 0%, transparent 40%)`,
-            opacity: visible ? 0.08 : 0,
+            opacity: visible ? 0.2 : 0,
             transition: "opacity 1.5s ease",
             pointerEvents: "none",
+          }}
+        />
+
+        {/* Mouse spotlight — tight, bright */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: `radial-gradient(circle 180px at ${mousePos.x * 100}% ${mousePos.y * 100}%, ${accentColor}50 0%, ${accentColor}20 30%, transparent 70%)`,
+            opacity: visible ? 1 : 0,
+            transition: "opacity 0.6s ease",
+            pointerEvents: "none",
+            borderRadius: "24px",
+          }}
+        />
+
+        {/* Mouse edge highlight */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: `radial-gradient(circle 100px at ${mousePos.x * 100}% ${mousePos.y * 100}%, rgba(255,255,255,0.08) 0%, transparent 60%)`,
+            opacity: visible ? 1 : 0,
+            pointerEvents: "none",
+            borderRadius: "24px",
           }}
         />
 
@@ -141,7 +187,7 @@ function CinematicBox({
           style={{
             position: "absolute",
             inset: 0,
-            backgroundImage: `linear-gradient(${accentColor}04 1px, transparent 1px), linear-gradient(90deg, ${accentColor}04 1px, transparent 1px)`,
+            backgroundImage: `linear-gradient(${accentColor}08 1px, transparent 1px), linear-gradient(90deg, ${accentColor}08 1px, transparent 1px)`,
             backgroundSize: "40px 40px",
             backgroundPosition: `${mousePos.x * 30}px ${mousePos.y * 30}px`,
             pointerEvents: "none",
@@ -154,7 +200,7 @@ function CinematicBox({
           style={{
             position: "absolute",
             inset: 0,
-            backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.005) 3px, rgba(255,255,255,0.005) 4px)",
+            backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.01) 3px, rgba(255,255,255,0.01) 4px)",
             pointerEvents: "none",
             borderRadius: "24px",
           }}
@@ -166,7 +212,7 @@ function CinematicBox({
             position: "absolute",
             inset: 0,
             borderRadius: "24px",
-            boxShadow: `inset 0 0 60px ${accentColor}06, inset 0 0 120px ${accentColor}03`,
+            boxShadow: `inset 0 0 60px ${accentColor}0a, inset 0 0 120px ${accentColor}06`,
             animation: visible ? "boxPulse 4s ease-in-out infinite alternate" : "none",
             pointerEvents: "none",
           }}
@@ -182,7 +228,7 @@ function CinematicBox({
               height: `${1 + (i % 3)}px`,
               borderRadius: "50%",
               background: accentColor,
-              opacity: 0.12,
+              opacity: 0.2,
               left: `${(i * 13.7) % 100}%`,
               top: `${(i * 17.3) % 100}%`,
               animation: `floatBox ${5 + (i % 3)}s ease-in-out ${i * 0.5}s infinite alternate`,
@@ -204,7 +250,7 @@ function CinematicBox({
               position: "absolute",
               width: "22px",
               height: "22px",
-              opacity: visible ? 0.35 : 0,
+              opacity: visible ? 0.5 : 0,
               transition: `opacity 0.5s ease ${delay + 0.3 + i * 0.08}s`,
               ...pos,
             } as React.CSSProperties}
@@ -226,16 +272,18 @@ function CinematicBox({
               />
               <h2
                 style={{
-                  fontFamily: "'Syncopate', sans-serif",
-                  fontSize: "1.1rem",
-                  fontWeight: 700,
-                  letterSpacing: "0.15em",
+                  fontFamily: "'Rubik Glitch', sans-serif",
+                  fontSize: "1rem",
+                  fontWeight: 400,
+                  letterSpacing: "0.12em",
                   textTransform: "uppercase",
                   margin: 0,
                   textShadow: `0 0 30px ${glowColor}`,
                 }}
               >
-                <ScrambleText text={title} color={accentColor} delay={delay * 1000 + 200} />
+                <InterferenceText>
+                  <ScrambleText text={title} color={accentColor} delay={delay * 1000 + 200} />
+                </InterferenceText>
               </h2>
             </div>
           </div>
@@ -297,38 +345,44 @@ export default function WorkshopDetailPage() {
       />
 
       {/* Back button */}
-      <div style={{ position: "fixed", bottom: "1.5rem", left: "1.5rem", zIndex: 50 }}>
+      <div style={{ position: "fixed", bottom: "1.5rem", left: "1.5rem", zIndex: 50, perspective: "600px" }}>
         <Link
           href="/workshop"
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "0.5rem",
-            padding: "0.6rem 1.2rem",
+            gap: "0.6rem",
+            padding: "0.7rem 1.5rem",
             borderRadius: "40px",
-            border: `1px solid ${card.accentColor}44`,
-            background: "rgba(0,0,0,0.5)",
-            backdropFilter: "blur(12px)",
+            border: `1.5px solid ${card.accentColor}55`,
+            background: `linear-gradient(135deg, ${card.accentColor}18, rgba(0,0,0,0.6))`,
+            backdropFilter: "blur(16px)",
             color: card.accentColor,
             fontSize: "0.75rem",
             fontWeight: 600,
-            letterSpacing: "0.05em",
+            letterSpacing: "0.1em",
             textDecoration: "none",
-            transition: "all 0.3s ease",
-            boxShadow: `0 0 20px ${card.accentColor}15`,
+            transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
+            boxShadow: `0 4px 20px ${card.accentColor}20, inset 0 1px 0 rgba(255,255,255,0.05)`,
+            transformStyle: "preserve-3d",
+            fontStyle: "italic",
+            textTransform: "uppercase",
+            fontFamily: 'var(--font-display), sans-serif',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = `${card.accentColor}22`;
-            e.currentTarget.style.boxShadow = `0 0 30px ${card.accentColor}30`;
-            e.currentTarget.style.transform = "translateX(-4px)";
+            e.currentTarget.style.transform = "translateZ(20px) scale(1.06) translateX(-6px)";
+            e.currentTarget.style.background = `linear-gradient(135deg, ${card.accentColor}40, ${card.accentColor}15)`;
+            e.currentTarget.style.borderColor = card.accentColor;
+            e.currentTarget.style.boxShadow = `0 10px 40px ${card.accentColor}50, 0 0 50px ${card.accentColor}25, inset 0 1px 0 rgba(255,255,255,0.15)`;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(0,0,0,0.5)";
-            e.currentTarget.style.boxShadow = `0 0 20px ${card.accentColor}15`;
-            e.currentTarget.style.transform = "translateX(0)";
+            e.currentTarget.style.transform = "translateZ(0) scale(1) translateX(0)";
+            e.currentTarget.style.background = `linear-gradient(135deg, ${card.accentColor}18, rgba(0,0,0,0.6))`;
+            e.currentTarget.style.borderColor = `${card.accentColor}55`;
+            e.currentTarget.style.boxShadow = `0 4px 20px ${card.accentColor}20, inset 0 1px 0 rgba(255,255,255,0.05)`;
           }}
         >
-          <span>&larr;</span>
+          <span style={{ transition: "transform 0.3s ease", display: "inline-block" }}>&larr;</span>
           <span>Back to Workshops</span>
         </Link>
       </div>
@@ -348,30 +402,44 @@ export default function WorkshopDetailPage() {
                     background: `${card.accentColor}22`,
                     color: card.accentColor,
                     border: `1px solid ${card.accentColor}55`,
-                    fontSize: "0.65rem",
+                    fontFamily: 'var(--font-display), sans-serif',
+                    fontSize: "0.6rem",
                     fontWeight: 700,
-                    letterSpacing: "0.15em",
+                    letterSpacing: "0.2em",
                     textTransform: "uppercase",
                     marginBottom: "1rem",
                   }}
                 >
-                  {card.type}
+                  <InterferenceText>{card.type}</InterferenceText>
                 </span>
                 <h1
                   style={{
-                    fontFamily: "'Syncopate', sans-serif",
-                    fontSize: "clamp(1.5rem, 4vw, 2.8rem)",
-                    fontWeight: 900,
-                    letterSpacing: "0.05em",
+                    fontFamily: 'Black Mustang, sans-serif',
+                    fontSize: "clamp(1.8rem, 4.5vw, 3.2rem)",
+                    fontWeight: 400,
+                    letterSpacing: "0.25em",
                     textTransform: "uppercase",
                     margin: 0,
-                    textShadow: `0 0 40px ${card.glowColor}`,
-                    lineHeight: 1.1,
+                    textShadow: `0 0 40px ${card.glowColor}, 0 0 80px ${card.glowColor}44`,
+                    lineHeight: 1.2,
+                    fontStyle: "italic",
+                    transform: "skewX(-1deg)",
                   }}
                 >
-                  <ScrambleText text={card.title} color="#fff" delay={300} />
+                  <InterferenceText>
+                    <ScrambleText text={card.title} color="#fff" delay={300} />
+                  </InterferenceText>
                 </h1>
-                <p style={{ marginTop: "0.8rem", fontSize: "0.9rem", color: "rgba(255,255,255,0.45)", letterSpacing: "0.05em" }}>
+                <p style={{
+                  marginTop: "0.8rem",
+                  fontSize: "0.9rem",
+                  fontFamily: "var(--font-body), sans-serif",
+                  color: "rgba(255,255,255,0.5)",
+                  letterSpacing: "0.04em",
+                  lineHeight: 1.6,
+                  fontStyle: "italic",
+                  transform: "skewX(-0.5deg)",
+                }}>
                   {card.subtitle}
                 </p>
               </div>
@@ -413,13 +481,39 @@ export default function WorkshopDetailPage() {
 
             {/* About */}
             <CinematicBox title="About This Workshop" accentColor={card.accentColor} glowColor={card.glowColor} delay={0.2}>
-              <p style={{ lineHeight: 1.8, color: "rgba(255,255,255,0.55)", fontSize: "0.9rem" }}>
+              <p style={{
+                lineHeight: 1.9,
+                color: "rgba(255,255,255,0.6)",
+                fontSize: "0.9rem",
+                fontFamily: "var(--font-body), sans-serif",
+                letterSpacing: "0.04em",
+                fontStyle: "italic",
+                transform: "skewX(-0.3deg)",
+              }}>
                 {card.description}
               </p>
-              <p style={{ lineHeight: 1.8, color: "rgba(255,255,255,0.55)", fontSize: "0.9rem", marginTop: "1rem" }}>
+              <p style={{
+                lineHeight: 1.9,
+                color: "rgba(255,255,255,0.6)",
+                fontSize: "0.9rem",
+                fontFamily: "var(--font-body), sans-serif",
+                letterSpacing: "0.04em",
+                marginTop: "1rem",
+                fontStyle: "italic",
+                transform: "skewX(-0.3deg)",
+              }}>
                 This immersive workshop provides hands-on experience with industry-standard tools and methodologies. Participants will work on real-world projects and receive a certificate of completion.
               </p>
-              <p style={{ lineHeight: 1.8, color: "rgba(255,255,255,0.55)", fontSize: "0.9rem", marginTop: "1rem" }}>
+              <p style={{
+                lineHeight: 1.9,
+                color: "rgba(255,255,255,0.6)",
+                fontSize: "0.9rem",
+                fontFamily: "var(--font-body), sans-serif",
+                letterSpacing: "0.04em",
+                marginTop: "1rem",
+                fontStyle: "italic",
+                transform: "skewX(-0.3deg)",
+              }}>
                 Led by experienced professionals and researchers, this program bridges the gap between academic knowledge and industry requirements. You will gain practical skills that are immediately applicable in professional settings.
               </p>
             </CinematicBox>
@@ -445,7 +539,14 @@ export default function WorkshopDetailPage() {
                         flexShrink: 0,
                       }}
                     />
-                    <span style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.9rem" }}>{item}</span>
+                    <span style={{
+                      color: "rgba(255,255,255,0.6)",
+                      fontSize: "0.9rem",
+                      fontFamily: "var(--font-body), sans-serif",
+                      letterSpacing: "0.04em",
+                      fontStyle: "italic",
+                      transform: "skewX(-0.3deg)",
+                    }}>{item}</span>
                   </div>
                 ))}
               </div>
@@ -469,7 +570,14 @@ export default function WorkshopDetailPage() {
                         flexShrink: 0,
                       }}
                     />
-                    <span style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.9rem" }}>{item}</span>
+                    <span style={{
+                      color: "rgba(255,255,255,0.6)",
+                      fontSize: "0.9rem",
+                      fontFamily: "var(--font-body), sans-serif",
+                      letterSpacing: "0.04em",
+                      fontStyle: "italic",
+                      transform: "skewX(-0.3deg)",
+                    }}>{item}</span>
                   </div>
                 ))}
               </div>
@@ -481,20 +589,27 @@ export default function WorkshopDetailPage() {
             {/* Price Card */}
             <CinematicBox title="" accentColor={card.accentColor} glowColor={card.glowColor} delay={0.15}>
               <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-                <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                  Price
+                <span style={{
+                  fontSize: "0.65rem",
+                  fontFamily: 'var(--font-body), sans-serif',
+                  color: "rgba(255,255,255,0.4)",
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase",
+                }}>
+                  <InterferenceText>Price</InterferenceText>
                 </span>
                 <div
                   style={{
-                    fontFamily: "'Syncopate', sans-serif",
+                    fontFamily: 'var(--font-display), sans-serif',
                     fontSize: "2.2rem",
-                    fontWeight: 900,
+                    fontWeight: 700,
                     color: card.accentColor,
-                    textShadow: `0 0 30px ${card.glowColor}`,
+                    textShadow: `0 0 30px ${card.glowColor}, 0 0 60px ${card.glowColor}44`,
                     marginTop: "0.3rem",
+                    letterSpacing: "0.05em",
                   }}
                 >
-                  {card.price}
+                  <InterferenceText>{card.price}</InterferenceText>
                 </div>
               </div>
               <button
@@ -505,26 +620,35 @@ export default function WorkshopDetailPage() {
                   border: "none",
                   background: card.accentColor,
                   color: "#000",
-                  fontSize: "0.8rem",
+                  fontFamily: 'var(--font-display), sans-serif',
+                  fontSize: "0.75rem",
                   fontWeight: 700,
-                  letterSpacing: "0.1em",
+                  letterSpacing: "0.15em",
                   textTransform: "uppercase",
                   cursor: "pointer",
-                  boxShadow: `0 0 30px ${card.glowColor}`,
-                  transition: "all 0.3s ease",
+                  transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
+                  transformStyle: "preserve-3d",
+                  boxShadow: `0 4px 25px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`,
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.boxShadow = `0 0 50px ${card.glowColor}`;
+                  e.currentTarget.style.transform = "translateZ(30px) scale(1.08)";
+                  e.currentTarget.style.boxShadow = `0 15px 50px ${card.glowColor}, 0 0 70px ${card.glowColor}50, inset 0 1px 0 rgba(255,255,255,0.3)`;
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = `0 0 30px ${card.glowColor}`;
+                  e.currentTarget.style.transform = "translateZ(0) scale(1)";
+                  e.currentTarget.style.boxShadow = `0 4px 25px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`;
                 }}
               >
-                Register Now
+                <InterferenceText>Register Now</InterferenceText>
               </button>
-              <p style={{ textAlign: "center", fontSize: "0.65rem", color: "rgba(255,255,255,0.25)", marginTop: "0.8rem" }}>
+              <p style={{
+                textAlign: "center",
+                fontSize: "0.6rem",
+                fontFamily: "var(--font-body), sans-serif",
+                color: "rgba(255,255,255,0.3)",
+                marginTop: "0.8rem",
+                letterSpacing: "0.05em",
+              }}>
                 Early bird pricing. Limited seats available.
               </p>
             </CinematicBox>
@@ -549,8 +673,20 @@ export default function WorkshopDetailPage() {
                       borderBottom: "1px solid rgba(255,255,255,0.05)",
                     }}
                   >
-                    <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.35)" }}>{item.label}</span>
-                    <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>{item.value}</span>
+                    <span style={{
+                      fontSize: "0.7rem",
+                      fontFamily: 'var(--font-body), sans-serif',
+                      color: "rgba(255,255,255,0.4)",
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                    }}><InterferenceText>{item.label}</InterferenceText></span>
+                    <span style={{
+                      fontSize: "0.8rem",
+                      fontFamily: "var(--font-body), sans-serif",
+                      fontWeight: 600,
+                      color: "rgba(255,255,255,0.8)",
+                      letterSpacing: "0.03em",
+                    }}>{item.value}</span>
                   </div>
                 ))}
               </div>
@@ -567,12 +703,15 @@ export default function WorkshopDetailPage() {
                     background: `${card.accentColor}12`,
                     color: `${card.accentColor}bb`,
                     border: `1px solid ${card.accentColor}28`,
-                    fontSize: "0.65rem",
-                    fontWeight: 500,
-                    letterSpacing: "0.05em",
+                    fontFamily: 'var(--font-body), sans-serif',
+                    fontSize: "0.55rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    fontStyle: "italic",
                   }}
                 >
-                  {tag}
+                  <InterferenceText>{tag}</InterferenceText>
                 </span>
               ))}
             </div>
@@ -588,6 +727,11 @@ export default function WorkshopDetailPage() {
         @keyframes boxPulse {
           0% { opacity: 0.4; }
           100% { opacity: 1; }
+        }
+        @keyframes boxGradientShift {
+          0% { background-position: 0% 0%; }
+          50% { background-position: 100% 100%; }
+          100% { background-position: 0% 0%; }
         }
       `}</style>
     </div>
