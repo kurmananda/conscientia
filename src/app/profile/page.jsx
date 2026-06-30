@@ -15,7 +15,7 @@ export default function ProfilePage() {
       <p>
         This profile area is a placeholder. Workshop purchases and dashboard state currently live
         on the{' '}
-        <Link href="/online-workshops" className="text-cyan-400 underline-offset-4 hover:underline">
+        <Link href="/workshop" className="text-cyan-400 underline-offset-4 hover:underline">
           online workshops
         </Link>{' '}
         page after you verify your email.

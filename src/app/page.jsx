@@ -217,7 +217,7 @@ export default function Home() {
           </motion.p>
 
           <motion.div initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ delay: 1.2, duration: 1 }} className="pt-12 flex flex-col items-center gap-6">
-            <button onClick={() => { location.href = "/online-workshops" }} className="group flex flex-col items-center gap-6 cursor-pointer bg-transparent border-none appearance-none">
+            <button onClick={() => { location.href = "/workshop" }} className="group flex flex-col items-center gap-6 cursor-pointer bg-transparent border-none appearance-none">
               <div className="h-16 w-[1px] bg-cyan-500 group-hover:h-24 group-hover:bg-white transition-all duration-200 relative">
                 <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-cyan-400 rounded-full blur-[2px]" />
               </div>
@@ -237,7 +237,7 @@ export default function Home() {
           className="max-w-4xl mx-auto"
         >
           <Link
-            href="/online-workshops"
+            href="/workshop"
             className="group relative flex flex-col sm:flex-row items-center gap-6 sm:gap-8 overflow-hidden rounded-[2rem] border border-cyan-500/25 bg-[#0A0A0A]/80 backdrop-blur-xl p-5 sm:p-6 hover:border-cyan-400/50 hover:shadow-[0_0_50px_rgba(6,182,212,0.2)] transition-all duration-500"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-transparent to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -301,7 +301,7 @@ export default function Home() {
 
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }}>
               <Link
-                href="/online-workshops"
+                href="/workshop"
                 className="group relative flex items-center gap-6 bg-white px-10 py-5 rounded-full overflow-hidden shadow-[0_0_50px_rgba(255,255,255,0.05)] hover:shadow-[0_0_50px_rgba(6,182,212,0.4)] transition-all duration-500"
               >
                 <span className="relative z-10 font-syncopate text-[11px] tracking-widest text-black font-black uppercase">Registration Page</span>

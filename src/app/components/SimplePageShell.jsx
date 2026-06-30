@@ -69,7 +69,7 @@ export default function SimplePageShell({
             ← Back home
           </Link>
           <Link
-            href="/online-workshops"
+            href="/workshop"
             className="inline-flex items-center gap-2 rounded-full bg-cyan-400 px-6 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-black hover:bg-white transition-colors"
           >
             Workshops

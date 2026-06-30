@@ -15,7 +15,7 @@
   --horizon: #2A2A35;
 }
 
-@theme inline {
+:root {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
@@ -26,77 +26,251 @@
   --color-purple: var(--purple);
   --color-ghost: var(--ghost);
   --color-horizon: var(--horizon);
-
-  --font-bebas: var(--font-bebas), cursive;
-  --font-syncopate: var(--font-syncopate), sans-serif;
-  --font-karla: var(--font-karla), sans-serif;
-  --font-syne: var(--font-syne), sans-serif;
-  --font-mono: var(--font-syne-mono), monospace;
-  --font-serif: var(--font-dm-serif), serif;
+}
+html {
+    scroll-behavior: smooth;
 }
 
 body {
   background: var(--void);
   color: var(--ghost);
-  font-family: var(--font-syne), sans-serif;
+  font-family: var(--font-body), sans-serif;
+  overflow-x: hidden;
 }
 
-.font-bebas {
-  font-family: var(--font-bebas), cursive;
+/* ── Font utilities ─────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-display), sans-serif;
 }
 
-.font-syne {
-  font-family: var(--font-syne), sans-serif;
+.font-body {
+  font-family: var(--font-body), sans-serif;
 }
 
 .font-mono {
-  font-family: var(--font-syne-mono), monospace;
+  font-family: var(--font-mono), monospace;
 }
 
-.font-serif {
-  font-family: var(--font-dm-serif), serif;
+/* ── Digital Static Interference ────────────────────────────── */
+
+/* Main interference container */
+.digital-interference {
+  position: relative;
+  display: inline-block;
 }
 
-.font-syncopate {
-  font-family: var(--font-syncopate), sans-serif;
+/* Scanlines moving across text */
+.digital-interference::before {
+  content: "";
+  position: absolute;
+  inset: -4px -8px;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(255, 255, 255, 0.03) 2px,
+    rgba(255, 255, 255, 0.03) 4px
+  );
+  background-size: 100% 4px;
+  animation: scanlineMove 8s linear infinite;
+  pointer-events: none;
+  z-index: 1;
 }
 
-.font-karla {
-  font-family: var(--font-karla), sans-serif;
+/* Static noise overlay */
+.digital-interference::after {
+  content: "";
+  position: absolute;
+  inset: -4px -8px;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+  animation: noiseShift 0.5s steps(8) infinite;
+  pointer-events: none;
+  z-index: 2;
+  mix-blend-mode: overlay;
 }
 
-@keyframes sparkleFloat {
+/* Glitch displacement on text */
+.digital-interference .glitch-text {
+  position: relative;
+  display: inline-block;
+  animation: glitchDisplace 6s ease-in-out infinite;
+}
 
-  0%,
+/* RGB split / chromatic aberration */
+.digital-interference .glitch-text::before,
+.digital-interference .glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.digital-interference .glitch-text::before {
+  color: rgba(0, 229, 255, 0.5);
+  animation: rgbSplitR 4s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+.digital-interference .glitch-text::after {
+  color: rgba(255, 100, 100, 0.4);
+  animation: rgbSplitB 4s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+/* Scanline sweep - a single bright line scanning down */
+.scanline-sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanline-sweep::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 20%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0.15) 80%,
+    transparent 100%
+  );
+  animation: sweepDown 4s linear infinite;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Periodic flicker effect */
+.digital-flicker {
+  animation: digitalFlicker 8s step-end infinite;
+}
+
+/* ── Keyframes ──────────────────────────────────────────────── */
+
+@keyframes scanlineMove {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(4px); }
+}
+
+@keyframes noiseShift {
+  0% { background-position: 0 0; }
+  12.5% { background-position: -16px 8px; }
+  25% { background-position: 32px -16px; }
+  37.5% { background-position: -8px 24px; }
+  50% { background-position: 16px -32px; }
+  62.5% { background-position: -24px 0px; }
+  75% { background-position: 8px 16px; }
+  87.5% { background-position: -32px -8px; }
+  100% { background-position: 0 0; }
+}
+
+@keyframes glitchDisplace {
+  0%, 100% { transform: translate(0, 0); }
+  2% { transform: translate(-2px, 0); }
+  4% { transform: translate(2px, 0); }
+  6% { transform: translate(0, 0); }
+  42% { transform: translate(0, 0); }
+  44% { transform: translate(1px, -1px); }
+  46% { transform: translate(-1px, 1px); }
+  48% { transform: translate(0, 0); }
+  78% { transform: translate(0, 0); }
+  80% { transform: translate(-3px, 0); }
+  82% { transform: translate(0, 0); }
+}
+
+@keyframes rgbSplitR {
+  0%, 100% { transform: translate(0, 0); opacity: 0; }
+  2% { transform: translate(-3px, 1px); opacity: 0.6; }
+  4% { transform: translate(0, 0); opacity: 0; }
+  44% { transform: translate(0, 0); opacity: 0; }
+  46% { transform: translate(2px, -1px); opacity: 0.5; }
+  48% { transform: translate(0, 0); opacity: 0; }
+  80% { transform: translate(0, 0); opacity: 0; }
+  82% { transform: translate(-2px, 0); opacity: 0.4; }
+  84% { transform: translate(0, 0); opacity: 0; }
+}
+
+@keyframes rgbSplitB {
+  0%, 100% { transform: translate(0, 0); opacity: 0; }
+  2% { transform: translate(3px, -1px); opacity: 0.5; }
+  4% { transform: translate(0, 0); opacity: 0; }
+  44% { transform: translate(0, 0); opacity: 0; }
+  46% { transform: translate(-2px, 1px); opacity: 0.4; }
+  48% { transform: translate(0, 0); opacity: 0; }
+  80% { transform: translate(0, 0); opacity: 0; }
+  82% { transform: translate(2px, 0); opacity: 0.3; }
+  84% { transform: translate(0, 0); opacity: 0; }
+}
+
+@keyframes sweepDown {
+  0% { top: -2px; }
+  100% { top: calc(100% + 2px); }
+}
+
+@keyframes digitalFlicker {
+  0%, 100% { opacity: 1; }
+  3% { opacity: 0.85; }
+  6% { opacity: 1; }
+  45% { opacity: 1; }
+  47% { opacity: 0.9; }
+  49% { opacity: 1; }
+  82% { opacity: 1; }
+  84% { opacity: 0.88; }
+  86% { opacity: 1; }
+}
+
+/* ── Glowing text ───────────────────────────────────────────── */
+.text-glow {
+  text-shadow:
+    0 0 10px currentColor,
+    0 0 30px currentColor,
+    0 0 60px currentColor;
+}
+
+.text-glow-subtle {
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.06);
+}
+
+/* ── Cinematic text reveal ──────────────────────────────────── */
+@keyframes textReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(6px);
+  }
   100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.animate-text-reveal {
+  animation: textReveal 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+/* ── Existing animations ────────────────────────────────────── */
+@keyframes sparkleFloat {
+  0%, 100% {
     opacity: 0;
     transform: translateY(0) scale(0.5);
   }
-
   25% {
     opacity: 0.8;
     transform: translateY(-10px) scale(1.2);
   }
-
   50% {
     opacity: 0.4;
     transform: translateY(-20px) scale(0.8);
   }
-
   75% {
     opacity: 0.9;
     transform: translateY(-8px) scale(1);
   }
-}
-
-.syncopate-regular {
-  font-family: "Syncopate", sans-serif;
-  font-weight: 400;
-  font-style: normal;
-}
-
-.syncopate-bold {
-  font-family: "Syncopate", sans-serif;
-  font-weight: 700;
-  font-style: normal;
 }
