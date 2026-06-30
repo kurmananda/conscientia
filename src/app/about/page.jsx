@@ -1,6 +1,5 @@
-import Image from "next/image";
-import HorizontalAbout from "./hz-about/horizontalAbout";
-import HeroBackground from "./components/HeroBackground";
+import HorizontalAbout from "./components/horizontalAbout";
+import AboutBackground from "./components/AboutBackground";
 
 export const metadata = {
   title: "About | Conscientia IIST",
@@ -43,13 +42,15 @@ const contacts = [
 
 export default function AboutPage() {
   return (
-    <main className="bg-black text-white select-none">
+    <div className="relative text-white select-none">
+
+      <AboutBackground />
+
+      <div className="relative z-10">
 
       {/* ================= HERO ================= */}
 
       <section className="relative h-[90vh] overflow-hidden">
-
-        <HeroBackground />
 
         <div className="relative z-10 h-full flex items-center justify-center">
 
@@ -82,7 +83,7 @@ export default function AboutPage() {
 
       <section className="max-w-7xl mx-auto px-6 py-24">
 
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 content-justify">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
 
           {stats.map((item) => (
 
@@ -154,6 +155,8 @@ export default function AboutPage() {
 
       </section>
 
-    </main>
+      </div>
+
+    </div>
   );
 }

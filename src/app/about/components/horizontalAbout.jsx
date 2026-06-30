@@ -16,7 +16,7 @@ export default function HorizontalAbout() {
     const x = useTransform(
         scrollYProgress,
         [0, 1],
-        ["0%", "-200%"]
+        ["0%", "-66.67%"]
     );
 
     return (
