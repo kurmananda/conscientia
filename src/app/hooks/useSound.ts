@@ -1,36 +1,30 @@
 "use client";
 
-import { useRef, useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 
-/**
- * useSound — lightweight Web Audio API hook.
- * Preloads the audio file and returns a `play` function.
- * Volume is clamped 0–1.
- *
- * When `single` is true, only one instance of this sound plays at a time
- * (previous playback is stopped before starting a new one).
- */
-
-// Shared AudioContext + decoded buffers (across all useSound instances)
-let sharedCtx: AudioContext | null = null;
-const decodedBuffers = new Map<string, AudioBuffer>();
+let ctx: AudioContext | null = null;
+const buffers = new Map<string, AudioBuffer>();
 const activeSources = new Map<string, AudioBufferSourceNode>();
+let unlocking = false;
+
+function unlock() {
+  if (unlocking) return;
+  unlocking = true;
+  const resume = () => {
+    if (ctx?.state === "suspended") ctx.resume().catch(() => {});
+  };
+  resume();
+  ["pointerdown", "keydown", "touchstart", "click"].forEach((e) =>
+    document.addEventListener(e, resume, { once: true })
+  );
+}
 
 function getCtx() {
-  if (!sharedCtx) {
-    sharedCtx = new AudioContext();
-    // Auto-resume on first user interaction
-    const resume = () => {
-      if (sharedCtx?.state === "suspended") sharedCtx.resume();
-      window.removeEventListener("click", resume);
-      window.removeEventListener("touchstart", resume);
-      window.removeEventListener("keydown", resume);
-    };
-    window.addEventListener("click", resume, { once: true });
-    window.addEventListener("touchstart", resume, { once: true });
-    window.addEventListener("keydown", resume, { once: true });
+  if (!ctx) {
+    ctx = new AudioContext();
+    unlock();
   }
-  return sharedCtx;
+  return ctx;
 }
 
 export default function useSound(
@@ -39,41 +33,33 @@ export default function useSound(
   maxDuration?: number,
   single = false,
 ) {
-  // Preload audio on mount
   useEffect(() => {
-    const ctx = getCtx();
-    if (!decodedBuffers.has(src)) {
+    const c = getCtx();
+    if (!buffers.has(src)) {
       fetch(src)
         .then((r) => r.arrayBuffer())
-        .then((buf) => ctx.decodeAudioData(buf))
-        .then((decoded) => {
-          decodedBuffers.set(src, decoded);
-        })
+        .then((buf) => c.decodeAudioData(buf))
+        .then((decoded) => buffers.set(src, decoded))
         .catch(() => {});
     }
   }, [src]);
 
   const play = useCallback(() => {
     try {
-      const ctx = getCtx();
-      if (ctx.state === "suspended") ctx.resume();
+      const c = getCtx();
+      if (c.state === "suspended") c.resume();
 
-      const playBuffer = (buffer: AudioBuffer) => {
+      const doPlay = (buffer: AudioBuffer) => {
         if (single) {
           const prev = activeSources.get(src);
-          if (prev) {
-            try { prev.stop(); } catch {}
-            activeSources.delete(src);
-          }
+          if (prev) { try { prev.stop(); } catch {} activeSources.delete(src); }
         }
-
-        const source = ctx.createBufferSource();
-        const gain = ctx.createGain();
+        const source = c.createBufferSource();
+        const gain = c.createGain();
         source.buffer = buffer;
         gain.gain.value = Math.max(0, Math.min(1, volume));
-        source.connect(gain).connect(ctx.destination);
+        source.connect(gain).connect(c.destination);
         source.start(0, 0, maxDuration);
-
         if (single) {
           activeSources.set(src, source);
           source.onended = () => {
@@ -82,22 +68,17 @@ export default function useSound(
         }
       };
 
-      const cached = decodedBuffers.get(src);
+      const cached = buffers.get(src);
       if (cached) {
-        playBuffer(cached);
+        doPlay(cached);
       } else {
         fetch(src)
           .then((r) => r.arrayBuffer())
-          .then((buf) => ctx.decodeAudioData(buf))
-          .then((decoded) => {
-            decodedBuffers.set(src, decoded);
-            playBuffer(decoded);
-          })
+          .then((buf) => c.decodeAudioData(buf))
+          .then((decoded) => { buffers.set(src, decoded); doPlay(decoded); })
           .catch(() => {});
       }
-    } catch {
-      // Silently fail — sounds are decorative
-    }
+    } catch {}
   }, [src, volume, maxDuration, single]);
 
   return play;

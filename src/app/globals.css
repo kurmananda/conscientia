@@ -270,3 +270,14 @@ body {
     transform: translateY(-8px) scale(1);
   }
 }
+
+/* ── Workshop Wheel ────────────────────────────────────────── */
+@keyframes wheelGlowPulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.03); }
+}
+
+@keyframes thumbnailActive {
+  0% { box-shadow: 0 0 0px rgba(255,255,255,0); }
+  100% { box-shadow: 0 0 20px rgba(255,255,255,0.3); }
+}

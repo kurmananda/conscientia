@@ -60,7 +60,8 @@ export default function HeroGallery() {
   const playGlitch = useSound("/sounds/glitch.wav", 0.2, 0.15);
   const playClick = useSound("/sounds/click.mp3", 0.25, 0.08);
   const playWhoosh = useSound("/sounds/whoosh.mp3", 0.85);
-  const playTap = useSound("/sounds/tapgallery.mp3", 0.3, undefined, true);
+  const playTapGallery = useSound("/sounds/tapgallery.mp3", 0.3, undefined, true);
+  const playTap = useSound("/sounds/tap.mp3", 0.3, undefined, true);
 
   const goTo = useCallback((index: number) => {
     setActive(Math.max(0, Math.min(IMAGES.length - 1, index)));
@@ -169,13 +170,15 @@ export default function HeroGallery() {
     const offset = i - active;
     const absOffset = Math.abs(offset);
     const isHovered = hovered === i && absOffset > 0 && absOffset <= 2;
-    const effectiveOffset = isHovered ? Math.sign(offset) * 0.5 : offset;
 
-    const translateX = effectiveOffset * 42 + (isDragging ? dragX * 0.3 : 0);
-    const translateZ = isHovered ? -30 : -absOffset * 120;
-    const rotateY = effectiveOffset * -8;
-    const scale = isHovered ? 0.92 : 1 - absOffset * 0.12;
-    const opacity = absOffset > 2 ? 0 : 1 - absOffset * 0.25;
+    const angleStep = 72;
+    const radius = 180;
+    const dragAngle = isDragging ? dragX * 0.06 : 0;
+    const angle = offset * angleStep + dragAngle;
+
+    const hoverZ = isHovered ? 50 : 0;
+    const scale = isHovered ? 1.15 : Math.max(0.2, 1 - absOffset * 0.3);
+    const opacity = absOffset > 2 ? 0 : Math.max(0.05, 1 - absOffset * 0.4);
 
     return {
       position: "absolute",
@@ -183,12 +186,14 @@ export default function HeroGallery() {
       top: "50%",
       width: "clamp(280px, 40vw, 500px)",
       height: "clamp(350px, 55vh, 600px)",
-      transform: `translateX(calc(-50% + ${translateX}vw)) translateY(-50%) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
+      WebkitMaskImage: "radial-gradient(ellipse 100% 94% at 50% 50%, black 72%, transparent 100%)",
+      maskImage: "radial-gradient(ellipse 100% 94% at 50% 50%, black 72%, transparent 100%)",
+      transform: `translateX(-50%) translateY(-50%) rotateY(${angle}deg) translateZ(${radius + hoverZ}px) scale(${scale})`,
       transformStyle: "preserve-3d",
-      transition: isDragging ? "none" : "transform 0.5s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.5s ease",
+      transition: isDragging ? "none" : "transform 0.55s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.5s ease",
       opacity,
       zIndex: isHovered ? 9 : 10 - absOffset,
-      borderRadius: "20px",
+      borderRadius: "0px",
       overflow: "hidden",
       cursor: isDragging ? "grabbing" : "grab",
       pointerEvents: absOffset <= 2 ? "auto" : "none",
@@ -203,7 +208,7 @@ export default function HeroGallery() {
         width: "100%",
         height: "100vh",
         overflow: "hidden",
-        perspective: "1200px",
+        perspective: "800px",
         background: "#000",
         userSelect: "none",
       }}
@@ -419,23 +424,42 @@ export default function HeroGallery() {
               ...getSlideStyle(i),
               ...(isActive ? {
                 transform: isCenterHovered
-                  ? `translateX(calc(-50% + ${isDragging ? dragX * 0.3 : 0}vw)) translateY(-50%) translateZ(40px) rotateX(${cardTilt.x * 0.5}deg) rotateY(${cardTilt.y * 0.5}deg) scale(1.06)`
-                  : `translateX(calc(-50% + ${isDragging ? dragX * 0.3 : 0}vw)) translateY(-50%) translateZ(10px) rotateX(${cardTilt.x}deg) rotateY(${cardTilt.y}deg) scale(1)`,
+                  ? `translateX(-50%) translateY(-50%) rotateY(${isDragging ? dragX * 0.06 : 0}deg) translateZ(210px) rotateX(${cardTilt.x * 0.5}deg) rotateY(${cardTilt.y * 0.5}deg) scale(1.12)`
+                  : `translateX(-50%) translateY(-50%) rotateY(${isDragging ? dragX * 0.06 : 0}deg) translateZ(190px) rotateX(${cardTilt.x}deg) rotateY(${cardTilt.y}deg) scale(1)`,
                 transition: isCenterHovered
                   ? "transform 0.4s cubic-bezier(0.23,1,0.32,1), box-shadow 0.4s ease"
                   : "transform 0.5s cubic-bezier(0.23,1,0.32,1), box-shadow 0.5s ease",
               } : {}),
             }}
-            onMouseEnter={() => { setHovered(i); setPaused(true); playTap(); if (isActive) setIsCenterHovered(true); }}
-            onMouseLeave={() => { setHovered(null); setPaused(false); if (isActive) setIsCenterHovered(false); }}
-            onClick={() => { if (!isDragging && Math.abs(dragX) < 5) { goTo(i); playClick(); playWhoosh(); } }}
+            onMouseEnter={() => { 
+              setHovered(i); 
+              setPaused(true); 
+              if (isActive) {
+                setIsCenterHovered(true);
+                playTapGallery();
+              } else {
+                playGlitch();
+              }
+            }}
+            onMouseLeave={() => { 
+              setHovered(null); 
+              setPaused(false); 
+              if (isActive) setIsCenterHovered(false); 
+            }}
+            onClick={() => { 
+              if (!isDragging && Math.abs(dragX) < 5) { 
+                goTo(i); 
+                if (!isActive) playTap();
+                else { playClick(); playWhoosh(); }
+              } 
+            }}
           >
             {/* ── Animated gradient border ──────────────────── */}
             <div
               style={{
                 position: "absolute",
                 inset: 0,
-                borderRadius: "20px",
+                borderRadius: "0px",
                 padding: "2px",
                 background: isActive
                   ? `conic-gradient(from ${(Date.now() / 20) % 360}deg, ${img.color}00, ${img.color}88, ${img.color}00, ${img.color}55, ${img.color}00)`
@@ -492,6 +516,20 @@ export default function HeroGallery() {
               />
             )}
 
+            {/* ── Curvature overlay (convex cylinder) ──────── */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "20px",
+                background: isActive
+                  ? `linear-gradient(to right, rgba(0,0,0,0.3) 0%, transparent 20%, rgba(255,255,255,0.06) 48%, rgba(255,255,255,0.04) 52%, transparent 80%, rgba(0,0,0,0.35) 100%)`
+                  : `linear-gradient(to right, rgba(0,0,0,0.35) 0%, transparent 18%, transparent 50%, transparent 82%, rgba(0,0,0,0.4) 100%)`,
+                pointerEvents: "none",
+                zIndex: 2,
+              }}
+            />
+
             {/* ── Top vignette ─────────────────────────────── */}
             <div
               style={{
@@ -500,7 +538,7 @@ export default function HeroGallery() {
                 borderRadius: "20px",
                 background: "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 35%)",
                 pointerEvents: "none",
-                zIndex: 2,
+                zIndex: 3,
               }}
             />
 
@@ -512,7 +550,7 @@ export default function HeroGallery() {
                 borderRadius: "20px",
                 background: `linear-gradient(to top, ${img.color}40 0%, transparent 50%)`,
                 pointerEvents: "none",
-                zIndex: 2,
+                zIndex: 3,
               }}
             />
 
@@ -525,7 +563,7 @@ export default function HeroGallery() {
                 backgroundImage:
                   "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.012) 3px, rgba(255,255,255,0.012) 4px)",
                 pointerEvents: "none",
-                zIndex: 3,
+                zIndex: 4,
               }}
             />
 
@@ -589,32 +627,38 @@ export default function HeroGallery() {
                     animation: "lineExpand 0.6s ease 0.2s forwards",
                   }}
                 />
-                <span
-                  style={{
-                    fontFamily: "'Black Mustang', sans-serif",
-                    fontSize: "0.6rem",
-                    letterSpacing: "0.3em",
-                    color: `${img.color}cc`,
-                    textTransform: "uppercase",
-                    marginTop: "0.4rem",
-                    display: "block",
-                    opacity: 0,
-                    animation: "fadeInUp 0.5s ease 0.3s forwards",
-                    fontStyle: "italic",
-                    transform: "skewX(-1deg)",
-                  }}
-                >
-                  <span className="digital-interference digital-flicker" style={{ position: "relative" }}>
-                    <span className="glitch-text" data-text={`Workshop ${String(active + 1).padStart(2, "0")} / ${String(IMAGES.length).padStart(2, "0")}`}>
-                      Workshop {String(active + 1).padStart(2, "0")} / {String(IMAGES.length).padStart(2, "0")}
-                    </span>
-                  </span>
-                </span>
               </div>
             )}
           </div>
         );
       })}
+
+      {/* ── Image Counter Below Slide ──────────────────────── */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: "10rem",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 20,
+          fontFamily: 'var(--font-display), sans-serif',
+          fontSize: "0.75rem",
+          letterSpacing: "0.25em",
+          color: `${activeColor}aa`,
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          pointerEvents: "none",
+        }}
+      >
+        <div style={{ width: "30px", height: "1px", background: `${activeColor}40` }} />
+        <span style={{ fontWeight: 700, color: activeColor }}>
+          {String(active + 1).padStart(2, "0")}
+        </span>
+        <span style={{ opacity: 0.3 }}>/</span>
+        <span style={{ opacity: 0.5 }}>{String(IMAGES.length).padStart(2, "0")}</span>
+        <div style={{ width: "30px", height: "1px", background: `${activeColor}40` }} />
+      </div>
 
       {/* ── Controls bar ───────────────────────────────────── */}
       <div
@@ -633,12 +677,12 @@ export default function HeroGallery() {
           borderRadius: "50px",
           border: `1px solid ${activeColor}30`,
           boxShadow: `0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 ${activeColor}15`,
-          perspective: "800px",
+        perspective: "650px",
         }}
       >
         {/* Left arrow */}
         <button
-          onClick={() => { prev(); playWhoosh(); }}
+          onClick={() => { prev(); playClick(); }}
           style={{
             width: "40px",
             height: "40px",
@@ -722,7 +766,7 @@ export default function HeroGallery() {
 
         {/* Right arrow */}
         <button
-          onClick={() => { next(); playWhoosh(); }}
+          onClick={() => { next(); playClick(); }}
           style={{
             width: "40px",
             height: "40px",
@@ -803,11 +847,11 @@ export default function HeroGallery() {
           gap: "8px",
         }}
       >
-        <span className="glitch-text" data-text={String(active + 1).padStart(2, "0")} style={{ fontSize: "1.2rem", color: activeColor, fontWeight: 700 }}>
+        <span className="glitch-text" data-text={String(active + 1).padStart(2, "0")} style={{ fontSize: "1.8rem", color: activeColor, fontWeight: 700 }}>
           {String(active + 1).padStart(2, "0")}
         </span>
-        <span style={{ opacity: 0.4 }}>/</span>
-        <span style={{ opacity: 0.5 }}>{String(IMAGES.length).padStart(2, "0")}</span>
+        <span style={{ opacity: 0.3, fontSize: "0.8rem" }}>/</span>
+        <span style={{ opacity: 0.5, fontSize: "0.8rem" }}>{String(IMAGES.length).padStart(2, "0")}</span>
       </div>
 
       <style>{`

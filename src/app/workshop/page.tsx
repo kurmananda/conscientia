@@ -5,7 +5,7 @@ import Link from "next/link";
 import IntroController from "../components/IntroController";
 import TimeFallScene from "../components/TimeFallScene";
 import Experience from "../components/WorkshopExperience";
-import HeroGallery from "../components/HeroGallery";
+import WorkshopWheel from "../components/three/WorkshopWheel";
 import CategoryBox from "../components/CategoryBox";
 import { ParallaxCard } from "../components/parallax";
 import { workshopCards } from "./workshopData";
@@ -147,7 +147,7 @@ export default function WorkshopPage() {
         </Link>
       </div>
 
-      {/* Hero Gallery — Cinematic Reveal */}
+      {/* 3D Workshop Wheel — Cinematic 3D Gallery */}
       <div
         ref={galleryRef}
         style={{
@@ -160,7 +160,7 @@ export default function WorkshopPage() {
           transition: "opacity 0.8s cubic-bezier(0.23, 1, 0.32, 1), transform 0.8s cubic-bezier(0.23, 1, 0.32, 1)",
         }}
       >
-        <HeroGallery />
+        <WorkshopWheel />
       </div>
 
       {/* 3D Models — fixed overlay */}
