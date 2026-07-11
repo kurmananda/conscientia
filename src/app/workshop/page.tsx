@@ -48,7 +48,7 @@ export default function WorkshopPage() {
         <TimeFallScene />
       </div>
 
-      <IntroController ambientMusicSrc="/sounds/ambient.mp3">
+      <IntroController>
 
       {/* ── Back to Home Button ───────────────────────────────── */}
       <div style={{ position: "fixed", bottom: "1.5rem", left: "1.5rem", zIndex: 50, perspective: "600px" }}>

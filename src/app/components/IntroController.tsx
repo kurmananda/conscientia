@@ -3,29 +3,32 @@
 /**
  * IntroController
  * ─────────────────────────────────────────────────────────────────────────────
- * Manages the intro sequence: Logo → Text Animation → Workshop Page
+ * Manages the intro sequence: Logo → Text Animation → Page Content
  *
  * State machine:
  *   "logo"    → CinematicIntro (logo video) plays
- *   "text"    → WorkshopIntro (cinematic text) plays
- *   "revealed" → Workshop page is visible
+ *   "text"    → TextIntro (cinematic text) plays
+ *   "revealed" → Page content is visible
  */
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { CinematicIntro } from "./intro";
 import WorkshopIntro from "./intro/WorkshopIntro";
-import AmbientMusic from "./AmbientMusic";
+import type { ComponentType } from "react";
 
 import { ReactNode } from "react";
 
 interface IntroControllerProps {
   children: ReactNode;
-  ambientMusicSrc?: string;
+  TextIntroComponent?: ComponentType<{
+    onComplete: () => void;
+    risersRef?: React.MutableRefObject<HTMLAudioElement | null>;
+  }>;
 }
 
 export default function IntroController({
   children,
-  ambientMusicSrc,
+  TextIntroComponent = WorkshopIntro,
 }: IntroControllerProps) {
   const [phase, setPhase] = useState<"logo" | "text" | "revealed">("logo");
   const risersRef = useRef<HTMLAudioElement | null>(null);
@@ -101,12 +104,7 @@ export default function IntroController({
 
     {/* Phase 2: Cinematic text animation */}
     {phase === "text" && (
-      <WorkshopIntro risersRef={risersRef} onComplete={handleTextComplete} />
-    )}
-
-    {/* Ambient background music — starts when page is revealed */}
-    {ambientMusicSrc && (
-      <AmbientMusic src={ambientMusicSrc} volume={0.2} start={phase === "revealed"} />
+      <TextIntroComponent risersRef={risersRef} onComplete={handleTextComplete} />
     )}
   </>
 );

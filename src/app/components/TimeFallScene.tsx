@@ -4,7 +4,7 @@ import ParticleField from './ParticleField';
 import TimeStreaks from './TimeStreaks';
 import CameraRig from './CameraRig';
 
-export default function TimeFallScene() {
+export default function TimeFallScene({ wide }: { wide?: boolean }) {
   const mouse = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -37,8 +37,9 @@ export default function TimeFallScene() {
       ref={containerRef}
       style={{
         position: 'fixed',
-        inset: 0,
-        width: '100vw',
+        top: 0,
+        left: wide ? '-5vw' : 0,
+        width: wide ? '110vw' : '100vw',
         height: '100vh',
         background: '#000000',
         zIndex: 1,

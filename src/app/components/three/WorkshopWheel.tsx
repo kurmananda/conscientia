@@ -5,25 +5,33 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Billboard, AdaptiveDpr, AdaptiveEvents } from "@react-three/drei";
 import * as THREE from "three";
 
-const COLORS = [
+export interface WheelItem {
+  id: string;
+  title: string;
+  type: string;
+  color: string;
+  imageUrl: string;
+}
+
+const DEFAULT_COLORS = [
   "#33d6ff", "#a855f7", "#22c55e", "#f97316",
   "#ec4899", "#6366f1", "#0ea5e9", "#06b6d4",
   "#eab308", "#14b8a6", "#f43f5e", "#8b5cf6",
 ];
 
-const TITLES = [
+const DEFAULT_TITLES = [
   "Rocketry Workshop", "AI & Machine Learning", "Cybersecurity Bootcamp",
   "Robotics & Automation", "Quantum Computing", "Data Science & Analytics",
   "Cloud & DevOps", "Aerospace Engineering", "Blockchain Development",
   "IoT & Edge Computing", "Biotech & Genomics", "AR/VR Development",
 ];
 
-const TYPES = [
+const DEFAULT_TYPES = [
   "Rocketry", "AI/ML", "Security", "Robotics", "Quantum",
   "Data Science", "Cloud", "Aerospace", "Web3", "IoT", "Biotech", "XR",
 ];
 
-const SLUGS = [
+const DEFAULT_SLUGS = [
   "rocket", "ai-ml", "cybersec", "robotics", "quantum",
   "data-science", "cloud", "aerospace", "blockchain", "iot", "biotech", "xr",
 ];
@@ -39,18 +47,16 @@ const TILE_PATHS = [
   "/tiles/tile-08.jpg",
 ];
 
-const IMG_URLS = Array.from({ length: 12 }, (_, i) => TILE_PATHS[i % TILE_PATHS.length]);
+const DEFAULT_IMG_URLS = Array.from({ length: 12 }, (_, i) => TILE_PATHS[i % TILE_PATHS.length]);
 
-const ITEMS = Array.from({ length: 12 }, (_, i) => ({
-  id: SLUGS[i],
-  title: TITLES[i],
-  type: TYPES[i],
-  color: COLORS[i],
-  imageUrl: IMG_URLS[i],
+const DEFAULT_ITEMS: WheelItem[] = Array.from({ length: 12 }, (_, i) => ({
+  id: DEFAULT_SLUGS[i],
+  title: DEFAULT_TITLES[i],
+  type: DEFAULT_TYPES[i],
+  color: DEFAULT_COLORS[i],
+  imageUrl: DEFAULT_IMG_URLS[i],
 }));
 
-const N = ITEMS.length;
-const ARC = (Math.PI * 2) / N;
 const R = 5.0;
 const PW = 1.6;
 const PH = 0.95;
@@ -82,11 +88,13 @@ function RoundedPlane({ w, h, r, children, position }: { w: number; h: number; r
 function Panel({
   index,
   texture,
+  arc,
 }: {
   index: number;
   texture: THREE.Texture | null;
+  arc: number;
 }) {
-  const angle = index * ARC;
+  const angle = index * arc;
   const x = Math.sin(angle) * R;
   const z = -Math.cos(angle) * R;
 
@@ -187,18 +195,24 @@ function WheelScene({
   rotationIndex,
   textures,
   mouse,
+  items,
+  n,
+  arc,
 }: {
   rotationIndex: number;
   textures: (THREE.Texture | null)[];
   mouse: React.MutableRefObject<{ x: number; y: number }>;
+  items: WheelItem[];
+  n: number;
+  arc: number;
 }) {
   const pivotRef = useRef<THREE.Group>(null);
   const spinRef = useRef<THREE.Group>(null);
   const bgRef = useRef<THREE.Group>(null);
   const spinAngle = useRef(0);
   const { camera } = useThree();
-  const activeIndex = ((rotationIndex % N) + N) % N;
-  const activeColor = useMemo(() => new THREE.Color(ITEMS[activeIndex].color), [activeIndex]);
+  const activeIndex = ((rotationIndex % n) + n) % n;
+  const activeColor = useMemo(() => new THREE.Color(items[activeIndex].color), [activeIndex, items]);
   const currentBgRot = useRef({ x: 0, y: 0 });
   const currentTilt = useRef({ x: 0, z: 0 });
 
@@ -210,7 +224,7 @@ function WheelScene({
   useFrame((_, delta) => {
     if (!spinRef.current) return;
 
-    const target = -rotationIndex * ARC;
+    const target = -rotationIndex * arc;
     spinAngle.current += (target - spinAngle.current) * delta * 5;
     spinRef.current.rotation.y = spinAngle.current;
 
@@ -249,11 +263,12 @@ function WheelScene({
       </group>
       <group ref={pivotRef} rotation={[-0.40, 0, 0.10]}>
         <group ref={spinRef}>
-          {ITEMS.map((item, i) => (
+          {items.map((item, i) => (
             <Panel
               key={item.id}
               index={i}
               texture={textures[i]}
+              arc={arc}
             />
           ))}
         </group>
@@ -262,12 +277,12 @@ function WheelScene({
   );
 }
 
-function TextureLoader({ onReady }: { onReady: (tex: (THREE.Texture | null)[]) => void }) {
+function TextureLoader({ items, onReady }: { items: WheelItem[]; onReady: (tex: (THREE.Texture | null)[]) => void }) {
   useEffect(() => {
     const loader = new THREE.TextureLoader();
     const results: (THREE.Texture | null)[] = [];
     let loaded = 0;
-    ITEMS.forEach((item, i) => {
+    items.forEach((item, i) => {
       results[i] = null;
       loader.load(
         item.imageUrl,
@@ -277,16 +292,16 @@ function TextureLoader({ onReady }: { onReady: (tex: (THREE.Texture | null)[]) =
           t.magFilter = THREE.LinearFilter;
           results[i] = t;
           loaded++;
-          if (loaded === ITEMS.length) onReady([...results]);
+          if (loaded === items.length) onReady([...results]);
         },
         undefined,
         () => {
           loaded++;
-          if (loaded === ITEMS.length) onReady([...results]);
+          if (loaded === items.length) onReady([...results]);
         }
       );
     });
-  }, [onReady]);
+  }, [items, onReady]);
   return null;
 }
 
@@ -327,9 +342,13 @@ function GlitchTitle({ text, color, delay }: { text: string; color: string; dela
   );
 }
 
-export default function WorkshopWheel() {
+export default function WorkshopWheel({ items: propItems }: { items?: WheelItem[] }) {
+  const items = propItems ?? DEFAULT_ITEMS;
+  const n = items.length;
+  const arc = (Math.PI * 2) / n;
+
   const [rotationIndex, setRotationIndex] = useState(0);
-  const activeIndex = ((rotationIndex % N) + N) % N;
+  const activeIndex = ((rotationIndex % n) + n) % n;
   const [textures, setTextures] = useState<(THREE.Texture | null)[] | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartY = useRef(0);
@@ -339,12 +358,13 @@ export default function WorkshopWheel() {
   const [transitionProgress, setTransitionProgress] = useState(1);
   const [glitchSeed, setGlitchSeed] = useState(0);
   const mouseRef = useRef({ x: 0, y: 0 });
+  const wheelRef = useRef<HTMLDivElement>(null);
 
-  const activeColor = ITEMS[activeIndex].color;
+  const activeColor = items[activeIndex].color;
 
   useEffect(() => {
-    setThumbUrls(ITEMS.map((item) => item.imageUrl));
-  }, []);
+    setThumbUrls(items.map((item) => item.imageUrl));
+  }, [items]);
 
   useEffect(() => {
     if (activeIndex !== prevIndex) {
@@ -360,12 +380,12 @@ export default function WorkshopWheel() {
 
   const goTo = useCallback((i: number) => {
     setRotationIndex(prev => {
-      const curMod = ((prev % N) + N) % N;
-      let diff = ((i - curMod) + N) % N;
-      if (diff > N / 2) diff -= N;
+      const curMod = ((prev % n) + n) % n;
+      let diff = ((i - curMod) + n) % n;
+      if (diff > n / 2) diff -= n;
       return prev + diff;
     });
-  }, []);
+  }, [n]);
 
   const next = useCallback(() => setRotationIndex(prev => prev + 1), []);
   const prev = useCallback(() => setRotationIndex(prev => prev - 1), []);
@@ -374,7 +394,7 @@ export default function WorkshopWheel() {
     if (paused || isDragging) return;
     const t = setInterval(next, AUTO_MS);
     return () => clearInterval(t);
-  }, [paused, isDragging, next]);
+  }, [paused, isDragging, next, n]);
 
   useEffect(() => {
     const hk = (e: KeyboardEvent) => {
@@ -388,6 +408,9 @@ export default function WorkshopWheel() {
   useEffect(() => {
     let cd = false;
     const wh = (e: WheelEvent) => {
+      if (!wheelRef.current) return;
+      const rect = wheelRef.current.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > window.innerHeight) return;
       if (cd) return;
       if (Math.abs(e.deltaY) > 30) {
         cd = true;
@@ -416,8 +439,8 @@ export default function WorkshopWheel() {
     [next, prev]
   );
 
-  const displayTitle = transitionProgress < 1 ? ITEMS[prevIndex].title : ITEMS[activeIndex].title;
-  const displayType = transitionProgress < 1 ? ITEMS[prevIndex].type : ITEMS[activeIndex].type;
+  const displayTitle = transitionProgress < 1 ? items[prevIndex].title : items[activeIndex].title;
+  const displayType = transitionProgress < 1 ? items[prevIndex].type : items[activeIndex].type;
   const textOpacity = transitionProgress < 1 ? 1 - transitionProgress * 3 : 1;
 
   return (
@@ -482,6 +505,7 @@ export default function WorkshopWheel() {
       `}</style>
 
       <div
+        ref={wheelRef}
         style={{
           position: "relative",
           width: "100%",
@@ -554,9 +578,9 @@ export default function WorkshopWheel() {
             <AdaptiveDpr pixelated />
             <AdaptiveEvents />
             {textures ? (
-              <WheelScene rotationIndex={rotationIndex} textures={textures} mouse={mouseRef} />
+              <WheelScene rotationIndex={rotationIndex} textures={textures} mouse={mouseRef} items={items} n={n} arc={arc} />
             ) : (
-              <TextureLoader onReady={setTextures} />
+              <TextureLoader items={items} onReady={setTextures} />
             )}
           </Canvas>
         </div>
@@ -573,7 +597,7 @@ export default function WorkshopWheel() {
             color: `${activeColor}77`,
           }}
         >
-          {String(activeIndex + 1).padStart(2, "0")} {String(N).padStart(2, "0")}
+          {String(activeIndex + 1).padStart(2, "0")} {String(n).padStart(2, "0")}
         </div>
 
         <div
@@ -591,7 +615,7 @@ export default function WorkshopWheel() {
             alignItems: "center",
           }}
         >
-          {ITEMS.map((item, i) => {
+          {items.map((item, i) => {
             const ia = i === activeIndex;
             const TH = ia ? "44px" : "32px";
             return (
