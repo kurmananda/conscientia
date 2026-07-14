@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -12,23 +13,27 @@ export default function CTA() {
   useEffect(() => {
     const ctx = gsap.context(() => {
 
-      gsap.from(".cta-title div", {
-        y: 120,
-        opacity: 0,
-        stagger: 0.15,
-        duration: 1,
-        ease: "power4.out",
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: "top 75%",
-        },
-      });
+      gsap.fromTo(".cta-title div",
+        { yPercent: 100, opacity: 0 },
+        {
+          yPercent: 0,
+          opacity: 1,
+          stagger: 0.12,
+          duration: 1,
+          ease: "power4.out",
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: "top 75%",
+          },
+        }
+      );
 
       gsap.from(".cta-subtitle", {
         opacity: 0,
-        y: 40,
+        y: 30,
         delay: .4,
         duration: .8,
+        ease: "power3.out",
         scrollTrigger: {
           trigger: sectionRef.current,
           start: "top 75%",
@@ -37,14 +42,43 @@ export default function CTA() {
 
       gsap.from(".cta-buttons", {
         opacity: 0,
-        y: 40,
+        y: 30,
         delay: .6,
         duration: .8,
+        ease: "power3.out",
         scrollTrigger: {
           trigger: sectionRef.current,
           start: "top 75%",
         },
       });
+
+      gsap.fromTo(".cta-glow-1",
+        { yPercent: -25 },
+        {
+          yPercent: 25,
+          ease: "none",
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: "top bottom",
+            end: "bottom top",
+            scrub: true,
+          }
+        }
+      );
+
+      gsap.fromTo(".cta-glow-2",
+        { yPercent: 25 },
+        {
+          yPercent: -25,
+          ease: "none",
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: "top bottom",
+            end: "bottom top",
+            scrub: true,
+          }
+        }
+      );
 
     }, sectionRef);
 
@@ -53,6 +87,10 @@ export default function CTA() {
 
   return (
     <section className="cta-section" ref={sectionRef}>
+
+      {/* Floating neon glows */}
+      <div className="cta-glow cta-glow-1" />
+      <div className="cta-glow cta-glow-2" />
 
       <div className="cta-container">
 
@@ -79,13 +117,13 @@ export default function CTA() {
 
         <div className="cta-buttons">
 
-          <button className="primary-btn">
+          <Link href="/events" className="primary-btn">
             Explore Events
-          </button>
+          </Link>
 
-          <button className="secondary-btn">
+          <Link href="/contact-us" className="secondary-btn">
             Contact Us
-          </button>
+          </Link>
 
         </div>
 

@@ -14,25 +14,18 @@ export default function AboutPage() {
   return (
     <main className="about-page">
 
-      {/* Hero */}
       <Hero />
 
-      {/* Horizontal Story */}
       <HorizontalStory />
 
-      {/* Mission */}
       <Mission />
 
-      {/* Domains */}
       <Domains />
 
-      {/* Stats */}
       <Stats />
 
-      {/* Team Philosophy */}
       <Philosophy />
 
-      {/* Call To Action */}
       <CTA />
 
     </main>

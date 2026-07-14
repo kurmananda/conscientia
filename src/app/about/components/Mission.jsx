@@ -14,19 +14,34 @@ export default function Mission() {
 
       gsap.from(".mission-label", {
         opacity: 0,
-        y: 40,
+        y: 30,
         duration: 0.8,
+        ease: "power3.out",
         scrollTrigger: {
           trigger: section.current,
           start: "top 75%",
         },
       });
 
-      gsap.from(".mission-title div", {
+      gsap.fromTo(".mission-title div",
+        { yPercent: 100, opacity: 0 },
+        {
+          yPercent: 0,
+          opacity: 1,
+          stagger: 0.1,
+          duration: 1,
+          ease: "power4.out",
+          scrollTrigger: {
+            trigger: section.current,
+            start: "top 70%",
+          },
+        }
+      );
+
+      gsap.from(".mission-description", {
         opacity: 0,
-        y: 80,
-        stagger: 0.12,
-        duration: 0.9,
+        y: 30,
+        duration: 1,
         ease: "power3.out",
         scrollTrigger: {
           trigger: section.current,
@@ -34,20 +49,9 @@ export default function Mission() {
         },
       });
 
-      gsap.from(".mission-description", {
+      gsap.from(".mission-image-wrapper", {
         opacity: 0,
-        y: 40,
-        duration: 1,
-        delay: 0.2,
-        scrollTrigger: {
-          trigger: section.current,
-          start: "top 70%",
-        },
-      });
-
-      gsap.from(".mission-image", {
-        opacity: 0,
-        scale: 1.15,
+        scale: 0.95,
         duration: 1.2,
         ease: "power3.out",
         scrollTrigger: {
@@ -55,6 +59,20 @@ export default function Mission() {
           start: "top 70%",
         },
       });
+
+      gsap.fromTo(".mission-image",
+        { yPercent: -12 },
+        {
+          yPercent: 12,
+          ease: "none",
+          scrollTrigger: {
+            trigger: section.current,
+            start: "top bottom",
+            end: "bottom top",
+            scrub: true,
+          }
+        }
+      );
 
     }, section);
 
@@ -100,11 +118,13 @@ export default function Mission() {
 
         <div className="mission-right">
 
-          <img
-            src="/aboutImages/mission.jpg"
-            className="mission-image"
-            alt="Mission"
-          />
+          <div className="mission-image-wrapper">
+            <img
+              src="/aboutImages/mission.jpg"
+              className="mission-image"
+              alt="Mission"
+            />
+          </div>
 
         </div>
 

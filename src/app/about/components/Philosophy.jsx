@@ -20,8 +20,9 @@ export default function Philosophy() {
     const ctx = gsap.context(() => {
       gsap.from(".philosophy-label", {
         opacity: 0,
-        y: 40,
+        y: 30,
         duration: 0.8,
+        ease: "power3.out",
         scrollTrigger: {
           trigger: sectionRef.current,
           start: "top 80%",
@@ -30,9 +31,9 @@ export default function Philosophy() {
 
       gsap.from(".value-item", {
         opacity: 0,
-        x: -80,
-        stagger: 0.18,
-        duration: 0.9,
+        y: 40,
+        stagger: 0.15,
+        duration: 0.8,
         ease: "power3.out",
         scrollTrigger: {
           trigger: ".values-list",
@@ -40,9 +41,9 @@ export default function Philosophy() {
         },
       });
 
-      gsap.from(".team-image", {
+      gsap.from(".team-image-wrapper", {
         opacity: 0,
-        scale: 1.12,
+        scale: 0.95,
         duration: 1.2,
         ease: "power3.out",
         scrollTrigger: {
@@ -50,6 +51,20 @@ export default function Philosophy() {
           start: "top 75%",
         },
       });
+
+      gsap.fromTo(".team-image",
+        { yPercent: -15 },
+        {
+          yPercent: 15,
+          ease: "none",
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: "top bottom",
+            end: "bottom top",
+            scrub: true,
+          }
+        }
+      );
     }, sectionRef);
 
     return () => ctx.revert();

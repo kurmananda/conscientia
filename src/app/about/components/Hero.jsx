@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -10,20 +9,27 @@ export default function Hero() {
   const title = useRef(null);
   const subtitle = useRef(null);
   const arrow = useRef(null);
+  const heroRef = useRef(null);
 
   useEffect(() => {
-    gsap.from(title.current, {
-      y: 120,
-      opacity: 0,
-      duration: 1.4,
-      ease: "power4.out",
-    });
+    const lines = title.current.querySelectorAll(".line-inner");
+    gsap.fromTo(lines,
+      { yPercent: 100, opacity: 0 },
+      {
+        yPercent: 0,
+        opacity: 1,
+        duration: 1.4,
+        stagger: 0.15,
+        ease: "power4.out",
+      }
+    );
 
     gsap.from(subtitle.current, {
-      y: 60,
+      y: 40,
       opacity: 0,
-      delay: 0.3,
+      delay: 0.5,
       duration: 1,
+      ease: "power3.out",
     });
 
     gsap.to(arrow.current, {
@@ -33,10 +39,31 @@ export default function Hero() {
       duration: 1,
       ease: "sine.inOut",
     });
+
+    gsap.to(arrow.current, {
+      opacity: 0,
+      scrollTrigger: {
+        trigger: heroRef.current,
+        start: "top top",
+        end: "30% top",
+        scrub: true,
+      }
+    });
+
+    gsap.to(".hero-noise", {
+      yPercent: 20,
+      ease: "none",
+      scrollTrigger: {
+        trigger: heroRef.current,
+        start: "top top",
+        end: "bottom top",
+        scrub: true,
+      }
+    });
   }, []);
 
   return (
-    <section className="hero">
+    <section className="hero" ref={heroRef}>
 
       <div className="hero-noise" />
 
@@ -47,11 +74,15 @@ export default function Hero() {
         </p>
 
         <h1 ref={title}>
-          Building
-          <br />
-          Tomorrow's
-          <br />
-          Innovators.
+          <div className="line-wrapper">
+            <span className="line-inner">Building</span>
+          </div>
+          <div className="line-wrapper">
+            <span className="line-inner">Tomorrow's</span>
+          </div>
+          <div className="line-wrapper">
+            <span className="line-inner">Innovators.</span>
+          </div>
         </h1>
 
         <p
