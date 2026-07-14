@@ -1,4 +1,5 @@
 import SimplePageShell from '../components/SimplePageShell';
+import { SiGooglemaps } from "react-icons/si";
 
 export const metadata = {
   title: 'Accommodation | Conscientia IIST',
@@ -7,12 +8,12 @@ export const metadata = {
 
 const stays = [
   {
-    name: 'Hostel Block',
+    name: 'Hostel Block A',
     tag: 'Participants · Shared',
     price: 'Included with registration',
   },
   {
-    name: 'Hostel Block',
+    name: 'Hostel Block B',
     tag: 'Participants · Shared',
     price: 'Included with registration',
   },
@@ -27,20 +28,20 @@ const facilities = [
 
 const faqs = [
   {
-    q: 'Sample Question 1?',
-    a: 'Sample Answer 1.',
+    q: 'What happenes to the security deposit?',
+    a: 'The security deposit will be returned to you at the time you leave. The security deposit is ceased if there is any damge to college property in the accomocation rooms.',
   },
   {
-    q: 'Sample Question 2?',
-    a: 'Sample Answer 2.',
+    q: 'Are Food Stalls available in the campus?',
+    a: 'Yes, multiple food stalls will be available at specific places of the fest venue, offering a variety of options at reasonable prices.',
   },
   {
-    q: 'Sample Question 3?',
-    a: 'Sample Answer 3.',
+    q: 'What about the Food Coupouns?',
+    a: 'They will be provided at the specific desk allocated across the fest venue.',
   },
   {
-    q: 'Sample Question 4?',
-    a: 'Sample Answer 4.',
+    q: 'Is UPI facility available?',
+    a: 'Yes.',
   },
 ];
 
@@ -72,7 +73,7 @@ export default function AccommodationPage() {
 
         <section className="mb-12">
           <h2 className="mb-5 font-mono text-xs uppercase tracking-widest text-teal-400">
-            Where you&apos;ll stay
+            Where you'll stay
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {stays.map((s) => (
@@ -84,9 +85,7 @@ export default function AccommodationPage() {
                   {s.tag}
                 </span>
                 <h3 className="mt-2 text-lg font-semibold">{s.name}</h3>
-                <p className="mt-1 text-sm text-slate-400">{s.capacity}</p>
                 <p className="text-sm text-slate-400">{s.price}</p>
-                <p className="mt-2 text-sm text-slate-200">{s.notes}</p>
               </article>
             ))}
           </div>
@@ -96,7 +95,7 @@ export default function AccommodationPage() {
 
         <section className="mb-12">
           <h2 className="mb-5 font-mono text-xs uppercase tracking-widest text-teal-400">
-            What&apos;s provided
+            What's provided
           </h2>
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {facilities.map((f) => (
@@ -131,8 +130,8 @@ export default function AccommodationPage() {
   <h2 className="mb-5 font-mono text-xs uppercase tracking-widest text-teal-400">
     Find your way
   </h2>
-  <h1 className='text-2xl'>Closest to Accommodation:  <a className="text-[#6E2E63] font-bold underline" href="https://maps.app.goo.gl/K85EHuA8wq6HsNpK8">IIST Backgate</a></h1>
-  <h1 className='text-2xl'>Closest to Event Venues:   <a className="underline font-bold text-[#6E2E63]" href="https://maps.app.goo.gl/uQpvBDeoWH45nAHJA">IIST Frontgate</a></h1>
+  <h1 className='text-2xl flex items-center'>Closest to Accommodation:  <SiGooglemaps/><a className="text-[#6E2E63] font-bold underline flex items-center" href="https://maps.app.goo.gl/K85EHuA8wq6HsNpK8">IIST Backgate</a></h1>
+  <h1 className='text-2xl flex items-center'>Closest to Event Venues:   <SiGooglemaps/> <a className="underline font-bold text-[#6E2E63]" href="https://maps.app.goo.gl/uQpvBDeoWH45nAHJA">IIST Frontgate</a></h1>
 </section>
       </div>
     </SimplePageShell>
