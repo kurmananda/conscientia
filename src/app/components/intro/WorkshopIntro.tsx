@@ -413,24 +413,6 @@ export default function WorkshopIntro({ onComplete, risersRef: externalRisersRef
         </span>
       </div>
 
-      <style>{`
-        @keyframes gridShift {
-          0% { background-position: 0 0; }
-          100% { background-position: 60px 60px; }
-        }
-        @keyframes scanMove {
-          0% { top: -2px; }
-          100% { top: 100%; }
-        }
-        @keyframes dotPulse {
-          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-          50% { transform: translate(-50%, -50%) scale(1.8); opacity: 0.4; }
-        }
-        @keyframes bracketFadeIn {
-          0% { opacity: 0; transform: scale(0.5); }
-          100% { opacity: 0.4; transform: scale(1); }
-        }
-      `}</style>
     </div>
   );
 }

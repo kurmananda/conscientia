@@ -293,7 +293,7 @@ export default function ParticleField({ count = 20000, mouse }: ParticleFieldPro
   const particleCount = useMemo(() => {
     const isMobile = window.innerWidth < 768;
     const isLowEnd = typeof navigator.hardwareConcurrency !== 'undefined' && navigator.hardwareConcurrency <= 4;
-    if (isMobile) return Math.min(count, 8000);
+    if (isMobile) return Math.min(count, 3000);
     if (isLowEnd) return Math.min(count, 14000);
     return count;
   }, [count]);

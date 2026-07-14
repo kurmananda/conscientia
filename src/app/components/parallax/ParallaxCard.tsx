@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useParallaxTilt } from "../../hooks/useParallaxTilt";
 import useSound from "../../hooks/useSound";
 
@@ -194,10 +195,12 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
           {/* Left Side - Image */}
           <div style={layer2Style} className="relative mr-3 flex-shrink-0 overflow-hidden rounded-xl">
             <div className="relative h-[200px] w-[160px] overflow-hidden rounded-xl">
-              <img
+              <Image
                 src={card.image}
                 alt={card.title}
-                className="h-full w-full object-cover"
+                fill
+                sizes="160px"
+                className="object-cover"
                 style={{
                   transform: tilt.isHovered
                     ? `scale(1.08) translateX(${-tilt.rotateY * 0.3}px) translateY(${tilt.rotateX * 0.3}px)`
@@ -405,6 +408,7 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
       </div>
 
       {/* ── Side Fire / Aura Effects ───────────────────────────── */}
+      {isVisible && <>
       {/* Left fire column — positioned fully outside the card */}
       <div
         className="absolute pointer-events-none"
@@ -724,7 +728,7 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
           }}
         />
       </div>
-
+      </>}
       <style>{`
         @keyframes fireStripLeft {
           0%, 100% { transform: scaleY(1) translateX(0); opacity: 0.8; }

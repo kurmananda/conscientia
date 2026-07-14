@@ -33,17 +33,6 @@ export default function useSound(
   maxDuration?: number,
   single = false,
 ) {
-  useEffect(() => {
-    const c = getCtx();
-    if (!buffers.has(src)) {
-      fetch(src)
-        .then((r) => r.arrayBuffer())
-        .then((buf) => c.decodeAudioData(buf))
-        .then((decoded) => buffers.set(src, decoded))
-        .catch(() => {});
-    }
-  }, [src]);
-
   const play = useCallback(() => {
     try {
       const c = getCtx();

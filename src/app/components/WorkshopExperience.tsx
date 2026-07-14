@@ -1,17 +1,15 @@
 "use client";
 
-import { useMouseInteraction } from "./engine/useMouseInteraction";
 import { useScrollEngine } from "./engine/useScrollEngine";
 import { ENGINE_CONFIG } from "./engine/config";
 
 import Scene from "./three/Scene";
 
-export default function WorkshopExperience() {
+export default function WorkshopExperience({ active }: { active?: boolean }) {
   const {
     progressRef,
+    mouseSmoothRef,
   } = useScrollEngine(ENGINE_CONFIG.scrollHeightVh);
-
-  const { smoothRef: mouseRef } = useMouseInteraction();
 
   return (
     <div
@@ -24,7 +22,8 @@ export default function WorkshopExperience() {
     >
       <Scene
         progressRef={progressRef}
-        mouseRef={mouseRef}
+        mouseRef={mouseSmoothRef}
+        active={active}
       />
     </div>
   );

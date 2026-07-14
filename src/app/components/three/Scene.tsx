@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useRef, Suspense } from "react";
+import { useRef, Suspense, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import {
   Environment,
@@ -23,6 +23,7 @@ import {
   Preload,
 } from "@react-three/drei";
 import * as THREE from "three";
+import { SceneActiveContext } from "../SceneActiveContext";
 import SceneLighting from "./SceneLighting";
 import CameraController from "./CameraController";
 import ObjectController from "./ObjectController";
@@ -35,6 +36,7 @@ import Model3 from "../models/Model3";
 interface SceneProps {
   progressRef: React.MutableRefObject<number>;
   mouseRef: React.MutableRefObject<{ x: number; y: number }>;
+  active?: boolean;
 }
 
 /* ─── Inner scene ──────────────────────────────────────────────────────────── */
@@ -50,19 +52,10 @@ function SceneInner({ progressRef, mouseRef }: SceneProps) {
       {/* Environment map — dark, subtle reflections */}
       <Environment preset="night" />
 
-      {/* Scene atmosphere (stars + dark sky) */}
-      
-
-
       {/* Cinematic lighting rig */}
       <SceneLighting progressRef={progressRef} />
 
       {/* ── The three objects ────────────────────────────────────────────── */}
-      {/*
-       * The outer <group> is driven by ObjectController (position/scale/opacity).
-       * Each Model component drives its own inner idle animation.
-       * To swap: replace Model1/Model2/Model3 with your own component.
-       */}
       <group ref={setRef(0)}>
         <Model1 />
       </group>
@@ -95,23 +88,30 @@ function SceneInner({ progressRef, mouseRef }: SceneProps) {
 }
 
 /* ─── Canvas (exported) ────────────────────────────────────────────────────── */
-export default function Scene({ progressRef, mouseRef }: SceneProps) {
+export default function Scene({ progressRef, mouseRef, active = true }: SceneProps) {
+  const dpr = useMemo(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) return [0.75, 1.5] as [number, number];
+    return [1, 2] as [number, number];
+  }, []);
+
   return (
-    <Canvas
-      shadows
-      dpr={[1, 2]}
-      camera={{ position: [0, 0, 6], fov: 60, near: 0.1, far: 100 }}
-      gl={{
-        antialias: true,
-        toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 1.15,
-        outputColorSpace: THREE.SRGBColorSpace,
-      }}
-      style={{ background: "transparent" }}
-    >
-      <Suspense fallback={null}>
-        <SceneInner progressRef={progressRef} mouseRef={mouseRef} />
-      </Suspense>
-    </Canvas>
+    <SceneActiveContext.Provider value={active}>
+      <Canvas
+        shadows
+        dpr={dpr}
+        camera={{ position: [0, 0, 6], fov: 60, near: 0.1, far: 100 }}
+        gl={{
+          antialias: true,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.15,
+          outputColorSpace: THREE.SRGBColorSpace,
+        }}
+        style={{ background: "transparent" }}
+      >
+        <Suspense fallback={null}>
+          <SceneInner progressRef={progressRef} mouseRef={mouseRef} />
+        </Suspense>
+      </Canvas>
+    </SceneActiveContext.Provider>
   );
 }

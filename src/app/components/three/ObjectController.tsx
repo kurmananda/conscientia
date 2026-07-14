@@ -18,6 +18,7 @@
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { useSceneActive } from "../SceneActiveContext";
 import { ENGINE_CONFIG, decodeScrollProgress } from "../engine/config";
 import type { ObjectKeyframe } from "../engine/types";
 
@@ -106,12 +107,14 @@ export default function ObjectController({
   objectRefs,
 }: ObjectControllerProps) {
   const tilt = useRef({ x: 0, y: 0 });
+  const active = useSceneActive();
 
   const smoothedFrames = useRef<ObjectKeyframe[]>(
     ENGINE_CONFIG.objects.map((o) => ({ ...o.entryFrame }))
   );
 
   useFrame(() => {
+    if (!active) return;
     const p = progressRef.current;
     const {
       activeIndex,

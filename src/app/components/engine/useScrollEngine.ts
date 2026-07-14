@@ -1,40 +1,28 @@
-/**
- * ─────────────────────────────────────────────────────────────────────────────
- * Conscientia — Time Fall  |  Scroll Engine Hook
- * ─────────────────────────────────────────────────────────────────────────────
- *
- * Manages smooth scroll state using a ref-based approach so that the 3D
- * canvas can read the latest scroll value every frame WITHOUT causing React
- * re-renders. Only the discrete "activeIndex" triggers a re-render (used for
- * UI elements like the dot navigator).
- */
-
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { decodeScrollProgress } from "./config";
 
 export interface ScrollEngineState {
-  /** Smoothed scroll progress 0→1 (read every frame from 3D canvas) */
   progressRef: React.MutableRefObject<number>;
-  /** Smoothed velocity (for squash/stretch effects) */
   velocityRef: React.MutableRefObject<number>;
-  /** React state: current active object index (triggers UI re-renders) */
   activeIndex: number;
-  /** Scroll to a specific section index (0, 1, 2) */
   scrollToSection: (index: number) => void;
-  /** Whether the user has scrolled at all */
   hasScrolled: boolean;
+  mouseSmoothRef: React.MutableRefObject<{ x: number; y: number }>;
 }
 
-const LERP_FACTOR = 0.075; // lower = smoother / heavier
+const LERP_FACTOR = 0.075;
 const VELOCITY_DECAY = 0.85;
+const MOUSE_INERTIA = 0.04;
 
 export function useScrollEngine(
   scrollHeightVh: number
 ): ScrollEngineState {
   const progressRef = useRef<number>(0);
   const velocityRef = useRef<number>(0);
+  const mouseSmoothRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const mouseRawRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const rawProgressRef = useRef<number>(0);
   const rafRef = useRef<number>(0);
@@ -43,25 +31,35 @@ export function useScrollEngine(
   const [activeIndex, setActiveIndex] = useState<number>(0);
   const [hasScrolled, setHasScrolled] = useState<boolean>(false);
 
-  /* ── Smooth interpolation loop ───────────────────────────────────────────── */
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      mouseRawRef.current = {
+        x: (e.clientX / window.innerWidth) * 2 - 1,
+        y: -(e.clientY / window.innerHeight) * 2 + 1,
+      };
+    };
+    window.addEventListener("mousemove", onMouseMove, { passive: true });
+    return () => window.removeEventListener("mousemove", onMouseMove);
+  }, []);
+
   useEffect(() => {
     let prevActive = 0;
 
     const tick = () => {
-      // Lerp smoothed progress toward raw
       const prev = progressRef.current;
       progressRef.current += (rawProgressRef.current - prev) * LERP_FACTOR;
 
-      // Velocity
       const vel = progressRef.current - prev;
       velocityRef.current = velocityRef.current * VELOCITY_DECAY + vel * (1 - VELOCITY_DECAY);
 
-      // Decode active index
       const { activeIndex: ai } = decodeScrollProgress(progressRef.current);
       if (ai !== prevActive) {
         prevActive = ai;
         setActiveIndex(ai);
       }
+
+      mouseSmoothRef.current.x += (mouseRawRef.current.x - mouseSmoothRef.current.x) * MOUSE_INERTIA;
+      mouseSmoothRef.current.y += (mouseRawRef.current.y - mouseSmoothRef.current.y) * MOUSE_INERTIA;
 
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -70,7 +68,6 @@ export function useScrollEngine(
     return () => cancelAnimationFrame(rafRef.current);
   }, []);
 
-  /* ── Native scroll listener ──────────────────────────────────────────────── */
   useEffect(() => {
     const onScroll = () => {
       const scrollY = window.scrollY;
@@ -79,7 +76,6 @@ export function useScrollEngine(
 
       if (maxScroll > 0) {
         rawProgressRef.current = Math.max(0, Math.min(1, scrollY / maxScroll));
-        console.log(rawProgressRef.current);
       }
 
       const delta = scrollY - lastScrollY.current;
@@ -94,10 +90,9 @@ export function useScrollEngine(
     return () => window.removeEventListener("scroll", onScroll);
   }, [hasScrolled]);
 
-  /* ── Programmatic scroll to section ─────────────────────────────────────── */
   const scrollToSection = useCallback(
     (index: number) => {
-      const sectionTargets = [0.1, 0.52, 0.91]; // representative progress for each obj
+      const sectionTargets = [0.1, 0.52, 0.91];
       const target = sectionTargets[Math.min(index, 2)] ?? 0;
       const maxScroll =
         document.documentElement.scrollHeight - window.innerHeight;
@@ -106,5 +101,5 @@ export function useScrollEngine(
     []
   );
 
-  return { progressRef, velocityRef, activeIndex, scrollToSection, hasScrolled };
+  return { progressRef, velocityRef, activeIndex, scrollToSection, hasScrolled, mouseSmoothRef };
 }

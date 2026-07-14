@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import TimeFallScene from "@/app/components/TimeFallScene";
 import { workshopCards } from "@/app/workshop/workshopData";
@@ -493,11 +494,13 @@ export default function WorkshopDetailPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
             {/* Image */}
             <CinematicBox title="" accentColor={card.accentColor} glowColor={card.glowColor} delay={0.1}>
-              <div style={{ borderRadius: "16px", overflow: "hidden", margin: "-2.5rem", width: "calc(100% + 5rem)" }}>
-                <img
+              <div style={{ borderRadius: "16px", overflow: "hidden", margin: "-2.5rem", width: "calc(100% + 5rem)", height: "300px", position: "relative" }}>
+                <Image
                   src={card.image}
                   alt={card.title}
-                  style={{ width: "100%", height: "300px", objectFit: "cover" }}
+                  fill
+                  sizes="100vw"
+                  style={{ objectFit: "cover" }}
                 />
               </div>
             </CinematicBox>

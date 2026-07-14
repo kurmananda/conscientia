@@ -2,17 +2,48 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import IntroController from "../components/IntroController";
-import TimeFallScene from "../components/TimeFallScene";
-import Experience from "../components/WorkshopExperience";
-import WorkshopWheel from "../components/three/WorkshopWheel";
 import CategoryBox from "../components/CategoryBox";
-import { ParallaxCard } from "../components/parallax";
 import { workshopCards } from "./workshopData";
 import useSound from "../hooks/useSound";
 
+const TimeFallScene = dynamic(() => import("../components/TimeFallScene"), { ssr: false });
+const Experience = dynamic(() => import("../components/WorkshopExperience"), { ssr: false });
+const WorkshopWheel = dynamic(() => import("../components/three/WorkshopWheel"), { ssr: false });
+const DynamicParallaxCard = dynamic(() => import("../components/parallax/ParallaxCard"), { ssr: false });
+
+import type { CardData } from "../components/parallax/ParallaxCard";
+
 const preCards = workshopCards.filter((c) => c.category === "pre");
 const liveCards = workshopCards.filter((c) => c.category === "live");
+
+function CardWrapper({ card, index }: { card: CardData; index: number }) {
+  const [visible, setVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} style={{ pointerEvents: "auto" }}>
+      {visible ? <DynamicParallaxCard card={card} index={index} /> : null}
+    </div>
+  );
+}
 
 export default function WorkshopPage() {
   const [showModels, setShowModels] = useState(false);
@@ -165,7 +196,7 @@ export default function WorkshopPage() {
 
       {/* 3D Models — fixed overlay */}
       <div style={{ opacity: showModels ? 1 : 0, transition: "opacity 0.6s ease" }}>
-        <Experience />
+        <Experience active={showModels} />
       </div>
 
       {/* ── Pre-Conscientia Workshops ─────────────────────────── */}
@@ -207,7 +238,7 @@ export default function WorkshopPage() {
               pointerEvents: "auto",
             }}
           >
-            <ParallaxCard card={card} index={index} />
+            <CardWrapper card={card} index={index} />
           </div>
         ))}
         {liveCards.map((card, index) => (
@@ -223,7 +254,7 @@ export default function WorkshopPage() {
               pointerEvents: "auto",
             }}
           >
-            <ParallaxCard card={card} index={index + preCards.length} />
+            <CardWrapper card={card} index={index + preCards.length} />
           </div>
         ))}
       </div>
