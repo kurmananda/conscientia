@@ -4,15 +4,17 @@ import { useRef } from "react";
 import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { useSceneActive } from "../SceneActiveContext";
 
 export default function Model1() {
   const { scene } = useGLTF("/models/rocket_past.glb");
   const groupRef = useRef<THREE.Group>(null);
+  const active = useSceneActive();
 
   useFrame((_, delta) => {
+    if (!active) return;
     if (!groupRef.current) return;
 
-    // Slow rotation around its own Y-axis
     groupRef.current.rotation.y += delta * 0.95;
   });
 

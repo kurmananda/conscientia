@@ -17,6 +17,7 @@
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { useSceneActive } from "../SceneActiveContext";
 
 interface SceneLightingProps {
   progressRef: React.MutableRefObject<number>;
@@ -27,8 +28,10 @@ export default function SceneLighting({ progressRef }: SceneLightingProps) {
   const rimLightRef  = useRef<THREE.DirectionalLight>(null);
   const fillLightRef = useRef<THREE.DirectionalLight>(null);
   const timeRef = useRef(0);
+  const active = useSceneActive();
 
   useFrame((_, delta) => {
+    if (!active) return;
     timeRef.current += delta;
     const t = timeRef.current;
 

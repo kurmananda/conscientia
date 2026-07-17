@@ -361,6 +361,10 @@ export default function WorkshopWheel({ items: propItems }: { items?: WheelItem[
   const wheelRef = useRef<HTMLDivElement>(null);
 
   const activeColor = items[activeIndex].color;
+  const dpr = useMemo(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) return [0.75, 1.5] as [number, number];
+    return [1, 1.5] as [number, number];
+  }, []);
 
   useEffect(() => {
     setThumbUrls(items.map((item) => item.imageUrl));
@@ -559,7 +563,7 @@ export default function WorkshopWheel({ items: propItems }: { items?: WheelItem[
 
         <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
           <Canvas
-            dpr={[1, 1.5]}
+            dpr={dpr}
             camera={{ position: [0, 2.5, 6], fov: 50, near: 0.1, far: 30 }}
             gl={{
               antialias: true,

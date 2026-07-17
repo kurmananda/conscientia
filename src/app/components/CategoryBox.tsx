@@ -350,7 +350,7 @@ export default function CategoryBox({
                 boxShadow: `0 0 12px ${accentColor}`,
                 opacity: revealed ? 1 : 0,
                 transition: "opacity 0.6s ease 0.5s",
-                animation: revealed ? "dotPulse 2s ease-in-out infinite" : "none",
+                animation: revealed ? "catDotPulse 2s ease-in-out infinite" : "none",
               }}
             />
             <span
@@ -380,11 +380,7 @@ export default function CategoryBox({
           0% { transform: translateY(0px) translateX(0px); }
           100% { transform: translateY(-20px) translateX(10px); }
         }
-        @keyframes pulseGlow {
-          0% { opacity: 0.5; }
-          100% { opacity: 1; }
-        }
-        @keyframes dotPulse {
+        @keyframes catDotPulse {
           0%, 100% { transform: scale(1); opacity: 1; }
           50% { transform: scale(1.5); opacity: 0.6; }
         }

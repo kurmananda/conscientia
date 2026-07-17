@@ -15,6 +15,7 @@
 import { useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { useSceneActive } from "../SceneActiveContext";
 import { decodeScrollProgress } from "../engine/config";
 
 // Per-object colour palette
@@ -78,7 +79,10 @@ function ParticleCloud({ mode, progressRef }: ParticleCloudProps) {
 
   useEffect(() => () => geometry.dispose(), [geometry]);
 
+  const active = useSceneActive();
+
   useFrame((_, delta) => {
+    if (!active) return;
     timeRef.current += delta;
     const t = timeRef.current;
 

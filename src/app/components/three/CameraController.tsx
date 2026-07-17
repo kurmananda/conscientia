@@ -19,6 +19,7 @@
 import { useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { useSceneActive } from "../SceneActiveContext";
 import { ENGINE_CONFIG, decodeCameraProgress, decodeScrollProgress } from "../engine/config";
 
 interface CameraControllerProps {
@@ -44,6 +45,7 @@ export default function CameraController({
 }: CameraControllerProps) {
   const { camera } = useThree();
   const cam = camera as THREE.PerspectiveCamera;
+  const active = useSceneActive();
 
   const currentFov  = useRef(60);
   const currentRoll = useRef(0);
@@ -51,6 +53,7 @@ export default function CameraController({
   const targetLook  = useRef(new THREE.Vector3(0, 0, 0));
 
   useFrame(() => {
+    if (!active) return;
     const p = progressRef.current;
     const { fromWaypoint, toWaypoint, blend } = decodeCameraProgress(p);
     const { inTransition, localProgress } = decodeScrollProgress(p);
