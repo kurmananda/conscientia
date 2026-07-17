@@ -27,11 +27,15 @@
   --color-ghost: var(--ghost);
   --color-horizon: var(--horizon);
 }
+html {
+    scroll-behavior: smooth;
+}
 
 body {
   background: var(--void);
   color: var(--ghost);
   font-family: var(--font-body), sans-serif;
+  overflow-x: hidden;
 }
 
 /* ── Font utilities ─────────────────────────────────────────── */

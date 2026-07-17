@@ -1,25 +1,33 @@
-import SimplePageShell from '../components/SimplePageShell';
+"use client";
 
-export const metadata = {
-  title: 'About | Conscientia IIST',
-  description: 'About Conscientia — the annual technical festival at IIST.',
-};
+import "./about.css";
+
+import Hero from "./components/Hero";
+import HorizontalStory from "./components/HorizontalStory";
+import Mission from "./components/Mission";
+import Domains from "./components/Domains";
+import Stats from "./components/Stats";
+import Philosophy from "./components/Philosophy";
+import CTA from "./components/CTA";
 
 export default function AboutPage() {
   return (
-    <SimplePageShell
-      title="About Conscientia"
-      subtitle="India’s Institute of Space Science and Technology celebrates ideas that orbit the future — from rocketry to machine intelligence."
-    >
-      <p>
-        This page is a placeholder while we finalize copy and media. Conscientia is the annual
-        technical festival of IIST, bringing together students, researchers, and industry for
-        workshops, competitions, and talks at the intersection of space and technology.
-      </p>
-      <p>
-        Expect timelines for flagship events, leadership bios, and archival highlights from past
-        editions — all coming soon.
-      </p>
-    </SimplePageShell>
+    <main className="about-page">
+
+      <Hero />
+
+      <HorizontalStory />
+
+      <Mission />
+
+      <Domains />
+
+      <Stats />
+
+      <Philosophy />
+
+      <CTA />
+
+    </main>
   );
 }

@@ -42,7 +42,7 @@ export default function RootLayout({ children }) {
         <CursorTrialWrapper />
         <Navbar />
         <div className="h-[10vh] shrink-0 bg-transparent" aria-hidden />
-        <main className="min-h-0">{children}</main>
+        <main className="relative min-h-0">{children}</main>
         <Footer />
       </body>
     </html>
