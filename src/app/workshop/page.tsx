@@ -16,6 +16,7 @@ const liveCards = workshopCards.filter((c) => c.category === "live");
 
 export default function WorkshopPage() {
   const [showModels, setShowModels] = useState(false);
+  const [showExperience, setShowExperience] = useState(false);
   const [galleryRevealed, setGalleryRevealed] = useState(false);
   const galleryRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +35,11 @@ export default function WorkshopPage() {
   // Trigger cinematic gallery reveal after intro
   useEffect(() => {
     const timer = setTimeout(() => setGalleryRevealed(true), 150);
-    return () => clearTimeout(timer);
+    const experienceTimer = setTimeout(() => setShowExperience(true), 600);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(experienceTimer);
+    };
   }, []);
 
   return (
@@ -45,7 +50,7 @@ export default function WorkshopPage() {
 
       {/* BACKGROUND — outside IntroController to match detail page */}
       <div style={{ position: "fixed", inset: 0, zIndex: -10 }}>
-        <TimeFallScene />
+        <TimeFallScene enabled={galleryRevealed} />
       </div>
 
       <IntroController>
@@ -164,9 +169,11 @@ export default function WorkshopPage() {
       </div>
 
       {/* 3D Models — fixed overlay */}
-      <div style={{ opacity: showModels ? 1 : 0, transition: "opacity 0.6s ease" }}>
-        <Experience />
-      </div>
+      {showModels && showExperience && (
+        <div style={{ opacity: 1, transition: "opacity 0.6s ease" }}>
+          <Experience />
+        </div>
+      )}
 
       {/* ── Pre-Conscientia Workshops ─────────────────────────── */}
       <div style={{ position: "relative", zIndex: 10 }}>

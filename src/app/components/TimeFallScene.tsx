@@ -1,10 +1,9 @@
 import { useRef, useCallback, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import ParticleField from './ParticleField';
-import TimeStreaks from './TimeStreaks';
 import CameraRig from './CameraRig';
 
-export default function TimeFallScene({ wide }: { wide?: boolean }) {
+export default function TimeFallScene({ wide, enabled = true }: { wide?: boolean; enabled?: boolean }) {
   const mouse = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -32,6 +31,24 @@ export default function TimeFallScene({ wide }: { wide?: boolean }) {
     };
   }, [handleMouseMove, handleTouchMove]);
 
+  if (!enabled) {
+    return (
+      <div
+        ref={containerRef}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: wide ? '-5vw' : 0,
+          width: wide ? '110vw' : '100vw',
+          height: '100vh',
+          background: '#000000',
+          zIndex: 1,
+          overflow: 'hidden',
+        }}
+      />
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -46,10 +63,14 @@ export default function TimeFallScene({ wide }: { wide?: boolean }) {
         overflow: 'hidden',
       }}
     >
-      <Canvas camera={{ position: [0, 0, 1], fov: 60 }}>
-    <CameraRig mouse={mouse} />
-    <ParticleField count={20000} mouse={mouse} />
-</Canvas>
+      <Canvas
+        camera={{ position: [0, 0, 1], fov: 60 }}
+        dpr={typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 1.5) : 1}
+        gl={{ antialias: false, powerPreference: 'high-performance' }}
+      >
+        <CameraRig mouse={mouse} />
+        <ParticleField count={4000} mouse={mouse} />
+      </Canvas>
     </div>
   );
 }
