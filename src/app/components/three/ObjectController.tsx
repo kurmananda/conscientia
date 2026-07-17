@@ -108,6 +108,9 @@ export default function ObjectController({
 }: ObjectControllerProps) {
   const tilt = useRef({ x: 0, y: 0 });
   const active = useSceneActive();
+  const mobileScale = useRef(
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 0.55 : 1
+  );
 
   const smoothedFrames = useRef<ObjectKeyframe[]>(
     ENGINE_CONFIG.objects.map((o) => ({ ...o.entryFrame }))
@@ -168,7 +171,7 @@ export default function ObjectController({
 
       const f = smoothedFrames.current[i]!;
       group.position.set(f.position[0], f.position[1], f.position[2]);
-      group.scale.setScalar(Math.max(0.001, f.scale));
+      group.scale.setScalar(Math.max(0.001, f.scale * mobileScale.current));
       applyGroupOpacity(group, f.opacity);
     }
 
