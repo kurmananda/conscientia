@@ -77,6 +77,12 @@ export default function WorkshopPage() {
     <>
       <style>{`
         @keyframes homeBtnSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+          [data-workshop-section] {
+            min-height: 10vh !important;
+          }
+        }
       `}</style>
 
       {/* BACKGROUND — outside IntroController to match detail page */}
@@ -85,6 +91,8 @@ export default function WorkshopPage() {
       </div>
 
       <IntroController>
+
+      <div style={{ overflowX: "hidden", width: "100%" }}>
 
       {/* ── Back to Home Button ───────────────────────────────── */}
       <div style={{ position: "fixed", bottom: "1.5rem", left: "1.5rem", zIndex: 50, perspective: "600px" }}>
@@ -220,7 +228,7 @@ export default function WorkshopPage() {
           glowColor="rgba(51,214,255,0.5)"
           style={{ marginTop: "5vh" }}
         >
-          <div style={{ position: "relative", minHeight: "300vh" }} />
+          <div data-workshop-section style={{ position: "relative", minHeight: "300vh" }} />
         </CategoryBox>
       </div>
 
@@ -232,15 +240,16 @@ export default function WorkshopPage() {
           glowColor="rgba(168,85,247,0.5)"
           style={{ marginTop: "5vh" }}
         >
-          <div style={{ position: "relative", minHeight: "180vh" }} />
+          <div data-workshop-section style={{ position: "relative", minHeight: "180vh" }} />
         </CategoryBox>
       </div>
 
       {/* ── All Cards — topmost layer ─────────────────────────── */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 30, pointerEvents: "none" }}>
+      <div data-workshop-cards style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 30, pointerEvents: "none" }}>
         {preCards.map((card, index) => (
           <div
             key={card.id}
+            data-workshop-card="true"
             style={{
               position: "absolute",
               top: card.layout?.top || "0",
@@ -257,6 +266,7 @@ export default function WorkshopPage() {
         {liveCards.map((card, index) => (
           <div
             key={card.id}
+            data-workshop-card="true"
             style={{
               position: "absolute",
               top: card.layout?.top || "0",
@@ -270,6 +280,7 @@ export default function WorkshopPage() {
             <CardWrapper card={card} index={index + preCards.length} />
           </div>
         ))}
+      </div>
       </div>
     </IntroController>
     </>

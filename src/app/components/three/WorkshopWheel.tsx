@@ -491,6 +491,11 @@ export default function WorkshopWheel({ items: propItems }: { items?: WheelItem[
           70% { box-shadow: 0 0 0 10px transparent; }
           100% { box-shadow: 0 0 0 0 transparent; }
         }
+        @media (max-width: 768px) {
+          [data-wheel-container] {
+            height: 43vh !important;
+          }
+        }
         .glitch-active {
           animation: glitch-slice 0.25s ease forwards;
         }
@@ -510,6 +515,7 @@ export default function WorkshopWheel({ items: propItems }: { items?: WheelItem[
 
       <div
         ref={wheelRef}
+        data-wheel-container="true"
         style={{
           position: "relative",
           width: "100%",
@@ -684,8 +690,8 @@ export default function WorkshopWheel({ items: propItems }: { items?: WheelItem[
           style={{
             position: "absolute",
             bottom: "7rem",
-            left: "85%",
-            transform: "translateX(-50%)",
+            right: "1rem",
+            transform: "none",
             zIndex: 10,
             display: "flex",
             gap: "14px",

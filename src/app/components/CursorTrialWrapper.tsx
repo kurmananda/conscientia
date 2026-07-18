@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import TrialCursor from "./TrialCursor";
 
 /* ── Colour palette ─────────────────────────────────────────── */
@@ -31,6 +31,12 @@ export default function CursorTrialWrapper() {
   const ringRef = useRef<HTMLDivElement>(null);
   const handRef = useRef<HTMLDivElement>(null);
   const minHandRef = useRef<HTMLDivElement>(null);
+
+  const [isTouch] = useState(
+    () => typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  );
+
+  if (isTouch) return null;
 
   // All positions and velocities live here
   const state = useRef({

@@ -23,7 +23,7 @@ export const workshopCards: CardData[] = [
     layout: {
       top: "130vh",
       left: "43%",
-      width: "500px",
+      width: "clamp(270px, 72vw, 500px)",
     },
   },
   {
@@ -47,7 +47,7 @@ export const workshopCards: CardData[] = [
     layout: {
       top: "175vh",
       right: "10%",
-      width: "450px",
+      width: "clamp(270px, 72vw, 450px)",
     },
   },
   {
@@ -71,7 +71,7 @@ export const workshopCards: CardData[] = [
     layout: {
       top: "220vh",
       left: "35%",
-      width: "480px",
+      width: "clamp(270px, 72vw, 480px)",
     },
   },
   {
@@ -95,7 +95,7 @@ export const workshopCards: CardData[] = [
     layout: {
       top: "265vh",
       right: "45%",
-      width: "520px",
+      width: "clamp(270px, 72vw, 520px)",
     },
   },
   {
@@ -119,7 +119,7 @@ export const workshopCards: CardData[] = [
     layout: {
       top: "310vh",
       left: "10%",
-      width: "460px",
+      width: "clamp(270px, 72vw, 460px)",
     },
   },
   {
@@ -143,7 +143,7 @@ export const workshopCards: CardData[] = [
     layout: {
       top: "352.5vh",
       right: "50%",
-      width: "470px",
+      width: "clamp(270px, 72vw, 470px)",
     },
   },
   {
@@ -167,7 +167,7 @@ export const workshopCards: CardData[] = [
     layout: {
       top: "395vh",
       left: "30%",
-      width: "480px",
+      width: "clamp(270px, 72vw, 480px)",
     },
   },
 
@@ -193,7 +193,7 @@ export const workshopCards: CardData[] = [
     layout: {
       top: "470vh",
       right: "20%",
-      width: "490px",
+      width: "clamp(270px, 72vw, 490px)",
     },
   },
   {
@@ -217,7 +217,7 @@ export const workshopCards: CardData[] = [
     layout: {
       top: "520vh",
       left: "55%",
-      width: "470px",
+      width: "clamp(270px, 72vw, 470px)",
     },
   },
   {
@@ -241,7 +241,7 @@ export const workshopCards: CardData[] = [
     layout: {
       top: "570vh",
       right: "10%",
-      width: "510px",
+      width: "clamp(270px, 72vw, 510px)",
     },
   },
   {
@@ -265,7 +265,7 @@ export const workshopCards: CardData[] = [
     layout: {
       top: "615vh",
       left: "45%",
-      width: "480px",
+      width: "clamp(270px, 72vw, 480px)",
     },
   },
 ];

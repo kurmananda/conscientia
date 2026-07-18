@@ -113,6 +113,7 @@ function CinematicBox({
     <div ref={ref}>
       <div
         ref={boxRef}
+        className="cinematic-box"
         onMouseEnter={() => { playGlass(); setHovered(true); }}
         onMouseLeave={() => setHovered(false)}
         style={{
@@ -489,7 +490,9 @@ export default function WorkshopDetailPage() {
         </div>
 
         {/* ── Two Column Layout ────────────────────────────── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "2rem", alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "2rem", alignItems: "start" }}
+          className="workshop-detail-grid"
+        >
           {/* Left Column */}
           <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
             {/* Image */}
@@ -760,6 +763,16 @@ export default function WorkshopDetailPage() {
           0% { background-position: 0% 0%; }
           50% { background-position: 100% 100%; }
           100% { background-position: 0% 0%; }
+        }
+        @media (min-width: 768px) {
+          .workshop-detail-grid {
+            grid-template-columns: 1fr 340px !important;
+          }
+        }
+        @media (max-width: 767px) {
+          .cinematic-box {
+            padding: 1.25rem !important;
+          }
         }
       `}</style>
     </div>
