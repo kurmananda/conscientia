@@ -4,6 +4,8 @@ import Footer from "./components/Footer";
 import CursorTrialWrapper from "./components/CursorTrialWrapper";
 import SiteAmbientMusic from "./components/SiteAmbientMusic";
 import ProfileCompletionModal from "./components/ProfileCompletionModal";
+import NetworkStatusToast from "./components/NetworkStatusToast";
+import FetchTracker from "./components/FetchTracker";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import "./globals.css";
@@ -53,6 +55,8 @@ export default function RootLayout({ children }) {
             <SiteAmbientMusic />
             <CursorTrialWrapper />
             <ProfileCompletionModal />
+            <NetworkStatusToast />
+            <FetchTracker />
             <Navbar />
             <div className="h-[10vh] shrink-0 bg-transparent" aria-hidden />
             <main className="relative min-h-0">{children}</main>

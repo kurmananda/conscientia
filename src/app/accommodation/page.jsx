@@ -1,6 +1,7 @@
 import SimplePageShell from '../components/SimplePageShell';
 import { SiGooglemaps } from "react-icons/si";
 import MerchSection from './MerchSection';
+import AccommodationBooking from './AccommodationBooking';
 
 export const metadata = {
   title: 'Merch & Accommodation | Conscientia IIST',
@@ -55,42 +56,41 @@ export default function AccommodationPage() {
       <div className="mx-auto max-w-4xl px-5 pb-16 pt-8 text-slate-100">
         <MerchSection />
 
-        <p className="mb-2 font-mono text-xs uppercase tracking-widest text-teal-400">
+        <p className="section-eyebrow mb-2">
           Accommodation
         </p>
-        <p className="mb-6 max-w-[60ch] rounded-lg border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-xs text-amber-200/80">
-          Online accommodation booking is coming soon. The details below are informational for now — check back closer to the event to reserve a bed.
-        </p>
         <p className="mb-10 max-w-[60ch] text-base leading-relaxed text-slate-400">
-          Conscientia runs across 3 days, and every participant, speaker, needs somewhere to land in between. Accommodation is arranged in hostel blocks on the IIST campus, a walk away from all event venues — included with your registration.
+          Conscientia runs across 3 days, and every participant, speaker, needs somewhere to land in between. Accommodation is arranged in hostel blocks on the IIST campus, a walk away from all event venues.
         </p>
 
-        <dl className="mb-12 grid grid-cols-1 gap-4 border-y border-slate-800 py-5 sm:grid-cols-3">
+        <AccommodationBooking />
+
+        <dl className="mb-12 grid grid-cols-1 gap-4 border-y border-white/[0.08] py-5 sm:grid-cols-3">
           <div>
-            <dt className="mb-1 font-mono text-xs uppercase tracking-widest text-teal-400">Dates</dt>
+            <dt className="section-eyebrow mb-1">Dates</dt>
             <dd className="text-sm">October 30,October 31,November 1  </dd>
           </div>
           <div>
-            <dt className="mb-1 font-mono text-xs uppercase tracking-widest text-teal-400">Eligibility</dt>
+            <dt className="section-eyebrow mb-1">Eligibility</dt>
             <dd className="text-sm">Confirmed registrants only</dd>
           </div>
           <div>
-            <dt className="mb-1 font-mono text-xs uppercase tracking-widest text-teal-400">Cost</dt>
+            <dt className="section-eyebrow mb-1">Cost</dt>
             <dd className="text-sm">Included with registration</dd>
           </div>
         </dl>
 
         <section className="mb-12">
-          <h2 className="mb-5 font-mono text-xs uppercase tracking-widest text-teal-400">
+          <h2 className="section-eyebrow mb-5">
             Where you&apos;ll stay
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {stays.map((s) => (
               <article
                 key={s.name}
-                className="rounded-xl border border-slate-800 bg-slate-900/60 p-5"
+                className="glass-card rounded-xl p-5"
               >
-                <span className="font-mono text-[0.65rem] uppercase tracking-wider text-fuch-400">
+                <span className="font-mono text-[0.65rem] uppercase tracking-wider text-cyan-400/80">
                   {s.tag}
                 </span>
                 <h3 className="mt-2 text-lg font-semibold">{s.name}</h3>
@@ -100,17 +100,17 @@ export default function AccommodationPage() {
           </div>
         </section>
 
-        
+
 
         <section className="mb-12">
-          <h2 className="mb-5 font-mono text-xs uppercase tracking-widest text-teal-400">
+          <h2 className="section-eyebrow mb-5">
             What&apos;s provided
           </h2>
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {facilities.map((f) => (
               <li
                 key={f.label}
-                className="rounded-lg border border-slate-800 px-4 py-3"
+                className="glass-card rounded-lg px-4 py-3"
               >
                 <p className="text-sm font-semibold">{f.label}</p>
                 <p className="mt-1 text-xs text-slate-400">{f.detail}</p>
@@ -120,12 +120,12 @@ export default function AccommodationPage() {
         </section>
 
         <section className="mb-12">
-          <h2 className="mb-5 font-mono text-xs uppercase tracking-widest text-teal-400">
+          <h2 className="section-eyebrow mb-5">
             Frequently asked
           </h2>
           <div>
             {faqs.map((f) => (
-              <details key={f.q} className="border-b border-slate-800 py-4">
+              <details key={f.q} className="border-b border-white/[0.08] py-4">
                 <summary className="cursor-pointer font-semibold outline-offset-4">
                   {f.q}
                 </summary>
@@ -136,7 +136,7 @@ export default function AccommodationPage() {
         </section>
 
 <section className="mb-12">
-  <h2 className="mb-5 font-mono text-xs uppercase tracking-widest text-teal-400">
+  <h2 className="section-eyebrow mb-5">
     Find your way
   </h2>
   <h1 className='text-2xl flex items-center'>Closest to Accommodation:  <SiGooglemaps/><a className="text-[#6E2E63] font-bold underline flex items-center" href="https://maps.app.goo.gl/K85EHuA8wq6HsNpK8">IIST Backgate</a></h1>

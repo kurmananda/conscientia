@@ -14,22 +14,26 @@ export default function usePaymentReminder() {
 
   const missingMerch = !items.some((i) => i.kind === "merch");
   const missingAccommodation = !items.some((i) => i.kind === "accommodation");
+  // Only nudge about food if the user has accommodation in the cart —
+  // food add-ons are meant to go alongside a stay, not standalone.
+  const missingFood = !missingAccommodation && !items.some((i) => i.kind === "food");
 
   const guard = useCallback(
     (proceed) => {
-      if (missingMerch || missingAccommodation) {
+      if (missingMerch || missingAccommodation || missingFood) {
         setPendingProceed(() => proceed);
       } else {
         proceed();
       }
     },
-    [missingMerch, missingAccommodation]
+    [missingMerch, missingAccommodation, missingFood]
   );
 
   const modalProps = {
     open: !!pendingProceed,
     missingMerch,
     missingAccommodation,
+    missingFood,
     onContinue: () => {
       const proceed = pendingProceed;
       setPendingProceed(null);

@@ -60,9 +60,9 @@ const Nav = () => {
   return (
     <>
       {/* --- Sleek Floating Navbar (Glassmorphism, No Border) --- */}
-      <nav className={`fixed top-2 sm:top-4 left-1/2 -translate-x-1/2 w-[94%] sm:w-[95%] max-w-[1400px] z-[100] transition-all duration-700 rounded-2xl sm:rounded-3xl flex items-center justify-between px-3 sm:px-6 md:px-10 border border-transparent ${
+      <nav className={`fixed top-2 sm:top-4 left-1/2 -translate-x-1/2 w-[94%] sm:w-[95%] max-w-[100vw] z-[100] transition-all duration-700 rounded-2xl sm:rounded-3xl flex items-center justify-between px-3 sm:px-6 md:px-10 border border-transparent ${
         scrolled
-          ? "h-12 sm:h-16 border-white/[0.06] bg-black/55 backdrop-blur-2xl shadow-[0_20px_80px_rgba(0,0,0,0.45)]"
+          ? "h-12 sm:h-16 border-cyan-400/[0.08] bg-black/55 backdrop-blur-2xl shadow-[0_20px_80px_rgba(0,0,0,0.45)]"
           : "h-14 sm:h-20 md:h-24 bg-black/20 backdrop-blur-md border-white/[0.04]"
       }`}>
         <motion.div

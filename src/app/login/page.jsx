@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -20,18 +20,44 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/profile';
 
+  const [mode, setMode] = useState('login'); // 'login' | 'create'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const checkTimer = useRef(null);
+
+  const handleEmailBlur = () => {
+    const trimmed = email.trim();
+    if (!trimmed || !trimmed.includes('@')) return;
+    if (checkTimer.current) clearTimeout(checkTimer.current);
+    checkTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/auth/check-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: trimmed }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!data.exists) setMode('create');
+      } catch {
+        // Silently ignore — the debounced check is a UX nicety, not required.
+      }
+    }, 400);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (mode === 'create' && password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
     setBusy(true);
-
     const result = await authenticate(email.trim(), password);
-
     setBusy(false);
 
     if (result.error) {
@@ -58,7 +84,7 @@ function LoginForm() {
         <motion.p
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="font-mono text-[10px] uppercase tracking-[0.45em] text-cyan-400/90 mb-4"
+          className="section-eyebrow mb-4"
         >
           Conscientia 2026
         </motion.p>
@@ -66,20 +92,38 @@ function LoginForm() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="font-syncopate text-3xl md:text-5xl font-bold uppercase tracking-tighter leading-[0.95] mb-3"
+          className="section-heading text-3xl md:text-5xl mb-3"
         >
-          Sign In
+          {mode === 'login' ? 'Sign In' : 'Create Profile'}
         </motion.h1>
-        <p className="text-white/40 text-xs mb-8">
-          New here? Just enter an email and password — we'll create your account automatically.
+        <p className="text-white/40 text-xs mb-6">
+          New here? Just enter an email and password — we&apos;ll create your account automatically.
         </p>
+
+        <div className="mb-6 inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1">
+          {[
+            ['login', 'Login'],
+            ['create', 'Create Profile'],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setMode(key)}
+              className={`rounded-full px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${
+                mode === key ? 'bg-cyan-400 text-black' : 'text-white/50 hover:text-white'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         <motion.form
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm"
+          className="glass-card space-y-4 rounded-2xl p-6"
         >
           <div>
             <label className="mb-1.5 block text-[10px] uppercase tracking-[0.2em] text-white/40">
@@ -90,6 +134,7 @@ function LoginForm() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={handleEmailBlur}
               className="w-full rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500/60"
               placeholder="you@example.com"
             />
@@ -109,17 +154,30 @@ function LoginForm() {
             />
           </div>
 
+          {mode === 'create' && (
+            <div>
+              <label className="mb-1.5 block text-[10px] uppercase tracking-[0.2em] text-white/40">
+                Confirm Password
+              </label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500/60"
+                placeholder="••••••••"
+              />
+            </div>
+          )}
+
           {error && (
             <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
               {error}
             </p>
           )}
 
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full rounded-full bg-cyan-400 px-6 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-black transition-colors hover:bg-white disabled:opacity-50"
-          >
+          <button type="submit" disabled={busy} className="btn-primary w-full">
             {busy ? 'Please wait…' : 'Continue'}
           </button>
         </motion.form>

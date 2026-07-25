@@ -218,11 +218,11 @@ export default function Home() {
           </motion.p>
 
           <motion.div initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ delay: 1.2, duration: 1 }} className="pt-12 flex flex-col items-center gap-6">
-            <button onClick={() => { location.href = "/workshop" }} className="group flex flex-col items-center gap-6 cursor-pointer bg-transparent border-none appearance-none">
+            <button onClick={() => { location.href = "/events" }} className="group flex flex-col items-center gap-6 cursor-pointer bg-transparent border-none appearance-none">
               <div className="h-16 w-[1px] bg-cyan-500 group-hover:h-24 group-hover:bg-white transition-all duration-200 relative">
                 <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-cyan-400 rounded-full blur-[2px]" />
               </div>
-              <span className="font-syncopate text-[9px] tracking-[0.5em] text-white/40 group-hover:text-cyan-400 transition-colors uppercase">Register for a Workshop</span>
+              <span className="font-syncopate text-[9px] tracking-[0.5em] text-white/40 group-hover:text-cyan-400 transition-colors uppercase">Register for an event</span>
             </button>
           </motion.div>
         </div>
@@ -238,8 +238,8 @@ export default function Home() {
           className="max-w-4xl mx-auto"
         >
           <Link
-            href="/workshop"
-            className="group relative flex flex-col sm:flex-row items-center gap-6 sm:gap-8 overflow-hidden rounded-[2rem] border border-cyan-500/25 bg-[#0A0A0A]/80 backdrop-blur-xl p-5 sm:p-6 hover:border-cyan-400/50 hover:shadow-[0_0_50px_rgba(6,182,212,0.2)] transition-all duration-500"
+            href="/accommodation"
+            className="glass-card group relative flex flex-col sm:flex-row items-center gap-6 sm:gap-8 overflow-hidden rounded-[2rem] border-cyan-500/25 p-5 sm:p-6 hover:border-cyan-400/50 transition-all duration-500"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-transparent to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
             <div className="relative flex gap-2 shrink-0">
@@ -295,8 +295,8 @@ export default function Home() {
         <div className="container mx-auto px-6 md:px-20 relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-12">
             <motion.div initial={{ x: -80, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} viewport={{ once: true }} transition={expoTransition} className="space-y-4">
-              <span className="font-mono text-[10px] text-purple-500 tracking-[0.6em] uppercase font-black">// LIVE TRANSMISSIONS</span>
-              <h2 className="font-syncopate text-4xl md:text-6xl tracking-tighter uppercase leading-none">Flagship<br /><span className="text-white/50 italic">Events</span></h2>
+              <span className="section-eyebrow" style={{ color: 'var(--purple-bright)' }}>Live Transmissions</span>
+              <h2 className="section-heading text-4xl md:text-6xl">Flagship<br /><span className="text-white/50 italic">Events</span></h2>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }}>
@@ -358,7 +358,7 @@ export default function Home() {
                   onMouseLeave={() => setHoveredEventIndex(null)}
                   onClick={() => setSelectedEvent(ev)}
                   whileHover={{ scale: 1.02, rotateX: -5, rotateY: -5 }}
-                  className="group relative h-[150px] cursor-pointer bg-[#0A0A0A]/60 border border-white/5 rounded-3xl p-6 flex flex-col justify-between overflow-hidden backdrop-blur-xl hover:border-purple-500 hover:shadow-[0_0_30px_rgba(168,85,247,0.15)] transition-all"
+                  className="glass-card group relative h-[150px] cursor-pointer rounded-3xl p-6 flex flex-col justify-between overflow-hidden hover:border-purple-500/50 transition-all"
                 >
                   <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-purple-400/10 to-transparent group-hover:translate-x-full transition-transform duration-700 ease-out" />
                   <div className="flex justify-between items-start">
@@ -403,8 +403,8 @@ export default function Home() {
         <div className="container mx-auto px-6 md:px-20 relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-12">
             <motion.div initial={{ x: -80, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} viewport={{ once: true }} transition={expoTransition} className="space-y-4">
-              <span className="font-mono text-[10px] text-cyan-500 tracking-[0.6em] uppercase font-black">// CLASSIFIED MODULES</span>
-              <h2 className="font-syncopate text-4xl md:text-6xl tracking-tighter uppercase leading-none">Workshop<br /><span className="text-white/50 italic">Cartel</span></h2>
+              <span className="section-eyebrow">Classified Modules</span>
+              <h2 className="section-heading text-4xl md:text-6xl">Workshop<br /><span className="text-white/50 italic">Cartel</span></h2>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }}>
@@ -436,7 +436,7 @@ export default function Home() {
                     onMouseLeave={() => setHoveredIndex(null)}
                     onClick={() => { setSelectedWorkshop(w) }}
                     whileHover={{ scale: 1.02, rotateX: -5, rotateY: 5 }}
-                    className={`group relative h-[150px] cursor-pointer bg-[#0A0A0A]/60 border ${isFeatured ? 'border-cyan-500/30' : 'border-white/5'} rounded-3xl p-6 flex flex-col justify-between overflow-hidden backdrop-blur-xl hover:border-cyan-500 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)] transition-all`}
+                    className={`glass-card group relative h-[150px] cursor-pointer ${isFeatured ? 'border-cyan-500/30' : ''} rounded-3xl p-6 flex flex-col justify-between overflow-hidden hover:border-cyan-500/50 transition-all`}
                   >
                     <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-cyan-400/10 to-transparent group-hover:translate-x-full transition-transform duration-700 ease-out" />
                     <div className="flex justify-between items-start">
@@ -617,10 +617,10 @@ export default function Home() {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave} >
         <div className="container mx-auto px-6 text-center mb-20">
-          <span className="font-mono text-[10px] text-cyan-500 tracking-[1em] uppercase block mb-4">
+          <span className="section-eyebrow justify-center mb-4">
             Visual Archives
           </span>
-          <h2 className="font-syncopate text-4xl md:text-6xl tracking-tighter uppercase leading-none">
+          <h2 className="section-heading text-4xl md:text-6xl">
             <span className="text-white/50 italic">Time Fall</span> 2026
           </h2>
         </div>
@@ -682,7 +682,7 @@ export default function Home() {
           <motion.div initial={{ opacity: 0, x: -60 }} whileInView={{ opacity: 1, x: 0 }} transition={expoTransition} className="flex-1 space-y-14">
             <div className="space-y-6">
               <div className="w-12 h-[2px] bg-cyan-500" />
-              <h2 className="font-syncopate text-4xl md:text-6xl tracking-tighter leading-tight uppercase font-black">India's Space <br /><span className="text-cyan-500">Incubator</span></h2>
+              <h2 className="section-heading text-4xl md:text-6xl font-black">India's Space <br /><span className="text-cyan-500">Incubator</span></h2>
             </div>
             <div className="space-y-6 text-white/40 font-light leading-relaxed text-lg md:text-xl max-w-xl">
               <p>The Indian Institute of Space Science and Technology (IIST) is India’s premier incubator for future leaders in space science, technology, and engineering.</p>

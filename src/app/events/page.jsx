@@ -185,13 +185,9 @@ export default function EventsPage() {
             }}
           >
             <div
+              className="section-eyebrow"
               style={{
-                display: "inline-block",
-                fontSize: "0.75rem",
-                fontWeight: 700,
-                letterSpacing: "0.35em",
-                textTransform: "uppercase",
-                color: "#33d6ff",
+                display: "inline-flex",
                 marginBottom: "1rem",
               }}
             >

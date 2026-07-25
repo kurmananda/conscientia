@@ -39,6 +39,7 @@ export const workshopCards = [
     format: "In-Person",
     certificate: "Included",
     tags: ["Rocketry", "Hands-on", "IIST", "Workshop"],
+    brochureUrl: "",
     price: "₹2,499",
     layout: {
       top: "130vh",
@@ -82,6 +83,7 @@ export const workshopCards = [
     format: "In-Person + Online",
     certificate: "Included",
     tags: ["AI", "Python", "Deep Learning", "GPU"],
+    brochureUrl: "",
     price: "₹3,999",
     layout: {
       top: "175vh",
@@ -125,6 +127,7 @@ export const workshopCards = [
     format: "In-Person",
     certificate: "Included",
     tags: ["CyberSec", "CTF", "Ethical Hacking", "Linux"],
+    brochureUrl: "",
     price: "₹3,499",
     layout: {
       top: "220vh",
@@ -168,6 +171,7 @@ export const workshopCards = [
     format: "In-Person",
     certificate: "Included",
     tags: ["Robotics", "Arduino", "ROS", "Mechatronics"],
+    brochureUrl: "",
     price: "₹4,499",
     layout: {
       top: "265vh",
@@ -211,6 +215,7 @@ export const workshopCards = [
     format: "In-Person + Online",
     certificate: "Included",
     tags: ["Quantum", "Qiskit", "Physics", "Research"],
+    brochureUrl: "",
     price: "₹5,999",
     layout: {
       top: "310vh",
@@ -254,6 +259,7 @@ export const workshopCards = [
     format: "In-Person + Online",
     certificate: "Included",
     tags: ["Data Science", "Python", "SQL", "Analytics"],
+    brochureUrl: "",
     price: "₹3,199",
     layout: {
       top: "352.5vh",
@@ -297,6 +303,7 @@ export const workshopCards = [
     format: "In-Person + Online",
     certificate: "Included",
     tags: ["Cloud", "AWS", "Docker", "Kubernetes"],
+    brochureUrl: "",
     price: "₹3,699",
     layout: {
       top: "395vh",
@@ -342,6 +349,7 @@ export const workshopCards = [
     format: "In-Person",
     certificate: "Included",
     tags: ["Aerospace", "CFD", "CAD", "Simulation"],
+    brochureUrl: "",
     price: "₹3,799",
     layout: {
       top: "470vh",
@@ -385,6 +393,7 @@ export const workshopCards = [
     format: "In-Person + Online",
     certificate: "Included",
     tags: ["Blockchain", "Solidity", "Web3", "Crypto"],
+    brochureUrl: "",
     price: "₹3,299",
     layout: {
       top: "520vh",
@@ -428,6 +437,7 @@ export const workshopCards = [
     format: "In-Person",
     certificate: "Included",
     tags: ["IoT", "Arduino", "Sensors", "Edge"],
+    brochureUrl: "",
     price: "₹2,999",
     layout: {
       top: "570vh",
@@ -471,6 +481,7 @@ export const workshopCards = [
     format: "In-Person + Online",
     certificate: "Included",
     tags: ["Biotech", "Genomics", "Python", "Research"],
+    brochureUrl: "",
     price: "₹4,799",
     layout: {
       top: "615vh",

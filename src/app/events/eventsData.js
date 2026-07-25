@@ -38,6 +38,7 @@ export const eventCards = [
     format: "In-Person",
     certificate: "Participation certificate for all entrants",
     tags: ["Competition", "DSA", "Leaderboard"],
+    brochureUrl: "",
     price: "Free Entry",
     layout: {
       top: "130vh",
@@ -53,7 +54,7 @@ export const eventCards = [
     section: "Competitions",
     sectionColor: "#33d6ff",
     Duration: 1,
-    Seats: 150,
+    Seats: 0,
     Level: 3,
     image: "/tiles/tile-02.jpg",
     accentColor: "#f59e0b",
@@ -80,6 +81,7 @@ export const eventCards = [
     format: "In-Person",
     certificate: "Participation certificate for all entrants",
     tags: ["Hackathon", "Teams", "Build"],
+    brochureUrl: "",
     price: "Free Entry",
     layout: {
       top: "175vh",
@@ -122,6 +124,7 @@ export const eventCards = [
     format: "In-Person",
     certificate: "Participation certificate for all entrants",
     tags: ["Robotics", "Combat", "Elimination"],
+    brochureUrl: "",
     price: "₹999",
     layout: {
       top: "220vh",
@@ -166,6 +169,7 @@ export const eventCards = [
     format: "In-Person",
     certificate: "Attendance certificate on request",
     tags: ["Talks", "Keynote", "Panel"],
+    brochureUrl: "",
     price: "Free Entry",
     layout: {
       top: "265vh",
@@ -208,6 +212,7 @@ export const eventCards = [
     format: "In-Person",
     certificate: "Participation certificate for all exhibitors",
     tags: ["Exhibition", "Research", "Demo"],
+    brochureUrl: "",
     price: "Free Entry",
     layout: {
       top: "310vh",
@@ -250,6 +255,7 @@ export const eventCards = [
     format: "In-Person",
     certificate: "Not applicable",
     tags: ["Cultural", "Music", "Dance"],
+    brochureUrl: "",
     price: "Free Entry",
     layout: {
       top: "352.5vh",

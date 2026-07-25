@@ -14,7 +14,9 @@ import usePaymentReminder from "@/app/hooks/usePaymentReminder";
 import PrePaymentReminderModal from "@/app/components/PrePaymentReminderModal";
 import useIsTouch from "@/app/hooks/useIsTouch";
 import { ticketIdForCatalogItem } from "@/lib/ticketCatalog";
+import useCapacity from "@/app/hooks/useCapacity";
 import { startTiqrCheckout } from "@/lib/checkout";
+import { parsePriceLabel } from "@/lib/parsePriceLabel";
 
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
@@ -124,7 +126,7 @@ function CinematicBox({
     <div ref={ref}>
       <div
         ref={boxRef}
-        className="cinematic-box"
+        className="cinematic-box hover-anim"
         onMouseEnter={() => { playGlass(); setHovered(true); }}
         onMouseLeave={() => setHovered(false)}
         style={{
@@ -147,16 +149,15 @@ function CinematicBox({
           willChange: "transform, opacity",
           background: `linear-gradient(135deg, ${accentColor}25 0%, rgba(0,0,0,0.88) 50%, ${accentColor}18 100%)`,
           backgroundSize: "200% 200%",
-          animation: visible && !isTouch ? "boxGradientShift 4s ease-in-out infinite alternate" : "none",
+          animation: visible ? "boxGradientShift 4s ease-in-out infinite alternate" : "none",
           border: `1px solid ${hovered ? accentColor + "99" : accentColor + "55"}`,
           boxShadow: hovered
             ? `0 20px 60px ${accentColor}40, 0 0 40px ${accentColor}20, inset 0 1px 0 rgba(255,255,255,0.1)`
             : `0 4px 20px ${accentColor}15`,
         }}
       >
-        {/* Animated border, mouse spotlight/glow — desktop hover-only, skipped on touch */}
-        {!isTouch && (
-          <>
+        {/* Animated border, mouse spotlight/glow — desktop hover-only, hidden on touch via CSS */}
+        <div className="hover-fx">
             <div
               style={{
                 position: "absolute",
@@ -211,8 +212,7 @@ function CinematicBox({
                 borderRadius: "24px",
               }}
             />
-          </>
-        )}
+        </div>
 
         {/* Grid */}
         <div
@@ -240,20 +240,22 @@ function CinematicBox({
 
         {/* Pulse glow */}
         <div
+          className="hover-anim"
           style={{
             position: "absolute",
             inset: 0,
             borderRadius: "24px",
             boxShadow: `inset 0 0 60px ${accentColor}0a, inset 0 0 120px ${accentColor}06`,
-            animation: visible && !isTouch ? "boxPulse 4s ease-in-out infinite alternate" : "none",
+            animation: visible ? "boxPulse 4s ease-in-out infinite alternate" : "none",
             pointerEvents: "none",
           }}
         />
 
-        {/* Floating particles — desktop ambience only */}
-        {visible && !isTouch && Array.from({ length: 8 }).map((_, i) => (
+        {/* Floating particles — desktop ambience only, hidden on touch via CSS */}
+        {visible && Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
+            className="hover-fx"
             style={{
               position: "absolute",
               width: `${1 + (i % 3)}px`,
@@ -343,6 +345,29 @@ export default function EventDetailPage() {
   const { guard, modalProps } = usePaymentReminder();
   const [registering, setRegistering] = useState(false);
   const [registerError, setRegisterError] = useState("");
+  const [paidWorkshopIds, setPaidWorkshopIds] = useState([]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setPaidWorkshopIds([]);
+      return;
+    }
+    fetch(`/api/get-registrations?user_id=${encodeURIComponent(user.id)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        const reg = json?.data;
+        if (reg?.payment_status === "paid" && Array.isArray(reg.workshop_ids)) {
+          setPaidWorkshopIds(reg.workshop_ids);
+        } else {
+          setPaidWorkshopIds([]);
+        }
+      })
+      .catch(() => setPaidWorkshopIds([]));
+  }, [user?.id]);
+
+  const isRegistered = card ? paidWorkshopIds.includes(card.id) : false;
+  const { remaining } = useCapacity();
+  const isClosed = !isRegistered && remaining(card) <= 0;
 
   const playGlitch = useSound("/sounds/glitch.wav", 0.2, 0.15);
   const playClick = useSound("/sounds/click.wav", 0.25, 0.08);
@@ -358,19 +383,20 @@ export default function EventDetailPage() {
     title: card.title,
     subtitle: card.subtitle,
     priceLabel: card.price,
+    unitPrice: parsePriceLabel(card.price),
     image: card.image,
     accentColor: card.accentColor,
   });
 
   const handleAddToCart = () => {
-    if (!card || inCart) return;
+    if (!card || inCart || isClosed) return;
     playGlitch();
     addItem(toCartItem());
   };
 
   const handleRegisterNow = () => {
     playClick();
-    if (!card) return;
+    if (!card || isClosed) return;
     if (!user) {
       router.push(`/login?redirect=${encodeURIComponent(`/events/${card.id}`)}`);
       return;
@@ -424,7 +450,7 @@ export default function EventDetailPage() {
   }
 
   return (
-    <div style={{ position: "relative", minHeight: "100vh", color: "#fff" }}>
+    <div style={{ position: "relative", minHeight: "100vh", color: "#fff", overflowX: "hidden", maxWidth: "100vw" }}>
       {/* Ambient background music — loops while on this page */}
 
 
@@ -580,7 +606,7 @@ export default function EventDetailPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
             {/* Image */}
             <CinematicBox title="" accentColor={card.accentColor} glowColor={card.glowColor} delay={0.1}>
-              <div style={{ borderRadius: "16px", overflow: "hidden", margin: "-2.5rem", width: "calc(100% + 5rem)", height: "300px", position: "relative" }}>
+              <div className="cinematic-box-bleed" style={{ borderRadius: "16px", overflow: "hidden", height: "225px", position: "relative" }}>
                 <Image
                   src={card.image}
                   alt={card.title}
@@ -704,62 +730,117 @@ export default function EventDetailPage() {
                   <InterferenceText>{card.price}</InterferenceText>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: "0.6rem" }}>
-                <button
-                  onClick={handleRegisterNow}
-                  disabled={registering}
+              <a
+                href={card.brochureUrl || "#"}
+                target={card.brochureUrl ? "_blank" : undefined}
+                rel="noreferrer"
+                onClick={(e) => {
+                  if (!card.brochureUrl) e.preventDefault();
+                }}
+                className="btn-secondary mb-3"
+                style={{ width: "100%", opacity: card.brochureUrl ? 1 : 0.5 }}
+              >
+                Download Brochure
+              </a>
+              {isRegistered ? (
+                <div
                   style={{
-                    flex: 1,
                     padding: "0.85rem",
                     borderRadius: "12px",
-                    border: "none",
-                    background: card.accentColor,
-                    color: "#000",
+                    border: `1px solid ${card.accentColor}55`,
+                    background: `${card.accentColor}15`,
+                    color: card.accentColor,
                     fontFamily: 'var(--font-display), sans-serif',
                     fontSize: "0.75rem",
                     fontWeight: 700,
                     letterSpacing: "0.15em",
                     textTransform: "uppercase",
-                    cursor: registering ? "default" : "pointer",
-                    opacity: registering ? 0.6 : 1,
-                    transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
-                    transformStyle: "preserve-3d",
-                    boxShadow: `0 4px 25px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (registering) return;
-                    playGlitch();
-                    e.currentTarget.style.transform = "translateZ(30px) scale(1.08)";
-                    e.currentTarget.style.boxShadow = `0 15px 50px ${card.glowColor}, 0 0 70px ${card.glowColor}50, inset 0 1px 0 rgba(255,255,255,0.3)`;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "translateZ(0) scale(1)";
-                    e.currentTarget.style.boxShadow = `0 4px 25px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`;
-                  }}
-                >
-                  <InterferenceText>{registering ? "Starting…" : "Register Now"}</InterferenceText>
-                </button>
-                <button
-                  onClick={handleAddToCart}
-                  aria-label={inCart ? "Already in cart" : "Add to cart"}
-                  title={inCart ? "Already in cart" : "Add to cart"}
-                  style={{
-                    flexShrink: 0,
-                    width: "3rem",
-                    borderRadius: "12px",
-                    border: `1px solid ${card.accentColor}55`,
-                    background: inCart ? `${card.accentColor}22` : "rgba(255,255,255,0.04)",
-                    color: card.accentColor,
-                    cursor: inCart ? "default" : "pointer",
+                    textAlign: "center",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    transition: "all 0.3s ease",
+                    gap: "0.5rem",
                   }}
                 >
-                  {inCart ? <Check size={18} /> : <ShoppingCart size={18} />}
-                </button>
-              </div>
+                  <Check size={16} />
+                  <InterferenceText>Registered</InterferenceText>
+                </div>
+              ) : isClosed ? (
+                <div
+                  style={{
+                    padding: "0.85rem",
+                    borderRadius: "12px",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(255,255,255,0.04)",
+                    color: "rgba(255,255,255,0.35)",
+                    fontFamily: 'var(--font-display), sans-serif',
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    textAlign: "center",
+                  }}
+                >
+                  <InterferenceText>Closed</InterferenceText>
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: "0.6rem" }}>
+                  <button
+                    onClick={handleRegisterNow}
+                    disabled={registering}
+                    style={{
+                      flex: 1,
+                      padding: "0.85rem",
+                      borderRadius: "12px",
+                      border: "none",
+                      background: card.accentColor,
+                      color: "#000",
+                      fontFamily: 'var(--font-display), sans-serif',
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.15em",
+                      textTransform: "uppercase",
+                      cursor: registering ? "default" : "pointer",
+                      opacity: registering ? 0.6 : 1,
+                      transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
+                      transformStyle: "preserve-3d",
+                      boxShadow: `0 4px 25px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (registering) return;
+                      playGlitch();
+                      e.currentTarget.style.transform = "translateZ(30px) scale(1.08)";
+                      e.currentTarget.style.boxShadow = `0 15px 50px ${card.glowColor}, 0 0 70px ${card.glowColor}50, inset 0 1px 0 rgba(255,255,255,0.3)`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateZ(0) scale(1)";
+                      e.currentTarget.style.boxShadow = `0 4px 25px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`;
+                    }}
+                  >
+                    <InterferenceText>{registering ? "Starting…" : "Register Now"}</InterferenceText>
+                  </button>
+                  <button
+                    onClick={handleAddToCart}
+                    aria-label={inCart ? "Already in cart" : "Add to cart"}
+                    title={inCart ? "Already in cart" : "Add to cart"}
+                    style={{
+                      flexShrink: 0,
+                      width: "3rem",
+                      borderRadius: "12px",
+                      border: `1px solid ${card.accentColor}55`,
+                      background: inCart ? `${card.accentColor}22` : "rgba(255,255,255,0.04)",
+                      color: card.accentColor,
+                      cursor: inCart ? "default" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transition: "all 0.3s ease",
+                    }}
+                  >
+                    {inCart ? <Check size={18} /> : <ShoppingCart size={18} />}
+                  </button>
+                </div>
+              )}
               {registerError && (
                 <p style={{
                   textAlign: "center",
@@ -868,9 +949,17 @@ export default function EventDetailPage() {
             grid-template-columns: 1fr 340px !important;
           }
         }
+        .cinematic-box-bleed {
+          margin: -2.5rem;
+          width: calc(100% + 5rem);
+        }
         @media (max-width: 767px) {
           .cinematic-box {
             padding: 1.25rem !important;
+          }
+          .cinematic-box-bleed {
+            margin: -1.25rem !important;
+            width: calc(100% + 2.5rem) !important;
           }
         }
       `}</style>

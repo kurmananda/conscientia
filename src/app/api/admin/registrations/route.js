@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabase } from '../../_supabase-server';
+import { requireAdmin } from '@/lib/adminAuth';
 
-export async function GET() {
+export async function GET(req) {
   try {
     const supabase = createServerSupabase();
+    if (!(await requireAdmin(req, supabase))) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
 
     const { data, error } = await supabase
       .from('registrations')

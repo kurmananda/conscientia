@@ -14,7 +14,8 @@ const footerLinks = [
 export default function Footer() {
   return (
     <footer className="relative border-t border-white/[0.06] bg-gradient-to-b from-black to-[#050508] px-6 py-16 text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_40%_at_50%_100%,rgba(6,182,212,0.06),transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_40%_at_50%_100%,rgba(6,182,212,0.08),transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_40%_30%_at_85%_0%,rgba(139,92,246,0.06),transparent_60%)]" />
       <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-12 md:flex-row md:items-start md:justify-between">
         <div className="max-w-sm space-y-4">
           <div className="flex items-center gap-2">
@@ -32,7 +33,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.35em] text-cyan-500/80">
+          <p className="section-eyebrow mb-4">
             Explore
           </p>
           <ul className="grid grid-cols-2 gap-x-10 gap-y-3 sm:grid-cols-3">
@@ -55,7 +56,7 @@ export default function Footer() {
             <br />
             Dept. of Space, Govt. of India
           </p>
-          <span className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/35">
+          <span className="chip">
             Tech fest 2026
           </span>
         </div>

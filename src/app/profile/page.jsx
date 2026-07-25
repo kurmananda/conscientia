@@ -16,7 +16,7 @@ const CATALOG = [...workshopCards, ...eventCards];
 const GENDER_LABELS = {
   male: 'Male',
   female: 'Female',
-  rather_not_say: 'Neutral',
+  other: 'Other',
 };
 
 function findCatalogItem(id) {
@@ -31,7 +31,7 @@ export default function ProfilePage() {
   const [fetching, setFetching] = useState(false);
 
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ name: '', phone: '', college: '', city: '', gender: '' });
+  const [form, setForm] = useState({ name: '', phone: '', college: '', city: '', gender: '', address: '' });
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -52,21 +52,30 @@ export default function ProfilePage() {
       college: profile.college || '',
       city: profile.city || '',
       gender: profile.gender || '',
+      address: profile.address || '',
     });
   }, [profile]);
 
   useEffect(() => {
-    // First time in: if mandatory fields are missing, drop straight into edit mode.
-    if (!profileLoading && (!profile || !profile.name || !profile.phone || !profile.college)) {
+    // First time in: if mandatory fields are missing, drop straight into
+    // edit mode. Must wait on auth resolving too, not just profileLoading —
+    // useProfile() reports { profile: null, loading: false } immediately
+    // whenever there's no user yet, which is also true for the split
+    // second on every reload before the session is restored. Without the
+    // `loading`/`user` guard here, that transient null profile looked like
+    // "mandatory fields missing" and force-opened edit mode on every reload,
+    // even for a fully-filled-out profile.
+    if (loading || !user) return;
+    if (!profileLoading && (!profile || !profile.name || !profile.phone || !profile.college || !profile.gender)) {
       setEditing(true);
     }
-  }, [profileLoading, profile]);
+  }, [loading, user, profileLoading, profile]);
 
   const handleSave = async (e) => {
     e.preventDefault();
     setFormError('');
-    if (!form.name.trim() || !form.phone.trim() || !form.college.trim()) {
-      setFormError('Name, phone number, and college are required.');
+    if (!form.name.trim() || !form.phone.trim() || !form.college.trim() || !form.gender) {
+      setFormError('Name, phone number, college, and gender are required.');
       return;
     }
     setSaving(true);
@@ -76,6 +85,7 @@ export default function ProfilePage() {
       college: form.college.trim(),
       city: form.city.trim(),
       gender: form.gender || null,
+      address: form.address.trim() || null,
     });
     setSaving(false);
     if (result.error) {
@@ -175,17 +185,27 @@ export default function ProfilePage() {
                   className="w-full rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none focus:border-cyan-500/60"
                 />
               </Field>
-              <Field label="Gender (optional)">
+              <Field label="Gender">
                 <select
+                  required
                   value={form.gender}
                   onChange={(e) => setForm({ ...form, gender: e.target.value })}
                   className="w-full rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none focus:border-cyan-500/60"
                 >
-                  <option value="">Prefer not to specify</option>
+                  <option value="">Gender</option>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
-                  <option value="rather_not_say">Neutral</option>
+                  <option value="other">Other</option>
                 </select>
+              </Field>
+              <Field label="Address (optional)">
+                <textarea
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  rows={2}
+                  className="w-full rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none focus:border-cyan-500/60 sm:col-span-2"
+                  placeholder="House no, lane, landmark, city, pincode…"
+                />
               </Field>
             </div>
 
@@ -216,13 +236,53 @@ export default function ProfilePage() {
           </form>
         ) : (
           <div className="grid gap-4 border-t border-white/10 pt-6 sm:grid-cols-2">
+            <Detail label="Email" value={user.email} />
             <Detail label="Phone" value={profile?.phone} />
             <Detail label="College" value={profile?.college} />
             <Detail label="City" value={profile?.city || '—'} />
             <Detail label="Gender" value={GENDER_LABELS[profile?.gender] || '—'} />
+            <Detail label="Address" value={profile?.address || '—'} />
           </div>
         )}
       </div>
+
+      <Section title="Stay & Merch">
+        <p className="-mt-2 mb-4 text-xs text-white/40">
+          These fields are set by event admins only during check-in/check-out and cannot be edited from your profile.
+        </p>
+        <div className="glass-card grid gap-4 rounded-2xl p-6 sm:grid-cols-3">
+          <StayMerchField
+            label="Accommodation"
+            value={
+              profile?.accommodation_room
+                ? profile.accommodation_room
+                : profile?.accommodation_booked
+                ? 'Booked'
+                : null
+            }
+            adminManaged
+          />
+          <StayMerchField
+            label="Check-in"
+            value={
+              profile?.accommodation_checkin
+                ? new Date(profile.accommodation_checkin).toLocaleString()
+                : null
+            }
+            adminManaged
+          />
+          <StayMerchField
+            label="Check-out"
+            value={
+              profile?.accommodation_checkout
+                ? new Date(profile.accommodation_checkout).toLocaleString()
+                : null
+            }
+            adminManaged
+          />
+          <StayMerchField label="Merch" value={profile?.merch_selection || null} span />
+        </div>
+      </Section>
 
       <Section title="Your Tickets">
         {fetching ? (
@@ -353,6 +413,26 @@ function EmptyState({ message, linkHref, linkLabel }) {
   );
 }
 
+function StayMerchField({ label, value, span, adminManaged }) {
+  return (
+    <div className={span ? 'sm:col-span-3' : undefined}>
+      <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-1">{label}</p>
+      {value ? (
+        <p className="text-sm text-white">{value}</p>
+      ) : adminManaged ? (
+        <p className="text-sm text-white/40">To be set by admin</p>
+      ) : (
+        <Link
+          href="/accommodation"
+          className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-[0.15em] text-cyan-400 hover:underline"
+        >
+          Set up →
+        </Link>
+      )}
+    </div>
+  );
+}
+
 function TicketCard({ item, status, onRemove }) {
   const accent = item.accentColor || '#22d3ee';
   return (
@@ -366,7 +446,10 @@ function TicketCard({ item, status, onRemove }) {
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-bold text-white">{item.title}</p>
+        <p className="truncate text-sm font-bold text-white">
+          {item.title}
+          {item.qty > 1 && <span className="ml-1.5 text-cyan-300">x{item.qty}</span>}
+        </p>
         <p className="truncate text-xs text-white/40">{item.subtitle}</p>
         <span
           className="mt-1 inline-block rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide"

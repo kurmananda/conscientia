@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 
-export default function PrePaymentReminderModal({ open, missingMerch, missingAccommodation, onContinue, onClose }) {
+export default function PrePaymentReminderModal({ open, missingMerch, missingAccommodation, missingFood, onContinue, onClose }) {
   return (
     <AnimatePresence>
       {open && (
@@ -39,6 +39,12 @@ export default function PrePaymentReminderModal({ open, missingMerch, missingAcc
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 text-cyan-400">•</span>
                   You haven&apos;t added <span className="text-white">accommodation</span> to your cart yet.
+                </li>
+              )}
+              {missingFood && (
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 text-cyan-400">•</span>
+                  You&apos;ve added accommodation but no <span className="text-white">food add-ons</span> (breakfast/lunch/dinner) yet.
                 </li>
               )}
             </ul>

@@ -3,15 +3,17 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ShoppingCart, Check } from "lucide-react";
 import { useParallaxTilt } from "../../hooks/useParallaxTilt";
-import useIsTouch from "../../hooks/useIsTouch";
 import useSound from "../../hooks/useSound";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import useProfile from "../../hooks/useProfile";
 import usePaymentReminder from "../../hooks/usePaymentReminder";
+import useCapacity from "../../hooks/useCapacity";
+import useMyRegisteredIds from "../../hooks/useMyRegisteredIds";
 import PrePaymentReminderModal from "../PrePaymentReminderModal";
 import { ticketIdForCatalogItem } from "@/lib/ticketCatalog";
 import { startTiqrCheckout } from "@/lib/checkout";
+import { parsePriceLabel } from "@/lib/parsePriceLabel";
 
 const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
   const { ref, tilt, handleMouseMove, handleMouseLeave, handleMouseEnter } = useParallaxTilt(20);
@@ -20,7 +22,6 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [registering, setRegistering] = useState(false);
   const router = useRouter();
-  const isTouch = useIsTouch();
 
   const playGlitch = useSound("/sounds/glitch.wav", 0.2, 0.15);
   const playClick = useSound("/sounds/click.wav", 0.25, 0.08);
@@ -34,6 +35,11 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
   const cartKey = `${kind}:${card.id}`;
   const inCart = hasItem(cartKey);
 
+  const { remaining } = useCapacity();
+  const registeredIds = useMyRegisteredIds();
+  const isRegistered = registeredIds.includes(card.id);
+  const isClosed = !isRegistered && remaining(card) <= 0;
+
   const toCartItem = () => ({
     key: cartKey,
     id: card.id,
@@ -42,6 +48,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
     title: card.title,
     subtitle: card.subtitle,
     priceLabel: card.price,
+    unitPrice: parsePriceLabel(card.price),
     image: card.image,
     accentColor: card.accentColor,
   });
@@ -49,7 +56,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
   const handleAddToCart = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (inCart) return;
+    if (inCart || isClosed || isRegistered) return;
     if (!user) {
       playClick();
       router.push("/login?redirect=/cart");
@@ -62,7 +69,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
   const handleRegister = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (registering) return;
+    if (registering || isClosed || isRegistered) return;
     playClick();
     if (!user) {
       router.push(`/login?redirect=${encodeURIComponent(`${basePath}/${card.id}`)}`);
@@ -407,60 +414,89 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
               >
                 View
               </a>
-              <button
-                className="flex-1 rounded-lg py-1.5 text-[11px] font-bold uppercase tracking-wider"
-                disabled={registering}
-                style={{
-                  background: card.accentColor,
-                  color: "#000",
-                  fontFamily: 'var(--font-display), sans-serif',
-                  transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
-                  transformStyle: "preserve-3d",
-                  opacity: registering ? 0.6 : 1,
-                  cursor: registering ? "default" : "pointer",
-                  boxShadow: `0 4px 20px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`,
-                }}
-                onClick={handleRegister}
-                onMouseEnter={(e) => {
-                  if (registering) return;
-                  playGlitch();
-                  e.currentTarget.style.transform = "translateZ(25px) scale(1.08)";
-                  e.currentTarget.style.boxShadow = `0 12px 40px ${card.glowColor}, 0 0 60px ${card.glowColor}40, inset 0 1px 0 rgba(255,255,255,0.3)`;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateZ(0) scale(1)";
-                  e.currentTarget.style.boxShadow = `0 4px 20px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`;
-                }}
-              >
-                {registering ? "Starting…" : "Register"}
-              </button>
-              <button
-                onClick={handleAddToCart}
-                aria-label={inCart ? "Already in cart" : "Add to cart"}
-                title={inCart ? "Already in cart" : "Add to cart"}
-                className="flex flex-shrink-0 items-center justify-center rounded-lg"
-                style={{
-                  width: "34px",
-                  background: inCart ? `${card.accentColor}22` : "rgba(255,255,255,0.04)",
-                  border: `1px solid ${card.accentColor}55`,
-                  color: card.accentColor,
-                  cursor: inCart ? "default" : "pointer",
-                  transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
-                  transformStyle: "preserve-3d",
-                }}
-                onMouseEnter={(e) => {
-                  if (inCart) return;
-                  playGlitch();
-                  e.currentTarget.style.background = `${card.accentColor}22`;
-                  e.currentTarget.style.transform = "translateZ(20px) scale(1.08)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = inCart ? `${card.accentColor}22` : "rgba(255,255,255,0.04)";
-                  e.currentTarget.style.transform = "translateZ(0) scale(1)";
-                }}
-              >
-                {inCart ? <Check size={16} /> : <ShoppingCart size={16} />}
-              </button>
+              {isRegistered ? (
+                <div
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-bold uppercase tracking-wider"
+                  style={{
+                    background: `${card.accentColor}18`,
+                    color: card.accentColor,
+                    border: `1px solid ${card.accentColor}55`,
+                    fontFamily: 'var(--font-display), sans-serif',
+                  }}
+                >
+                  <Check size={14} />
+                  Registered
+                </div>
+              ) : isClosed ? (
+                <div
+                  className="flex-1 flex items-center justify-center rounded-lg py-1.5 text-[11px] font-bold uppercase tracking-wider"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    color: "rgba(255,255,255,0.35)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    fontFamily: 'var(--font-display), sans-serif',
+                  }}
+                >
+                  Closed
+                </div>
+              ) : (
+                <>
+                  <button
+                    className="flex-1 rounded-lg py-1.5 text-[11px] font-bold uppercase tracking-wider"
+                    disabled={registering}
+                    style={{
+                      background: card.accentColor,
+                      color: "#000",
+                      fontFamily: 'var(--font-display), sans-serif',
+                      transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
+                      transformStyle: "preserve-3d",
+                      opacity: registering ? 0.6 : 1,
+                      cursor: registering ? "default" : "pointer",
+                      boxShadow: `0 4px 20px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`,
+                    }}
+                    onClick={handleRegister}
+                    onMouseEnter={(e) => {
+                      if (registering) return;
+                      playGlitch();
+                      e.currentTarget.style.transform = "translateZ(25px) scale(1.08)";
+                      e.currentTarget.style.boxShadow = `0 12px 40px ${card.glowColor}, 0 0 60px ${card.glowColor}40, inset 0 1px 0 rgba(255,255,255,0.3)`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateZ(0) scale(1)";
+                      e.currentTarget.style.boxShadow = `0 4px 20px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`;
+                    }}
+                  >
+                    {registering ? "Starting…" : "Register"}
+                  </button>
+                  <button
+                    onClick={handleAddToCart}
+                    aria-label={inCart ? "Already in cart" : "Add to cart"}
+                    title={inCart ? "Already in cart" : "Add to cart"}
+                    className="flex flex-shrink-0 items-center justify-center rounded-lg"
+                    style={{
+                      width: "34px",
+                      background: inCart ? `${card.accentColor}22` : "rgba(255,255,255,0.04)",
+                      border: `1px solid ${card.accentColor}55`,
+                      color: card.accentColor,
+                      cursor: inCart ? "default" : "pointer",
+                      transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
+                      transformStyle: "preserve-3d",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (inCart) return;
+                      playGlitch();
+                      e.currentTarget.style.background = `${card.accentColor}22`;
+                      e.currentTarget.style.transform = "translateZ(20px) scale(1.08)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = inCart ? `${card.accentColor}22` : "rgba(255,255,255,0.04)";
+                      e.currentTarget.style.transform = "translateZ(0) scale(1)";
+                    }}
+                  >
+                    {inCart ? <Check size={16} /> : <ShoppingCart size={16} />}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -487,8 +523,9 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
         ))}
       </div>
 
-      {/* ── Side Fire / Aura Effects — desktop hover-glow only, skipped on touch ── */}
-      {isVisible && !isTouch && <>
+      {/* ── Side Fire / Aura Effects — desktop hover-glow only, hidden on touch via CSS
+           (not a JS/SSR check) so server and client render identical markup ── */}
+      {isVisible && <div className="hover-fx">
       {/* Left fire column — positioned fully outside the card */}
       <div
         className="absolute pointer-events-none"
@@ -808,7 +845,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
           }}
         />
       </div>
-      </>}
+      </div>}
       <style>{`
         @keyframes fireStripLeft {
           0%, 100% { transform: scaleY(1) translateX(0); opacity: 0.8; }

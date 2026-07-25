@@ -13,7 +13,9 @@ export default function ProfileCompletionModal() {
   const [saving, setSaving] = useState(false);
 
   const missing =
-    !loading && !!user && (!profile || !profile.name || !profile.phone || !profile.college);
+    !loading &&
+    !!user &&
+    (!profile || !profile.name || !profile.phone || !profile.college || !profile.gender);
 
   useEffect(() => {
     if (profile) {
@@ -31,8 +33,8 @@ export default function ProfileCompletionModal() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!form.name.trim() || !form.phone.trim() || !form.college.trim()) {
-      setError("Name, phone number, and college are required.");
+    if (!form.name.trim() || !form.phone.trim() || !form.college.trim() || !form.gender) {
+      setError("Name, phone number, college, and gender are required.");
       return;
     }
     setSaving(true);
@@ -106,16 +108,17 @@ export default function ProfileCompletionModal() {
                   className="w-full rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none focus:border-cyan-500/60"
                 />
               </Field>
-              <Field label="Gender (optional)">
+              <Field label="Gender">
                 <select
+                  required
                   value={form.gender}
                   onChange={(e) => setForm({ ...form, gender: e.target.value })}
                   className="w-full rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none focus:border-cyan-500/60"
                 >
-                  <option value="">Prefer not to specify</option>
+                  <option value="">Gender</option>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
-                  <option value="rather_not_say">Neutral</option>
+                  <option value="other">Other</option>
                 </select>
               </Field>
 

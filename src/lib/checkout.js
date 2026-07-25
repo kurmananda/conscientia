@@ -66,7 +66,7 @@ export async function startTiqrCheckout(cartItems, details) {
     email: details.email,
     phone_number: details.phone,
     ticket: item.ticketId,
-    quantity: 1,
+    quantity: item.qty || 1,
     meta_data: metaBase({
       internal_id: item.id,
       workshop_ids: item.id,

@@ -20,6 +20,21 @@ export const DEFAULT_WORKSHOP_TICKET = TICKET_MAPPING['1'];
 export const DEFAULT_EVENT_TICKET = TICKET_MAPPING['c1'];
 export const DEFAULT_MERCH_TICKET = TICKET_MAPPING['5'];
 
+// Stand-in tickets for accommodation / food add-ons / delivery / new merch
+// items. These reuse existing TiQR ticket ids as placeholders — the user
+// should generate real dedicated tickets in TiQR and swap the numbers here.
+export const ADDON_TICKET_MAPPING = {
+  accommodation: DEFAULT_EVENT_TICKET,
+  breakfast: DEFAULT_EVENT_TICKET,
+  lunch: DEFAULT_EVENT_TICKET,
+  dinner: DEFAULT_EVENT_TICKET,
+  delivery: DEFAULT_MERCH_TICKET,
+  'merch-tshirt': DEFAULT_MERCH_TICKET,
+  'merch-hoodie': DEFAULT_MERCH_TICKET,
+  'merch-cap': DEFAULT_MERCH_TICKET,
+  'merch-tote': DEFAULT_MERCH_TICKET,
+};
+
 export function ticketIdForCatalogItem(kind) {
   if (kind === 'event') return DEFAULT_EVENT_TICKET;
   if (kind === 'merch') return DEFAULT_MERCH_TICKET;
