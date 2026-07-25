@@ -2,25 +2,6 @@
 
 import { useEffect, useRef } from "react";
 
-interface TrailPoint {
-  x: number;
-  y: number;
-}
-
-interface Particle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  initialSize: number;
-  life: number;
-  decay: number;
-  rotation: number;
-  vRotation: number;
-  type: "circle" | "diamond" | "star";
-}
-
 const MAX_POINTS = 22;
 
 const CURSOR_COLOR = {
@@ -30,10 +11,10 @@ const CURSOR_COLOR = {
 };
 
 export default function TrialCursor() {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const pointsRef = useRef<TrailPoint[]>([]);
-  const particlesRef = useRef<Particle[]>([]);
-  const rafRef = useRef<number>(0);
+  const canvasRef = useRef(null);
+  const pointsRef = useRef([]);
+  const particlesRef = useRef([]);
+  const rafRef = useRef(0);
 
   useEffect(() => {
     const canvas = document.createElement("canvas");
@@ -52,7 +33,7 @@ export default function TrialCursor() {
 
     canvasRef.current = canvas;
 
-    const ctx = canvas.getContext("2d")!;
+    const ctx = canvas.getContext("2d");
 
     const resize = () => {
       const ratio = window.devicePixelRatio || 1;
@@ -79,14 +60,14 @@ export default function TrialCursor() {
     let lastSpawnX = -100;
     let lastSpawnY = -100;
 
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e) => {
       targetX = e.clientX;
       targetY = e.clientY;
     };
 
     window.addEventListener("mousemove", onMove);
 
-    const onMouseDown = (e: MouseEvent) => {
+    const onMouseDown = (e) => {
       const particleCount = 18;
       for (let i = 0; i < particleCount; i++) {
         const angle = Math.random() * Math.PI * 2;
@@ -106,7 +87,7 @@ export default function TrialCursor() {
           decay: Math.random() * 0.02 + 0.015,
           rotation: Math.random() * Math.PI * 2,
           vRotation: (Math.random() - 0.5) * 0.15,
-          type: type as any,
+          type: type,
         });
       }
     };
@@ -188,7 +169,7 @@ export default function TrialCursor() {
             decay: Math.random() * 0.02 + 0.015,
             rotation: Math.random() * Math.PI * 2,
             vRotation: (Math.random() - 0.5) * 0.08,
-            type: type as any,
+            type: type,
           });
         }
         lastSpawnX = smoothX;

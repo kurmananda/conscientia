@@ -10,14 +10,14 @@ const PALETTE = [
   "#22d3ee", "#2dd4bf", // Future — cyan, teal
 ];
 
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const lerp = (a, b, t) => a + (b - a) * t;
 
-function hexToRgb(hex: string) {
+function hexToRgb(hex) {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-function cycleColor(t: number): string {
+function cycleColor(t) {
   const i = Math.floor(t) % PALETTE.length;
   const j = (i + 1) % PALETTE.length;
   const f = t - Math.floor(t);
@@ -27,10 +27,10 @@ function cycleColor(t: number): string {
 }
 
 export default function CursorTrialWrapper() {
-  const dotRef  = useRef<HTMLDivElement>(null);
-  const ringRef = useRef<HTMLDivElement>(null);
-  const handRef = useRef<HTMLDivElement>(null);
-  const minHandRef = useRef<HTMLDivElement>(null);
+  const dotRef  = useRef(null);
+  const ringRef = useRef(null);
+  const handRef = useRef(null);
+  const minHandRef = useRef(null);
 
   const [isTouch] = useState(
     () => typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
@@ -70,7 +70,7 @@ export default function CursorTrialWrapper() {
 
     const s = state.current;
 
-    const onMove = (e: MouseEvent) => { s.mx = e.clientX; s.my = e.clientY; };
+    const onMove = (e) => { s.mx = e.clientX; s.my = e.clientY; };
     const onDown = () => { s.clicking = true; };
     const onUp   = () => { s.clicking = false; };
 

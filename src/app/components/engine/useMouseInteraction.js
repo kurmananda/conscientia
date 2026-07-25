@@ -12,23 +12,16 @@
 
 import { useEffect, useRef } from "react";
 
-export interface MouseState {
-  /** Raw normalised mouse position, updated per event */
-  rawRef: React.MutableRefObject<{ x: number; y: number }>;
-  /** Smoothed position, updated per RAF – read this in the 3D loop */
-  smoothRef: React.MutableRefObject<{ x: number; y: number }>;
-}
-
 /** How quickly the smoothed position chases the raw position. */
 const INERTIA = 0.04; // Very low = very heavy / premium
 
-export function useMouseInteraction(): MouseState {
-  const rawRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const smoothRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const rafRef = useRef<number>(0);
+export function useMouseInteraction() {
+  const rawRef = useRef({ x: 0, y: 0 });
+  const smoothRef = useRef({ x: 0, y: 0 });
+  const rafRef = useRef(0);
 
   useEffect(() => {
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e) => {
       rawRef.current = {
         x: (e.clientX / window.innerWidth) * 2 - 1,
         y: -(e.clientY / window.innerHeight) * 2 + 1,

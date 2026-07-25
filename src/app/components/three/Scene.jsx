@@ -32,18 +32,11 @@ import Model1 from "../models/Model1";
 import Model2 from "../models/Model2";
 import Model3 from "../models/Model3";
 
-/* ─── Props ────────────────────────────────────────────────────────────────── */
-interface SceneProps {
-  progressRef: React.MutableRefObject<number>;
-  mouseRef: React.MutableRefObject<{ x: number; y: number }>;
-  active?: boolean;
-}
-
 /* ─── Inner scene ──────────────────────────────────────────────────────────── */
-function SceneInner({ progressRef, mouseRef }: SceneProps) {
-  const objectRefs = useRef<(THREE.Group | null)[]>([null, null, null]);
+function SceneInner({ progressRef, mouseRef }) {
+  const objectRefs = useRef([null, null, null]);
 
-  const setRef = (i: number) => (el: THREE.Group | null) => {
+  const setRef = (i) => (el) => {
     objectRefs.current[i] = el;
   };
 
@@ -88,10 +81,10 @@ function SceneInner({ progressRef, mouseRef }: SceneProps) {
 }
 
 /* ─── Canvas (exported) ────────────────────────────────────────────────────── */
-export default function Scene({ progressRef, mouseRef, active = true }: SceneProps) {
+export default function Scene({ progressRef, mouseRef, active = true }) {
   const dpr = useMemo(() => {
-    if (typeof window !== "undefined" && window.innerWidth < 768) return [0.75, 1.5] as [number, number];
-    return [1, 2] as [number, number];
+    if (typeof window !== "undefined" && window.innerWidth < 768) return [0.75, 1.5];
+    return [1, 2];
   }, []);
 
   return (
@@ -99,6 +92,7 @@ export default function Scene({ progressRef, mouseRef, active = true }: ScenePro
       <Canvas
         shadows
         dpr={dpr}
+        frameloop={active ? "always" : "never"}
         camera={{ position: [0, 0, 6], fov: 60, near: 0.1, far: 100 }}
         gl={{
           antialias: true,

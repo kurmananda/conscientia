@@ -14,24 +14,13 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { CinematicIntro } from "./intro";
 import WorkshopIntro from "./intro/WorkshopIntro";
-import type { ComponentType } from "react";
-
-import { ReactNode } from "react";
-
-interface IntroControllerProps {
-  children: ReactNode;
-  TextIntroComponent?: ComponentType<{
-    onComplete: () => void;
-    risersRef?: React.MutableRefObject<HTMLAudioElement | null>;
-  }>;
-}
 
 export default function IntroController({
   children,
   TextIntroComponent = WorkshopIntro,
-}: IntroControllerProps) {
-  const [phase, setPhase] = useState<"logo" | "text" | "revealed">("logo");
-  const risersRef = useRef<HTMLAudioElement | null>(null);
+}) {
+  const [phase, setPhase] = useState("logo");
+  const risersRef = useRef(null);
 
   // Prevent scroll during intro
   useEffect(() => {

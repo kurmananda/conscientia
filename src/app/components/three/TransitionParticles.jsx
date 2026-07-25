@@ -19,7 +19,7 @@ import { useSceneActive } from "../SceneActiveContext";
 import { decodeScrollProgress } from "../engine/config";
 
 // Per-object colour palette
-const OBJECT_COLORS: Record<number, string> = {
+const OBJECT_COLORS = {
   0: "#6baed6",
   1: "#cc88ff",
   2: "#ffd700",
@@ -28,13 +28,8 @@ const OBJECT_COLORS: Record<number, string> = {
 const PARTICLE_COUNT = 250;
 const SPREAD = 3.2;
 
-interface ParticleCloudProps {
-  mode: "out" | "in";
-  progressRef: React.MutableRefObject<number>;
-}
-
-function ParticleCloud({ mode, progressRef }: ParticleCloudProps) {
-  const meshRef = useRef<THREE.Points>(null);
+function ParticleCloud({ mode, progressRef }) {
+  const meshRef = useRef(null);
   const timeRef = useRef(0);
   const smoothProgress = useRef(0);
   const smoothColor = useRef(new THREE.Color(OBJECT_COLORS[0]));
@@ -103,20 +98,20 @@ function ParticleCloud({ mode, progressRef }: ParticleCloudProps) {
     if (!points) return;
 
     // Update positions
-    const posAttr = points.geometry.getAttribute("position") as THREE.BufferAttribute;
+    const posAttr = points.geometry.getAttribute("position");
     for (let i = 0; i < PARTICLE_COUNT; i++) {
-      const ph   = phases[i]!;
+      const ph   = phases[i];
       // For "out" cloud: particles fly away as progress increases
       // For "in"  cloud: particles converge as progress increases
       const dir  = mode === "out" ? sp : 1 - sp;
       const ease = 1 - Math.pow(1 - Math.max(0, Math.min(1, dir)), 3);
 
-      const ox = origins[i * 3]!;
-      const oy = origins[i * 3 + 1]!;
-      const oz = origins[i * 3 + 2]!;
-      const vx = velocities[i * 3]!;
-      const vy = velocities[i * 3 + 1]!;
-      const vz = velocities[i * 3 + 2]!;
+      const ox = origins[i * 3];
+      const oy = origins[i * 3 + 1];
+      const oz = origins[i * 3 + 2];
+      const vx = velocities[i * 3];
+      const vy = velocities[i * 3 + 1];
+      const vz = velocities[i * 3 + 2];
 
       const wobble = Math.sin(t * 1.8 + ph) * 0.04;
       posAttr.setXYZ(
@@ -129,7 +124,7 @@ function ParticleCloud({ mode, progressRef }: ParticleCloudProps) {
     posAttr.needsUpdate = true;
 
     // Opacity envelope — sine arch over transition
-    const mat = points.material as THREE.PointsMaterial;
+    const mat = points.material;
     mat.opacity = Math.max(0, Math.sin(sp * Math.PI) * 0.75);
     mat.color.copy(smoothColor.current);
   });
@@ -152,11 +147,7 @@ function ParticleCloud({ mode, progressRef }: ParticleCloudProps) {
 
 /* ─── Public component ─────────────────────────────────────────────────────── */
 
-interface TransitionParticlesProps {
-  progressRef: React.MutableRefObject<number>;
-}
-
-export default function TransitionParticles({ progressRef }: TransitionParticlesProps) {
+export default function TransitionParticles({ progressRef }) {
   return (
     <>
       <ParticleCloud mode="out" progressRef={progressRef} />

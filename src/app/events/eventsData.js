@@ -1,14 +1,15 @@
-import { CardData } from "../components/parallax/ParallaxCard";
-
-// Edit this list to add, remove, or update events — the rest of the page is data-driven.
-export const eventCards: CardData[] = [
+// Edit this list to add/remove/update events — nothing else needs to change.
+// Everything shown on the card AND on its detail page ("View" click) lives
+// here: description, highlights, requirements, format, certificate, etc.
+export const eventCards = [
   // ── Competitions ────────────────────────────────────────
   {
     id: "code-combat",
     title: "Code Combat",
     subtitle: "High-Stakes Competitive Programming",
     type: "Competition",
-    category: "competition",
+    section: "Competitions",
+    sectionColor: "#33d6ff",
     Duration: 1,
     Seats: 200,
     Level: 4,
@@ -19,6 +20,23 @@ export const eventCards: CardData[] = [
     badgeIcon: "⚔️",
     description:
       "A high-intensity competitive programming arena where participants solve algorithmic challenges under pressure. Solo or team — survive the leaderboard.",
+    aboutExtra: [
+      "A single-day, multi-round contest running on a live leaderboard — solve fast, climb ranks, and survive elimination rounds.",
+      "Open to solo coders and teams of up to three.",
+    ],
+    highlights: [
+      "Timed algorithmic problem sets",
+      "Live, public leaderboard",
+      "Elimination-style final round",
+      "Prizes for top individuals and teams",
+    ],
+    requirements: [
+      "Laptop with your preferred IDE",
+      "Comfort with at least one programming language",
+      "A stable internet connection",
+    ],
+    format: "In-Person",
+    certificate: "Participation certificate for all entrants",
     tags: ["Competition", "DSA", "Leaderboard"],
     price: "Free Entry",
     layout: {
@@ -32,7 +50,8 @@ export const eventCards: CardData[] = [
     title: "Hackathon",
     subtitle: "24-Hour Build Sprint",
     type: "Build Sprint",
-    category: "competition",
+    section: "Competitions",
+    sectionColor: "#33d6ff",
     Duration: 1,
     Seats: 150,
     Level: 3,
@@ -43,6 +62,23 @@ export const eventCards: CardData[] = [
     badgeIcon: "💻",
     description:
       "A marathon build sprint where cross-disciplinary teams prototype real-world solutions. Judged on impact, creativity, and technical execution.",
+    aboutExtra: [
+      "24 straight hours to go from idea to working prototype, with mentors circulating throughout the night.",
+      "Judged by a panel of industry engineers and founders.",
+    ],
+    highlights: [
+      "Mentor check-ins throughout the night",
+      "Free food, drinks, and dev tools access",
+      "Live pitch and demo finale",
+      "Cash prizes and internship opportunities",
+    ],
+    requirements: [
+      "Teams of 2–4 (solo entries allowed)",
+      "Laptop and charger",
+      "An idea, or willingness to team up on the spot",
+    ],
+    format: "In-Person",
+    certificate: "Participation certificate for all entrants",
     tags: ["Hackathon", "Teams", "Build"],
     price: "Free Entry",
     layout: {
@@ -56,7 +92,8 @@ export const eventCards: CardData[] = [
     title: "Robo War",
     subtitle: "Combat Robotics Arena",
     type: "Robotics",
-    category: "competition",
+    section: "Competitions",
+    sectionColor: "#33d6ff",
     Duration: 1,
     Seats: 60,
     Level: 4,
@@ -67,6 +104,23 @@ export const eventCards: CardData[] = [
     badgeIcon: "🤖",
     description:
       "Combat robotics arena — custom-built bots face off in elimination rounds. Categories include autonomous, remote-controlled, and mini-sumo.",
+    aboutExtra: [
+      "Bring your own bot or build one on-site — elimination-format battles across three weight/category classes.",
+      "Arena bouts are livestreamed to the main stage.",
+    ],
+    highlights: [
+      "Autonomous, RC, and mini-sumo categories",
+      "Elimination bracket format",
+      "On-site repair bay between bouts",
+      "Livestreamed arena battles",
+    ],
+    requirements: [
+      "Bot conforming to published weight/size rules",
+      "Team of up to 4",
+      "Safety inspection before first bout",
+    ],
+    format: "In-Person",
+    certificate: "Participation certificate for all entrants",
     tags: ["Robotics", "Combat", "Elimination"],
     price: "₹999",
     layout: {
@@ -82,7 +136,8 @@ export const eventCards: CardData[] = [
     title: "Tech Talk Series",
     subtitle: "Keynotes From Industry Pioneers",
     type: "Talks",
-    category: "showcase",
+    section: "Showcase & Culture",
+    sectionColor: "#a855f7",
     Duration: 1,
     Seats: 500,
     Level: 1,
@@ -93,6 +148,23 @@ export const eventCards: CardData[] = [
     badgeIcon: "🎤",
     description:
       "Keynote sessions and panel discussions led by industry pioneers and researchers. Topics span AI, space systems, sustainability, and emerging tech.",
+    aboutExtra: [
+      "A day of back-to-back keynotes and panels from people actually building the technologies being discussed.",
+      "Q&A open floor after every session.",
+    ],
+    highlights: [
+      "Keynotes from industry pioneers",
+      "Panel discussions with open Q&A",
+      "Topics spanning AI, space, and sustainability",
+      "Networking breaks between sessions",
+    ],
+    requirements: [
+      "Open to all attendees",
+      "No technical background required",
+      "Seats are first-come, first-served",
+    ],
+    format: "In-Person",
+    certificate: "Attendance certificate on request",
     tags: ["Talks", "Keynote", "Panel"],
     price: "Free Entry",
     layout: {
@@ -106,7 +178,8 @@ export const eventCards: CardData[] = [
     title: "Innovation Expo",
     subtitle: "Project Exhibition & Demos",
     type: "Exhibition",
-    category: "showcase",
+    section: "Showcase & Culture",
+    sectionColor: "#a855f7",
     Duration: 1,
     Seats: 300,
     Level: 1,
@@ -117,6 +190,23 @@ export const eventCards: CardData[] = [
     badgeIcon: "🌟",
     description:
       "Project exhibition where student teams showcase research prototypes, hardware builds, and proof-of-concept demos to a panel of judges and industry visitors.",
+    aboutExtra: [
+      "Student teams set up live demo booths judged by a rotating panel of industry visitors throughout the day.",
+      "Open to the public between judging rounds.",
+    ],
+    highlights: [
+      "Live demo booths",
+      "Judging by industry professionals",
+      "Open to public visitors",
+      "Awards for top prototypes",
+    ],
+    requirements: [
+      "Working or near-working prototype",
+      "Team booth setup (table/power provided)",
+      "One-page project summary for judges",
+    ],
+    format: "In-Person",
+    certificate: "Participation certificate for all exhibitors",
     tags: ["Exhibition", "Research", "Demo"],
     price: "Free Entry",
     layout: {
@@ -130,7 +220,8 @@ export const eventCards: CardData[] = [
     title: "Cultural Night",
     subtitle: "Music, Dance & Performances",
     type: "Cultural",
-    category: "showcase",
+    section: "Showcase & Culture",
+    sectionColor: "#a855f7",
     Duration: 1,
     Seats: 800,
     Level: 1,
@@ -141,6 +232,23 @@ export const eventCards: CardData[] = [
     badgeIcon: "🎭",
     description:
       "An evening of music, dance, and performances that celebrate the creative spirit of the community. The perfect close to a day of high-energy competition.",
+    aboutExtra: [
+      "Live performances from student groups and a headline act close out the fest under open skies.",
+      "Free entry for all badge holders.",
+    ],
+    highlights: [
+      "Student music and dance performances",
+      "Headline evening act",
+      "Open-air stage setup",
+      "Food stalls open throughout",
+    ],
+    requirements: [
+      "Fest badge for entry",
+      "Open to all attendees",
+      "No registration needed",
+    ],
+    format: "In-Person",
+    certificate: "Not applicable",
     tags: ["Cultural", "Music", "Dance"],
     price: "Free Entry",
     layout: {

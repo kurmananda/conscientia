@@ -1,4 +1,4 @@
-  "use client";
+"use client";
 
 import { motion, useScroll, useTransform, AnimatePresence, } from "framer-motion";
 import { useRef, useState, useCallback, useMemo } from "react";
@@ -6,16 +6,23 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowUpRight,
-  Satellite,
-  Zap,
   Rocket,
   Cpu,
-  Brain,
   ChevronLeft,
   ChevronRight,
-  Laptop,
   Package,
   Star,
+  Trophy,
+  Sparkles,
+  Shield,
+  Bot,
+  Atom,
+  Database,
+  Cloud,
+  Link2,
+  Radio,
+  Dna,
+  Plane,
   X
 } from "lucide-react";
 
@@ -24,6 +31,9 @@ import Autoplay from "embla-carousel-autoplay";
 
 import Hyperspeed from "./components/Hyperspeed";
 import MerchPromoNotification from "./components/MerchPromoNotification";
+import { eventCards } from "./events/eventsData";
+import { workshopCards } from "./workshop/workshopData";
+import { groupBySection } from "./lib/groupBySection";
 
 /** Memoized — Hyperspeed re-inits WebGL when this object identity changes (see reactbits.dev). */
 const HYPERSPEED_OPTIONS = {
@@ -62,9 +72,33 @@ const HYPERSPEED_OPTIONS = {
   },
 };
 
+const EVENT_ICONS = { Competitions: <Trophy size={20} />, "Showcase & Culture": <Sparkles size={20} /> };
+
+const WORKSHOP_ICONS = {
+  Rocketry: <Rocket size={20} />,
+  "AI/ML": <Cpu size={20} />,
+  Security: <Shield size={20} />,
+  Robotics: <Bot size={20} />,
+  Quantum: <Atom size={20} />,
+  "Data Science": <Database size={20} />,
+  Cloud: <Cloud size={20} />,
+  Aerospace: <Plane size={20} />,
+  Web3: <Link2 size={20} />,
+  IoT: <Radio size={20} />,
+  Biotech: <Dna size={20} />,
+};
+
+// Live from the actual data files — the home page always mirrors whatever
+// is currently the *first* (featured) section in workshopData.js / eventsData.js,
+// so editing those files is the only thing that ever needs to happen.
+const featuredWorkshopSection = groupBySection(workshopCards)[0];
+const featuredEventSection = groupBySection(eventCards)[0];
+
 export default function Home() {
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
   const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [hoveredEventIndex, setHoveredEventIndex] = useState(null);
 
   const expoTransition = { duration: 0.2, ease: [0.85, 0, 0.15, 1] };
 
@@ -135,40 +169,7 @@ export default function Home() {
     if (emblaApi) emblaApi.scrollNext();
   }, [emblaApi]);
 
-  const workshopCartel = [
-    {
-      title: 'Cube Sat Workshop',
-      price: 349,
-      desc: '20th June 2026',
-      details : ['1. End to end concepts of Cubesat design', '2. Learn from experts who have worked on in-flight satellites.', '3. Understand mission design and space fundamentals'],
-      icon: <Satellite size={20} />,
-      cat : 'space',
-    },
-    {
-      title: 'Launch Vehicle Workshop',
-      price: 349,
-      desc: '27th June 2026',
-      details : ['1. End to end concepts of Launch Vehicles', '2. Understand mission design and space fundamentals', '3. Explore propulsion, staging, and flight dynamics basics'],
-      icon: <Rocket size={20} />,
-      cat : 'space',
-    },
-    {
-      title: 'Agentic AI Workshop',
-      price: 299,
-      desc: '28th June 2026',
-      details : ['1. Explore the basics of prompt engineering', '2. Optimize AI usage for maximum productivity', '3. Hands on learning with AI agents.'],
-      icon: <Cpu size={20} />,
-      cat : 'tech',
-    },
-    {
-      title: 'Python ML Workshop',
-      price: 299,
-      desc: '21st June 2026',
-      details : ['1. Explore the basics of python and machine learning', '2. Understand concepts with application focused learning', '3. Develop industry focused skills.'],
-      icon: <Brain size={20} />,
-      cat : 'tech',
-    },
-  ];
+  const workshopCartel = featuredWorkshopSection.cards.slice(0, 4);
 
   return (
     <main className="bg-[#050505] min-h-screen text-white selection:bg-cyan-500/30 overflow-x-hidden relative">
@@ -289,6 +290,113 @@ export default function Home() {
           </Link>
         </motion.div>
       </section>
+      {/* --- FLAGSHIP EVENTS --- */}
+      <section className="min-h-[70vh] py-24 relative z-10 flex items-center">
+        <div className="container mx-auto px-6 md:px-20 relative z-10">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-12">
+            <motion.div initial={{ x: -80, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} viewport={{ once: true }} transition={expoTransition} className="space-y-4">
+              <span className="font-mono text-[10px] text-purple-500 tracking-[0.6em] uppercase font-black">// LIVE TRANSMISSIONS</span>
+              <h2 className="font-syncopate text-4xl md:text-6xl tracking-tighter uppercase leading-none">Flagship<br /><span className="text-white/50 italic">Events</span></h2>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }}>
+              <Link
+                href="/events"
+                className="group relative flex items-center gap-6 bg-white px-10 py-5 rounded-full overflow-hidden shadow-[0_0_50px_rgba(255,255,255,0.05)] hover:shadow-[0_0_50px_rgba(168,85,247,0.4)] transition-all duration-500"
+              >
+                <span className="relative z-10 font-syncopate text-[11px] tracking-widest text-black font-black uppercase">Explore Events</span>
+                <div className="relative z-10 w-8 h-8 rounded-full bg-black flex items-center justify-center text-white group-hover:rotate-45 transition-transform duration-400">
+                  <ChevronRight size={18} />
+                </div>
+                <div className="absolute inset-0 bg-purple-400 translate-x-[-101%] group-hover:translate-x-0 transition-transform duration-500 ease-[0.85,0,0.15,1]" />
+              </Link>
+            </motion.div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-8">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="relative rounded-[2rem] overflow-hidden border border-white/10 bg-[#0A0A0A]/70 h-[min(80vh)] order-2 lg:order-1"
+            >
+              <motion.div
+                className="absolute -top-1/3 -left-1/4 w-2/3 h-2/3 rounded-full bg-purple-500/25 blur-3xl"
+                animate={{ x: [0, 30, 0], y: [0, 20, 0], scale: [1, 1.15, 1] }}
+                transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+              />
+              <motion.div
+                className="absolute -bottom-1/3 -right-1/4 w-2/3 h-2/3 rounded-full bg-cyan-500/20 blur-3xl"
+                animate={{ x: [0, -20, 0], y: [0, -25, 0], scale: [1, 1.1, 1] }}
+                transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+              />
+              <div
+                className="absolute inset-0 opacity-30"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)",
+                  backgroundSize: "36px 36px",
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/95 via-transparent to-transparent" />
+              <div className="absolute bottom-8 left-8 right-8 text-white">
+                <span className="font-syncopate text-[10px] uppercase tracking-[0.35em] text-purple-400/80">{featuredEventSection.cards.length} Events</span>
+                <h3 className="font-syncopate text-3xl md:text-4xl uppercase tracking-tight mt-3 leading-tight">{featuredEventSection.section}</h3>
+              </div>
+            </motion.div>
+
+            <div className="flex flex-col gap-4 order-1 lg:order-2">
+              {featuredEventSection.cards.slice(0, 4).map((ev, index) => (
+                <motion.div
+                  key={ev.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.05 }}
+                  onMouseEnter={() => setHoveredEventIndex(index)}
+                  onMouseLeave={() => setHoveredEventIndex(null)}
+                  onClick={() => setSelectedEvent(ev)}
+                  whileHover={{ scale: 1.02, rotateX: -5, rotateY: -5 }}
+                  className="group relative h-[150px] cursor-pointer bg-[#0A0A0A]/60 border border-white/5 rounded-3xl p-6 flex flex-col justify-between overflow-hidden backdrop-blur-xl hover:border-purple-500 hover:shadow-[0_0_30px_rgba(168,85,247,0.15)] transition-all"
+                >
+                  <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-purple-400/10 to-transparent group-hover:translate-x-full transition-transform duration-700 ease-out" />
+                  <div className="flex justify-between items-start">
+                    <div className="flex gap-4 items-center">
+                      <motion.div
+                        animate={{ y: [0, -4, 0] }}
+                        transition={{ duration: 2.4 + index * 0.3, repeat: Infinity, ease: "easeInOut" }}
+                      >
+                        <motion.div
+                          animate={hoveredEventIndex === index ? { rotate: 360, scale: 1.1 } : { rotate: 0, scale: 1 }}
+                          className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-white/40 group-hover:text-purple-400"
+                          transition={{
+                            type: "spring",
+                            stiffness: 260,
+                            damping: 20,
+                            rotate: { duration: 0.4, ease: "circOut" }
+                          }}
+                        >
+                          {EVENT_ICONS[ev.section] || <Star size={20} />}
+                        </motion.div>
+                      </motion.div>
+                      <div>
+                        <span className="block font-syncopate text-sm text-purple-500/60 uppercase mb-1 tracking-widest">{ev.section}</span>
+                        <h3 className="font-syncopate text-xl tracking-wider uppercase group-hover:text-purple-400 transition-colors">{ev.title}</h3>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-white/5 pt-3">
+                    <span className="font-syncopate font-bold text-lg">{ev.price}</span>
+                    <ArrowUpRight size={16} className="text-white/20 group-hover:text-purple-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* --- WORKSHOP CARTEL --- */}
       <section className="min-h-[70vh] py-24 relative z-10 flex items-center">
@@ -315,47 +423,56 @@ export default function Home() {
 
           <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-8">
             <div className="flex flex-col gap-4">
-              {workshopCartel.slice(0, 4).map((w, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.05 }}
-                  onMouseEnter={() => setHoveredIndex(index)}
-                  onMouseLeave={() => setHoveredIndex(null)}
-                  onClick={() => {setSelectedWorkshop(w)}}
-                  whileHover={{ scale: 1.02, rotateX: -5, rotateY: 5 }}
-                  className={`group relative h-[150px] cursor-pointer bg-[#0A0A0A]/60 border ${w.highlight ? 'border-cyan-500/30' : 'border-white/5'} rounded-3xl p-6 flex flex-col justify-between overflow-hidden backdrop-blur-xl hover:border-cyan-500 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)] transition-all`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex gap-4 items-center">
-                      <motion.div
-                        animate={hoveredIndex === index ? { rotate: 360, scale: 1.1 } : { rotate: 0, scale: 1 }}
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center  ${w.highlight ? 'bg-cyan-500 text-black' : 'bg-white/5 text-white/40 group-hover:text-cyan-400'}`}
-                        transition={{
-                          type: "spring",
-                          stiffness: 260,
-                          damping: 20,
-                          rotate: { duration: 0.4, ease: "circOut" }
-                        }}
-                      >
-                        {w.icon}
-                      </motion.div>
-                      <div>
-                        <span className="block font-syncopate text-sm text-cyan-500/60 uppercase mb-1 tracking-widest">{w.cat}</span>
-                        <h3 className="font-syncopate text-xl tracking-wider uppercase group-hover:text-cyan-400 transition-colors">{w.title}</h3>
+              {workshopCartel.map((w, index) => {
+                const isFeatured = index === 0;
+                return (
+                  <motion.div
+                    key={w.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.05 }}
+                    onMouseEnter={() => setHoveredIndex(index)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                    onClick={() => { setSelectedWorkshop(w) }}
+                    whileHover={{ scale: 1.02, rotateX: -5, rotateY: 5 }}
+                    className={`group relative h-[150px] cursor-pointer bg-[#0A0A0A]/60 border ${isFeatured ? 'border-cyan-500/30' : 'border-white/5'} rounded-3xl p-6 flex flex-col justify-between overflow-hidden backdrop-blur-xl hover:border-cyan-500 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)] transition-all`}
+                  >
+                    <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-cyan-400/10 to-transparent group-hover:translate-x-full transition-transform duration-700 ease-out" />
+                    <div className="flex justify-between items-start">
+                      <div className="flex gap-4 items-center">
+                        <motion.div
+                          animate={{ y: [0, -4, 0] }}
+                          transition={{ duration: 2.4 + index * 0.3, repeat: Infinity, ease: "easeInOut" }}
+                        >
+                          <motion.div
+                            animate={hoveredIndex === index ? { rotate: 360, scale: 1.1 } : { rotate: 0, scale: 1 }}
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center  ${isFeatured ? 'bg-cyan-500 text-black' : 'bg-white/5 text-white/40 group-hover:text-cyan-400'}`}
+                            transition={{
+                              type: "spring",
+                              stiffness: 260,
+                              damping: 20,
+                              rotate: { duration: 0.4, ease: "circOut" }
+                            }}
+                          >
+                            {WORKSHOP_ICONS[w.type] || <Star size={20} />}
+                          </motion.div>
+                        </motion.div>
+                        <div>
+                          <span className="block font-syncopate text-sm text-cyan-500/60 uppercase mb-1 tracking-widest">{w.type}</span>
+                          <h3 className="font-syncopate text-xl tracking-wider uppercase group-hover:text-cyan-400 transition-colors">{w.title}</h3>
+                        </div>
                       </div>
+                      {isFeatured && <div className="bg-cyan-500 text-black font-syncopate text-[7px] px-2 py-0.5 rounded-full font-bold uppercase">Hot</div>}
                     </div>
-                    {w.highlight && <div className="bg-cyan-500 text-black font-syncopate text-[7px] px-2 py-0.5 rounded-full font-bold uppercase">Hot</div>}
-                  </div>
 
-                  <div className="flex items-center justify-between border-t border-white/5 pt-3">
-                    <span className="font-syncopate font-bold text-lg">Rs. {w.price}</span>
-                    <ArrowUpRight size={16} className="text-white/20 group-hover:text-cyan-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-                  </div>
-                </motion.div>
-              ))}
+                    <div className="flex items-center justify-between border-t border-white/5 pt-3">
+                      <span className="font-syncopate font-bold text-lg">{w.price}</span>
+                      <ArrowUpRight size={16} className="text-white/20 group-hover:text-cyan-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
 
             <motion.div
@@ -365,22 +482,85 @@ export default function Home() {
               transition={{ delay: 0.2 }}
               className="relative rounded-[2rem] overflow-hidden border border-white/10 bg-[#0A0A0A]/70 h-[min(80vh)]"
             >
-              <Image
-                src="/assets/workshops.png"
-                alt="Workshop visual"
-                fill
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-contain"
+              <motion.div
+                className="absolute inset-0"
+                animate={{ scale: [1, 1.06, 1] }}
+                transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <Image
+                  src="/assets/workshops.png"
+                  alt="Workshop visual"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-contain"
+                />
+              </motion.div>
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-br from-cyan-500/15 via-transparent to-transparent"
+                animate={{ opacity: [0.2, 0.5, 0.2] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/95 via-transparent to-transparent" />
               <div className="absolute bottom-8 left-8 right-8 text-white">
-                <span className="font-syncopate text-[10px] uppercase tracking-[0.35em] text-cyan-400/80">Major Workshops</span>
-                <h3 className="font-syncopate text-3xl md:text-4xl uppercase tracking-tight mt-3 leading-tight">with combos</h3>
+                <span className="font-syncopate text-[10px] uppercase tracking-[0.35em] text-cyan-400/80">{featuredWorkshopSection.cards.length} Sessions</span>
+                <h3 className="font-syncopate text-3xl md:text-4xl uppercase tracking-tight mt-3 leading-tight">{featuredWorkshopSection.section}</h3>
               </div>
             </motion.div>
           </div>
         </div>
       </section>
+
+
+
+      {/* --- EVENT MODAL --- */}
+      <AnimatePresence>
+        {selectedEvent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-black/80"
+            onClick={() => setSelectedEvent(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="relative bg-[#0F0F0F] border border-purple-500/50 p-8 md:p-12 rounded-[2.5rem] text-center max-w-md w-full shadow-[0_0_80px_rgba(168,85,247,0.15)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setSelectedEvent(null)}
+                className="absolute top-6 right-6 text-white/20 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+              <span className="font-mono text-[9px] text-purple-500 tracking-[0.5em] uppercase mb-4 block">Visit the events page for </span>
+              <h2 className="font-syncopate text-2xl mb-8 uppercase tracking-tighter leading-tight">
+                {selectedEvent.title}
+              </h2>
+              <h3 className="font-syncopate text-lg text-purple-400/80 mb-4">{selectedEvent.subtitle}</h3>
+
+              <div className="mb-8 space-y-2 text-left">
+                {(selectedEvent.highlights || []).slice(0, 3).map((h, index) => (
+                  <p key={index} className="text-white/50 font-mono text-xs uppercase tracking-[0.2em]">
+                    {index + 1}. {h}
+                  </p>
+                ))}
+              </div>
+              <Link
+                href={`/events/${selectedEvent.id}`}
+                className="inline-block bg-purple-400 hover:bg-white text-black font-syncopate text-[11px] tracking-widest font-black uppercase px-8 py-4 rounded-full transition-colors"
+              >
+                View Event
+              </Link>
+              <p className="mt-6 text-white/20 font-mono text-[8px] uppercase tracking-[0.3em]">
+                {selectedEvent.section} // {selectedEvent.price}
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* --- REGISTRATION MODAL --- */}
       <AnimatePresence>
@@ -405,21 +585,27 @@ export default function Home() {
               >
                 <X size={20} />
               </button>
-              <span className="font-mono text-[9px] text-cyan-500 tracking-[0.5em] uppercase mb-4 block">Visit registration page to </span>
+              <span className="font-mono text-[9px] text-cyan-500 tracking-[0.5em] uppercase mb-4 block">Visit the workshop page to </span>
               <h2 className="font-syncopate text-2xl mb-8 uppercase tracking-tighter leading-tight">
                 Access {selectedWorkshop.title}
               </h2>
-              <h3 className="font-syncopate text-lg text-cyan-400/80 mb-4">{selectedWorkshop.desc}</h3>
-              
-              <h2 className="font-syncopate text-xl mb-8 uppercase tracking-tighter leading-tight">
-                {selectedWorkshop.details.map((detail, index) => (
-                  <p key={index} className="text-white/50 font-mono text-sm uppercase tracking-[0.3em]">
-                    {detail}
+              <h3 className="font-syncopate text-lg text-cyan-400/80 mb-4">{selectedWorkshop.subtitle}</h3>
+
+              <div className="mb-8 space-y-2 text-left">
+                {(selectedWorkshop.highlights || []).slice(0, 3).map((detail, index) => (
+                  <p key={index} className="text-white/50 font-mono text-xs uppercase tracking-[0.2em]">
+                    {index + 1}. {detail}
                   </p>
                 ))}
-              </h2>
-              <p className="mt-8 text-white/20 font-mono text-[8px] uppercase tracking-[0.3em]">
-                {selectedWorkshop.cat} Module // Price: {selectedWorkshop.price}
+              </div>
+              <Link
+                href={`/workshop/${selectedWorkshop.id}`}
+                className="inline-block bg-cyan-400 hover:bg-white text-black font-syncopate text-[11px] tracking-widest font-black uppercase px-8 py-4 rounded-full transition-colors"
+              >
+                View Workshop
+              </Link>
+              <p className="mt-6 text-white/20 font-mono text-[8px] uppercase tracking-[0.3em]">
+                {selectedWorkshop.type} Module // Price: {selectedWorkshop.price}
               </p>
             </motion.div>
           </motion.div>

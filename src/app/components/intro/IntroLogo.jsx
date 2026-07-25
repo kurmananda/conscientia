@@ -9,11 +9,7 @@ import React from "react";
  * Keep the outer wrapper exactly as it is because GSAP animates it.
  */
 
-interface IntroLogoProps {
-  logoRef: React.RefObject<HTMLDivElement | null>;
-}
-
-export function IntroLogo({ logoRef }: IntroLogoProps) {
+export function IntroLogo({ logoRef }) {
   return (
     <div
       ref={logoRef}

@@ -2,6 +2,10 @@ import { Space_Grotesk, Orbitron, JetBrains_Mono } from "next/font/google";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import CursorTrialWrapper from "./components/CursorTrialWrapper";
+import SiteAmbientMusic from "./components/SiteAmbientMusic";
+import ProfileCompletionModal from "./components/ProfileCompletionModal";
+import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -44,11 +48,17 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="min-h-dvh bg-black text-white antialiased">
-        <CursorTrialWrapper />
-        <Navbar />
-        <div className="h-[10vh] shrink-0 bg-transparent" aria-hidden />
-        <main className="relative min-h-0">{children}</main>
-        <Footer />
+        <AuthProvider>
+          <CartProvider>
+            <SiteAmbientMusic />
+            <CursorTrialWrapper />
+            <ProfileCompletionModal />
+            <Navbar />
+            <div className="h-[10vh] shrink-0 bg-transparent" aria-hidden />
+            <main className="relative min-h-0">{children}</main>
+            <Footer />
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   )

@@ -11,50 +11,13 @@
  *   2 = farthest (smallest scale, more blur, noticeably dimmer, least parallax)
  */
 
-export interface TileConfig {
-  /** Path to the image. Replace with your own image paths. */
-  src: string;
-  /** Alt text for the image */
-  alt: string;
-  /**
-   * Tile width in viewport-relative units (vw for landscape, vh for portrait).
-   * Stored as a percentage number; applied as a CSS value string at render time.
-   */
-  widthVw: number;
-  /** Aspect ratio as a CSS string, e.g. "3/4" or "16/9" */
-  aspectRatio: string;
-  /**
-   * Position from center of the screen in percent of viewport.
-   * x=0, y=0 is perfect center.
-   */
-  x: number; // percent of viewport width
-  y: number; // percent of viewport height
-  /** Depth layer: 0 = closest, 1 = mid, 2 = farthest */
-  depth: 0 | 1 | 2;
-  /**
-   * Initial rotation in degrees. Will be randomised slightly at runtime,
-   * but this sets the "resting" angle so the layout stays balanced.
-   */
-  rotation: number;
-  /**
-   * Stagger delay offset in ms. Controls when this tile appears relative
-   * to the first tile. Gives the organic, sequential reveal feel.
-   */
-  delay: number;
-  /**
-   * If true, this tile will be the one that expands to fill the screen
-   * in the exit transition. Only one tile should have this set to true.
-   */
-  isHero?: boolean;
-}
-
 /**
  * TILE CATALOGUE
  * ─────────────────────────────────────────────────────────────────────────────
  * Images cycle through the 8 generated placeholder images.
  * Replace src values with your own images to customise the gallery.
  */
-export const TILES: TileConfig[] = [
+export const TILES = [
   // ── CLOSEST LAYER (depth 0) ───────────────────────────────────────────────
   {
     src: "/tiles/tile-01.jpg",
@@ -247,4 +210,4 @@ export const DEPTH_STYLES = {
   0: { scale: 1.0, blur: 0, brightness: 1.0, parallaxFactor: 1.0 },
   1: { scale: 0.82, blur: 0.8, brightness: 0.82, parallaxFactor: 0.55 },
   2: { scale: 0.66, blur: 2.0, brightness: 0.62, parallaxFactor: 0.25 },
-} as const;
+};

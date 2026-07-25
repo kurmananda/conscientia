@@ -8,9 +8,7 @@
  * No other file needs to change when you tune the feel of the experience.
  */
 
-import type { EngineConfig } from "./types";
-
-export const ENGINE_CONFIG: EngineConfig = {
+export const ENGINE_CONFIG = {
   /**
    * Total scrollable height expressed as multiples of the viewport height.
    * 500vh gives us five screens of scroll travel which feels comfortable
@@ -135,16 +133,10 @@ export const ENGINE_CONFIG: EngineConfig = {
  *   0.62 → 0.76  Transition 1→2
  *   0.76 → 1.00  Object 2 pure active
  */
-export function decodeScrollProgress(p: number): {
-  activeIndex: number;
-  localProgress: number;
-  inTransition: boolean;
-  transitionFrom: number;
-  transitionTo: number;
-} {
-  const clamp = (v: number, lo: number, hi: number) =>
+export function decodeScrollProgress(p) {
+  const clamp = (v, lo, hi) =>
     Math.max(lo, Math.min(hi, v));
-  const norm = (v: number, lo: number, hi: number) =>
+  const norm = (v, lo, hi) =>
     clamp((v - lo) / (hi - lo), 0, 1);
 
   // Segment boundaries
@@ -178,11 +170,7 @@ export function decodeScrollProgress(p: number): {
  * Maps global scroll progress to a camera waypoint index + blend factor.
  * 5 waypoints spread evenly across scroll.
  */
-export function decodeCameraProgress(p: number): {
-  fromWaypoint: number;
-  toWaypoint: number;
-  blend: number;
-} {
+export function decodeCameraProgress(p) {
   const totalWaypoints = 5;
   const segment = p * (totalWaypoints - 1);
   const fromWaypoint = Math.min(Math.floor(segment), totalWaypoints - 2);

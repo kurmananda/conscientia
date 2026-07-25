@@ -1,16 +1,8 @@
 "use client";
 
-import React, { useRef, useState, useEffect, ReactNode } from "react";
+import React, { useRef, useState, useEffect } from "react";
 
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*";
-
-interface CategoryBoxProps {
-  title: string;
-  accentColor: string;
-  glowColor: string;
-  children: ReactNode;
-  style?: React.CSSProperties;
-}
 
 export default function CategoryBox({
   title,
@@ -18,9 +10,9 @@ export default function CategoryBox({
   glowColor,
   children,
   style,
-}: CategoryBoxProps) {
-  const boxRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLDivElement>(null);
+}) {
+  const boxRef = useRef(null);
+  const triggerRef = useRef(null);
   const [revealed, setRevealed] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -51,15 +43,45 @@ export default function CategoryBox({
     const el = boxRef.current;
     if (!el) return;
 
-    const handleMove = (e: MouseEvent) => {
-      const rect = el.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width;
-      const y = (e.clientY - rect.top) / rect.height;
-      setMousePos({ x, y });
+    let rect = el.getBoundingClientRect();
+    const updateRect = () => {
+      rect = el.getBoundingClientRect();
+    };
+    const ro = new ResizeObserver(updateRect);
+    ro.observe(el);
+    window.addEventListener("scroll", updateRect, { passive: true, capture: true });
+    window.addEventListener("resize", updateRect, { passive: true });
+
+    let rafId = null;
+    const handleMove = (e) => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        // Skip the read + re-render entirely when the pointer isn't
+        // anywhere near this box — avoids every box on the page
+        // recomputing/re-rendering on each global mousemove.
+        if (
+          e.clientX < rect.left - 200 ||
+          e.clientX > rect.right + 200 ||
+          e.clientY < rect.top - 200 ||
+          e.clientY > rect.bottom + 200
+        ) {
+          return;
+        }
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+        setMousePos({ x, y });
+      });
     };
 
     window.addEventListener("mousemove", handleMove, { passive: true });
-    return () => window.removeEventListener("mousemove", handleMove);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("scroll", updateRect, { capture: true });
+      window.removeEventListener("resize", updateRect);
+      ro.disconnect();
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   // Scroll-based parallax within box
@@ -274,7 +296,7 @@ export default function CategoryBox({
               opacity: revealed ? 0.4 : 0,
               transition: `opacity 0.5s ease ${0.3 + i * 0.1}s`,
               ...pos,
-            } as React.CSSProperties}
+            }}
           />
         ))}
 

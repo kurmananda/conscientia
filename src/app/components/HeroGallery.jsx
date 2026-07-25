@@ -18,7 +18,7 @@ const IMAGES = [
 const AUTO_INTERVAL = 2200;
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*";
 
-function ScrambleText({ text, delay = 0 }: { text: string; delay?: number }) {
+function ScrambleText({ text, delay = 0 }) {
   const [display, setDisplay] = useState(text.split("").map(() => "\u00A0").join(""));
 
   useEffect(() => {
@@ -49,21 +49,21 @@ export default function HeroGallery() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragX, setDragX] = useState(0);
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
-  const [hovered, setHovered] = useState<number | null>(null);
+  const [hovered, setHovered] = useState(null);
   const [isCenterHovered, setIsCenterHovered] = useState(false);
   const [paused, setPaused] = useState(false);
   const [cardTilt, setCardTilt] = useState({ x: 0, y: 0 });
   const startX = useRef(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const activeCardRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef(null);
+  const activeCardRef = useRef(null);
 
   const playGlitch = useSound("/sounds/glitch.wav", 0.2, 0.15);
-  const playClick = useSound("/sounds/click.mp3", 0.25, 0.08);
+  const playClick = useSound("/sounds/click.wav", 0.25, 0.08);
   const playWhoosh = useSound("/sounds/whoosh.mp3", 0.85);
   const playTapGallery = useSound("/sounds/tapgallery.mp3", 0.3, undefined, true);
-  const playTap = useSound("/sounds/tap.mp3", 0.3, undefined, true);
+  const playTap = useSound("/sounds/tap.wav", 0.3, undefined, true);
 
-  const goTo = useCallback((index: number) => {
+  const goTo = useCallback((index) => {
     setActive(Math.max(0, Math.min(IMAGES.length - 1, index)));
   }, []);
 
@@ -82,14 +82,14 @@ export default function HeroGallery() {
     return () => clearInterval(timer);
   }, [paused, isDragging, next]);
 
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+  const handlePointerDown = useCallback((e) => {
     setIsDragging(true);
     startX.current = e.clientX;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    e.target.setPointerCapture(e.pointerId);
   }, []);
 
   const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
+    (e) => {
       if (!isDragging) return;
       setDragX(e.clientX - startX.current);
     },
@@ -105,7 +105,7 @@ export default function HeroGallery() {
 
   // Mouse position for ambient light + card tilt
   useEffect(() => {
-    const handleMouse = (e: MouseEvent) => {
+    const handleMouse = (e) => {
       setMousePos({
         x: e.clientX / window.innerWidth,
         y: e.clientY / window.innerHeight,
@@ -126,7 +126,7 @@ export default function HeroGallery() {
 
   // Keyboard
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
+    const handleKey = (e) => {
       if (e.key === "ArrowRight") next();
       if (e.key === "ArrowLeft") prev();
     };
@@ -137,7 +137,7 @@ export default function HeroGallery() {
   // Wheel to navigate
   useEffect(() => {
     let cooldown = false;
-    const handleWheel = (e: WheelEvent) => {
+    const handleWheel = (e) => {
       if (cooldown) return;
       if (Math.abs(e.deltaX) > 30 || Math.abs(e.deltaY) > 30) {
         cooldown = true;
@@ -166,7 +166,7 @@ export default function HeroGallery() {
 
   const activeColor = IMAGES[active].color;
 
-  const getSlideStyle = (i: number): React.CSSProperties => {
+  const getSlideStyle = (i) => {
     const offset = i - active;
     const absOffset = Math.abs(offset);
     const isHovered = hovered === i && absOffset > 0 && absOffset <= 2;
@@ -583,7 +583,7 @@ export default function HeroGallery() {
                   opacity: 0.5,
                   animation: `bracketFade 0.4s ease ${j * 0.08}s forwards`,
                   ...pos,
-                } as React.CSSProperties}
+                }}
               />
             ))}
 

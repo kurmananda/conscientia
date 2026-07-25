@@ -2,11 +2,7 @@ import { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
-interface CameraRigProps {
-  mouse: React.MutableRefObject<{ x: number; y: number }>;
-}
-
-export default function CameraRig({ mouse }: CameraRigProps) {
+export default function CameraRig({ mouse }) {
   const { camera } = useThree();
   const target = useRef(new THREE.Vector3(0, 0, 0));
   const currentPos = useRef(new THREE.Vector3(0, 0, 18));

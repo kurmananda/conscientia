@@ -5,13 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Billboard, AdaptiveDpr, AdaptiveEvents } from "@react-three/drei";
 import * as THREE from "three";
 
-export interface WheelItem {
-  id: string;
-  title: string;
-  type: string;
-  color: string;
-  imageUrl: string;
-}
+
 
 const DEFAULT_COLORS = [
   "#33d6ff", "#a855f7", "#22c55e", "#f97316",
@@ -49,7 +43,7 @@ const TILE_PATHS = [
 
 const DEFAULT_IMG_URLS = Array.from({ length: 12 }, (_, i) => TILE_PATHS[i % TILE_PATHS.length]);
 
-const DEFAULT_ITEMS: WheelItem[] = Array.from({ length: 12 }, (_, i) => ({
+const DEFAULT_ITEMS = Array.from({ length: 12 }, (_, i) => ({
   id: DEFAULT_SLUGS[i],
   title: DEFAULT_TITLES[i],
   type: DEFAULT_TYPES[i],
@@ -63,7 +57,7 @@ const PH = 0.95;
 const RADIUS = 0.08;
 const AUTO_MS = 3500;
 
-function createRoundedRect(w: number, h: number, r: number): THREE.Shape {
+function createRoundedRect(w, h, r) {
   const shape = new THREE.Shape();
   const w2 = w / 2;
   const h2 = h / 2;
@@ -80,7 +74,7 @@ function createRoundedRect(w: number, h: number, r: number): THREE.Shape {
   return shape;
 }
 
-function RoundedPlane({ w, h, r, children, position }: { w: number; h: number; r: number; children?: React.ReactNode; position?: [number, number, number] }) {
+function RoundedPlane({ w, h, r, children, position }) {
   const geo = useMemo(() => new THREE.ShapeGeometry(createRoundedRect(w, h, r)), [w, h, r]);
   return <mesh geometry={geo} position={position}>{children}</mesh>;
 }
@@ -89,10 +83,6 @@ function Panel({
   index,
   texture,
   arc,
-}: {
-  index: number;
-  texture: THREE.Texture | null;
-  arc: number;
 }) {
   const angle = index * arc;
   const x = Math.sin(angle) * R;
@@ -114,9 +104,9 @@ function Panel({
   );
 }
 
-function BackgroundRings({ color }: { color: THREE.Color }) {
-  const ringRef = useRef<THREE.Mesh>(null);
-  const ringRef2 = useRef<THREE.Mesh>(null);
+function BackgroundRings({ color }) {
+  const ringRef = useRef(null);
+  const ringRef2 = useRef(null);
   const ringColor = useRef(new THREE.Color(color));
   const targetColor = useRef(new THREE.Color(color));
 
@@ -152,9 +142,9 @@ function BackgroundRings({ color }: { color: THREE.Color }) {
   );
 }
 
-function BackgroundParticles({ color }: { color: THREE.Color }) {
+function BackgroundParticles({ color }) {
   const count = 120;
-  const meshRef = useRef<THREE.Points>(null);
+  const meshRef = useRef(null);
   const particleColor = useRef(new THREE.Color(color));
   const targetColor = useRef(new THREE.Color(color));
   const positions = useMemo(() => {
@@ -175,7 +165,7 @@ function BackgroundParticles({ color }: { color: THREE.Color }) {
   useFrame((_, delta) => {
     particleColor.current.lerp(targetColor.current, delta * 1.5);
     if (meshRef.current) {
-      const mat = meshRef.current.material as THREE.PointsMaterial;
+      const mat = meshRef.current.material;
       mat.color.copy(particleColor.current);
       meshRef.current.rotation.y += delta * 0.03;
     }
@@ -198,17 +188,10 @@ function WheelScene({
   items,
   n,
   arc,
-}: {
-  rotationIndex: number;
-  textures: (THREE.Texture | null)[];
-  mouse: React.MutableRefObject<{ x: number; y: number }>;
-  items: WheelItem[];
-  n: number;
-  arc: number;
 }) {
-  const pivotRef = useRef<THREE.Group>(null);
-  const spinRef = useRef<THREE.Group>(null);
-  const bgRef = useRef<THREE.Group>(null);
+  const pivotRef = useRef(null);
+  const spinRef = useRef(null);
+  const bgRef = useRef(null);
   const spinAngle = useRef(0);
   const { camera } = useThree();
   const activeIndex = ((rotationIndex % n) + n) % n;
@@ -277,10 +260,10 @@ function WheelScene({
   );
 }
 
-function TextureLoader({ items, onReady }: { items: WheelItem[]; onReady: (tex: (THREE.Texture | null)[]) => void }) {
+function TextureLoader({ items, onReady }) {
   useEffect(() => {
     const loader = new THREE.TextureLoader();
-    const results: (THREE.Texture | null)[] = [];
+    const results = [];
     let loaded = 0;
     items.forEach((item, i) => {
       results[i] = null;
@@ -305,7 +288,7 @@ function TextureLoader({ items, onReady }: { items: WheelItem[]; onReady: (tex: 
   return null;
 }
 
-function GlitchTitle({ text, color, delay }: { text: string; color: string; delay: number }) {
+function GlitchTitle({ text, color, delay }) {
   const [glitching, setGlitching] = useState(false);
 
   useEffect(() => {
@@ -342,28 +325,40 @@ function GlitchTitle({ text, color, delay }: { text: string; color: string; dela
   );
 }
 
-export default function WorkshopWheel({ items: propItems }: { items?: WheelItem[] }) {
+export default function WorkshopWheel({ items: propItems }) {
   const items = propItems ?? DEFAULT_ITEMS;
   const n = items.length;
   const arc = (Math.PI * 2) / n;
 
   const [rotationIndex, setRotationIndex] = useState(0);
   const activeIndex = ((rotationIndex % n) + n) % n;
-  const [textures, setTextures] = useState<(THREE.Texture | null)[] | null>(null);
+  const [textures, setTextures] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartY = useRef(0);
   const [paused, setPaused] = useState(false);
-  const [thumbUrls, setThumbUrls] = useState<string[]>([]);
+  const [thumbUrls, setThumbUrls] = useState([]);
   const [prevIndex, setPrevIndex] = useState(0);
   const [transitionProgress, setTransitionProgress] = useState(1);
   const [glitchSeed, setGlitchSeed] = useState(0);
+  const [inView, setInView] = useState(true);
   const mouseRef = useRef({ x: 0, y: 0 });
-  const wheelRef = useRef<HTMLDivElement>(null);
+  const wheelRef = useRef(null);
 
   const activeColor = items[activeIndex].color;
   const dpr = useMemo(() => {
-    if (typeof window !== "undefined" && window.innerWidth < 768) return [0.75, 1.5] as [number, number];
-    return [1, 1.5] as [number, number];
+    if (typeof window !== "undefined" && window.innerWidth < 768) return [0.75, 1.5];
+    return [1, 1.5];
+  }, []);
+
+  useEffect(() => {
+    const el = wheelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { threshold: 0.05 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -382,7 +377,7 @@ export default function WorkshopWheel({ items: propItems }: { items?: WheelItem[
     }
   }, [activeIndex, prevIndex]);
 
-  const goTo = useCallback((i: number) => {
+  const goTo = useCallback((i) => {
     setRotationIndex(prev => {
       const curMod = ((prev % n) + n) % n;
       let diff = ((i - curMod) + n) % n;
@@ -395,13 +390,13 @@ export default function WorkshopWheel({ items: propItems }: { items?: WheelItem[
   const prev = useCallback(() => setRotationIndex(prev => prev - 1), []);
 
   useEffect(() => {
-    if (paused || isDragging) return;
+    if (paused || isDragging || !inView) return;
     const t = setInterval(next, AUTO_MS);
     return () => clearInterval(t);
-  }, [paused, isDragging, next, n]);
+  }, [paused, isDragging, inView, next, n]);
 
   useEffect(() => {
-    const hk = (e: KeyboardEvent) => {
+    const hk = (e) => {
       if (e.key === "ArrowUp" || e.key === "ArrowLeft") prev();
       if (e.key === "ArrowDown" || e.key === "ArrowRight") next();
     };
@@ -411,7 +406,7 @@ export default function WorkshopWheel({ items: propItems }: { items?: WheelItem[
 
   useEffect(() => {
     let cd = false;
-    const wh = (e: WheelEvent) => {
+    const wh = (e) => {
       if (!wheelRef.current) return;
       const rect = wheelRef.current.getBoundingClientRect();
       if (rect.bottom < 0 || rect.top > window.innerHeight) return;
@@ -427,14 +422,14 @@ export default function WorkshopWheel({ items: propItems }: { items?: WheelItem[
     return () => window.removeEventListener("wheel", wh);
   }, [next, prev]);
 
-  const hPD = useCallback((e: React.PointerEvent) => {
+  const hPD = useCallback((e) => {
     setIsDragging(true);
     dragStartY.current = e.clientY;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    e.target.setPointerCapture(e.pointerId);
   }, []);
 
   const hPU = useCallback(
-    (e: React.PointerEvent) => {
+    (e) => {
       setIsDragging(false);
       const dy = e.clientY - dragStartY.current;
       if (dy < -60) next();
@@ -570,6 +565,7 @@ export default function WorkshopWheel({ items: propItems }: { items?: WheelItem[
         <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
           <Canvas
             dpr={dpr}
+            frameloop={inView ? "always" : "never"}
             camera={{ position: [0, 2.5, 6], fov: 50, near: 0.1, far: 30 }}
             gl={{
               antialias: true,
@@ -650,7 +646,7 @@ export default function WorkshopWheel({ items: propItems }: { items?: WheelItem[
                     : "0 2px 6px rgba(0,0,0,0.3)",
                   transform: ia ? "perspective(400px) scale(1.05)" : "perspective(400px) scale(1)",
                   "--thumb-color": item.color,
-                } as React.CSSProperties}
+                }}
                 onMouseEnter={(e) => {
                   const el = e.currentTarget;
                   if (!ia) {
@@ -697,7 +693,7 @@ export default function WorkshopWheel({ items: propItems }: { items?: WheelItem[
             gap: "14px",
             alignItems: "center",
             "--arrow-color": activeColor,
-          } as React.CSSProperties}
+          }}
         >
           <button
             onClick={prev}

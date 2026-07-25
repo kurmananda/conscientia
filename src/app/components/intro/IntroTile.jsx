@@ -2,7 +2,6 @@
 
 import React from "react";
 import Image from "next/image";
-import type { TileConfig } from "./tiles-config";
 import { DEPTH_STYLES } from "./tiles-config";
 
 /**
@@ -18,16 +17,10 @@ import { DEPTH_STYLES } from "./tiles-config";
  * Depth is encoded visually via filter (blur + brightness) and scale.
  */
 
-interface IntroTileProps {
-  tile: TileConfig;
-  index: number;
-  tileRef: (el: HTMLDivElement | null) => void;
-}
-
 export const IntroTile = React.memo(function IntroTile({
   tile,
   tileRef,
-}: IntroTileProps) {
+}) {
   const depth = DEPTH_STYLES[tile.depth];
 
   // Box shadow scales with depth

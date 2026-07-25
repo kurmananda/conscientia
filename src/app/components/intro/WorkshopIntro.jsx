@@ -3,20 +3,15 @@
 import React, { useRef, useEffect, useState } from "react";
 import gsap from "gsap";
 
-interface WorkshopIntroProps {
-  onComplete: () => void;
-  risersRef?: React.MutableRefObject<HTMLAudioElement | null>;
-}
-
 const LAYERS = 5;
 const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*";
 
-export default function WorkshopIntro({ onComplete, risersRef: externalRisersRef }: WorkshopIntroProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const topRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const botRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const lineRef = useRef<HTMLDivElement>(null);
-  const localRisersRef = useRef<HTMLAudioElement | null>(null);
+export default function WorkshopIntro({ onComplete, risersRef: externalRisersRef }) {
+  const containerRef = useRef(null);
+  const topRefs = useRef([]);
+  const botRefs = useRef([]);
+  const lineRef = useRef(null);
+  const localRisersRef = useRef(null);
   const risersRef = externalRisersRef ?? localRisersRef;
   const [done, setDone] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -174,7 +169,7 @@ export default function WorkshopIntro({ onComplete, risersRef: externalRisersRef
     if (done) onComplete();
   }, [done, onComplete]);
 
-  const wordStyle: React.CSSProperties = {
+  const wordStyle = {
     fontFamily: 'var(--font-display), sans-serif',
     fontSize: "clamp(3rem, 13vw, 10rem)",
     fontWeight: 900,
@@ -336,7 +331,7 @@ export default function WorkshopIntro({ onComplete, risersRef: externalRisersRef
             opacity: 0.4,
             animation: `bracketFadeIn 0.8s ease ${i * 0.1}s forwards`,
             ...pos,
-          } as React.CSSProperties}
+          }}
         />
       ))}
 

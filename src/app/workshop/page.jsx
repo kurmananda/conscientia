@@ -1,288 +1,251 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import IntroController from "../components/IntroController";
-import CategoryBox from "../components/CategoryBox";
+import ParallaxCard from "../components/parallax/ParallaxCard";
 import { workshopCards } from "./workshopData";
+import { groupBySection } from "../lib/groupBySection";
 import useSound from "../hooks/useSound";
 
-const TimeFallScene = dynamic(() => import("../components/TimeFallScene"), { ssr: false });
-const Experience = dynamic(() => import("../components/WorkshopExperience"), { ssr: false });
-const WorkshopWheel = dynamic(() => import("../components/three/WorkshopWheel"), { ssr: false });
-const DynamicParallaxCard = dynamic(() => import("../components/parallax/ParallaxCard"), { ssr: false });
+const sections = groupBySection(workshopCards);
 
-import type { CardData } from "../components/parallax/ParallaxCard";
+function CardWrapper({ card, index }) {
+  return <ParallaxCard card={card} index={index} basePath="/workshop" width="100%" />;
+}
 
-const preCards = workshopCards.filter((c) => c.category === "pre");
-const liveCards = workshopCards.filter((c) => c.category === "live");
-
-function CardWrapper({ card, index }: { card: CardData; index: number }) {
-  const [visible, setVisible] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "400px" }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
+function SectionHeading({ title, accentColor, count }) {
   return (
-    <div ref={ref} style={{ pointerEvents: "auto" }}>
-      {visible ? <DynamicParallaxCard card={card} index={index} /> : null}
+    <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "2.5rem" }}>
+      <div
+        style={{
+          width: "40px",
+          height: "2px",
+          background: `linear-gradient(90deg, ${accentColor}, transparent)`,
+          boxShadow: `0 0 12px ${accentColor}80`,
+        }}
+      />
+      <h2
+        style={{
+          fontFamily: 'var(--font-display), sans-serif',
+          fontSize: "clamp(1.2rem, 3vw, 1.8rem)",
+          fontWeight: 700,
+          color: accentColor,
+          letterSpacing: "0.15em",
+          textTransform: "uppercase",
+          margin: 0,
+          textShadow: `0 0 30px ${accentColor}40`,
+        }}
+      >
+        {title}
+      </h2>
+      {count != null && (
+        <span
+          style={{
+            fontFamily: 'var(--font-display), sans-serif',
+            fontSize: "0.7rem",
+            fontWeight: 600,
+            letterSpacing: "0.1em",
+            color: `${accentColor}99`,
+            border: `1px solid ${accentColor}33`,
+            borderRadius: "999px",
+            padding: "0.2rem 0.7rem",
+          }}
+        >
+          {count}
+        </span>
+      )}
+      <div style={{ flex: 1, height: "1px", background: `linear-gradient(90deg, ${accentColor}22, transparent)` }} />
     </div>
   );
 }
 
 export default function WorkshopPage() {
-  const [showModels, setShowModels] = useState(false);
-  const [showExperience, setShowExperience] = useState(false);
-  const [galleryRevealed, setGalleryRevealed] = useState(false);
-  const galleryRef = useRef<HTMLDivElement>(null);
-
   const playGlitch = useSound("/sounds/glitch.wav", 0.2, 0.15);
-  const playClick = useSound("/sounds/click.mp3", 0.25, 0.08);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const pastGallery = window.scrollY > window.innerHeight * 0.8;
-      setShowModels(pastGallery);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Trigger cinematic gallery reveal after intro
-  useEffect(() => {
-    const timer = setTimeout(() => setGalleryRevealed(true), 150);
-    const experienceTimer = setTimeout(() => setShowExperience(true), 600);
-    return () => {
-      clearTimeout(timer);
-      clearTimeout(experienceTimer);
-    };
-  }, []);
+  const playClick = useSound("/sounds/click.wav", 0.25, 0.08);
 
   return (
     <>
       <style>{`
         @keyframes homeBtnSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-        @media (max-width: 768px) {
-          [data-workshop-section] {
-            min-height: 10vh !important;
+        @keyframes orbFloat {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(-4%, 3%) scale(1.08); }
+        }
+        .card-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 2rem 3rem;
+          justify-items: stretch;
+        }
+        @media (min-width: 640px) {
+          .card-grid {
+            gap: 3rem 3rem;
+          }
+        }
+        @media (min-width: 900px) {
+          .card-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem 3rem;
           }
         }
       `}</style>
 
-      {/* BACKGROUND — outside IntroController to match detail page */}
-      <div style={{ position: "fixed", inset: 0, zIndex: -10 }}>
-        <TimeFallScene enabled={galleryRevealed} />
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: -10,
+          background:
+            "radial-gradient(ellipse at 20% 0%, rgba(51,214,255,0.10) 0%, transparent 55%), radial-gradient(ellipse at 80% 100%, rgba(168,85,247,0.08) 0%, transparent 55%), #030304",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: "-10%",
+            left: "-5%",
+            width: "40vw",
+            height: "40vw",
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(51,214,255,0.12) 0%, transparent 70%)",
+            filter: "blur(40px)",
+            animation: "orbFloat 18s ease-in-out infinite",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: "-15%",
+            right: "-10%",
+            width: "45vw",
+            height: "45vw",
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(168,85,247,0.10) 0%, transparent 70%)",
+            filter: "blur(40px)",
+            animation: "orbFloat 22s ease-in-out infinite reverse",
+          }}
+        />
       </div>
 
       <IntroController>
+        <div style={{ overflowX: "hidden", width: "100%" }}>
 
-      <div style={{ overflowX: "hidden", width: "100%" }}>
-
-      {/* ── Back to Home Button ───────────────────────────────── */}
-      <div style={{ position: "fixed", bottom: "1.5rem", left: "1.5rem", zIndex: 50, perspective: "600px" }}>
-        <Link
-          href="/"
-          onClick={() => playClick()}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.6rem",
-            padding: "0.7rem 1.5rem",
-            borderRadius: "40px",
-            border: "1.5px solid rgba(51,214,255,0.35)",
-            background: "linear-gradient(135deg, rgba(51,214,255,0.15), rgba(0,0,0,0.6))",
-            backdropFilter: "blur(16px)",
-            color: "#33d6ff",
-            fontSize: "0.75rem",
-            fontWeight: 600,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            textDecoration: "none",
-            transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
-            boxShadow: "0 4px 25px rgba(51,214,255,0.15), inset 0 1px 0 rgba(255,255,255,0.05)",
-            position: "relative",
-            overflow: "hidden",
-            transformStyle: "preserve-3d",
-            fontStyle: "italic",
-            fontFamily: 'var(--font-display), sans-serif',
-          }}
-          onMouseEnter={(e) => {
-            playGlitch();
-            e.currentTarget.style.transform = "translateZ(20px) scale(1.06) translateX(-6px)";
-            e.currentTarget.style.background = "linear-gradient(135deg, rgba(51,214,255,0.35), rgba(51,214,255,0.1))";
-            e.currentTarget.style.borderColor = "rgba(51,214,255,0.7)";
-            e.currentTarget.style.boxShadow = "0 12px 45px rgba(51,214,255,0.4), 0 0 50px rgba(51,214,255,0.2), inset 0 1px 0 rgba(255,255,255,0.15)";
-            const arrow = e.currentTarget.querySelector("[data-arrow]") as HTMLElement;
-            if (arrow) arrow.style.transform = "translateX(-4px) scale(1.15)";
-            const line = e.currentTarget.querySelector("[data-line]") as HTMLElement;
-            if (line) line.style.width = "35px";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateZ(0) scale(1) translateX(0)";
-            e.currentTarget.style.background = "linear-gradient(135deg, rgba(51,214,255,0.15), rgba(0,0,0,0.6))";
-            e.currentTarget.style.borderColor = "rgba(51,214,255,0.35)";
-            e.currentTarget.style.boxShadow = "0 4px 25px rgba(51,214,255,0.15), inset 0 1px 0 rgba(255,255,255,0.05)";
-            const arrow = e.currentTarget.querySelector("[data-arrow]") as HTMLElement;
-            if (arrow) arrow.style.transform = "translateX(0) scale(1)";
-            const line = e.currentTarget.querySelector("[data-line]") as HTMLElement;
-            if (line) line.style.width = "0px";
-          }}
-        >
-          {/* Animated border glow */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              borderRadius: "40px",
-              padding: "1px",
-              background: "conic-gradient(from 0deg, rgba(51,214,255,0.4), transparent 30%, rgba(51,214,255,0.2), transparent 70%, rgba(51,214,255,0.4))",
-              WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-              WebkitMaskComposite: "xor",
-              maskComposite: "exclude",
-              animation: "homeBtnSpin 4s linear infinite",
-              opacity: 0.6,
-              pointerEvents: "none",
-            }}
-          />
-
-          <span
-            data-arrow
-            style={{
-              fontSize: "0.85rem",
-              transition: "transform 0.3s ease",
-              display: "inline-block",
-            }}
-          >
-            &larr;
-          </span>
-
-          <span style={{ position: "relative" }}>
-            Home
-            <span
-              data-line
+          {/* ── Back to Home Button ───────────────────────────────── */}
+          <div style={{ position: "fixed", bottom: "1.5rem", left: "1.5rem", zIndex: 50, perspective: "600px" }}>
+            <Link
+              href="/"
+              onClick={() => playClick()}
               style={{
-                position: "absolute",
-                bottom: "-3px",
-                left: 0,
-                height: "1px",
-                width: "0px",
-                background: "linear-gradient(90deg, #33d6ff, transparent)",
-                transition: "width 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
-                pointerEvents: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.6rem",
+                padding: "0.7rem 1.5rem",
+                borderRadius: "40px",
+                border: "1.5px solid rgba(51,214,255,0.35)",
+                background: "linear-gradient(135deg, rgba(51,214,255,0.15), rgba(0,0,0,0.6))",
+                backdropFilter: "blur(16px)",
+                color: "#33d6ff",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                textDecoration: "none",
+                transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
+                boxShadow: "0 4px 25px rgba(51,214,255,0.15), inset 0 1px 0 rgba(255,255,255,0.05)",
+                position: "relative",
+                overflow: "hidden",
+                transformStyle: "preserve-3d",
+                fontStyle: "italic",
+                fontFamily: 'var(--font-display), sans-serif',
               }}
-            />
-          </span>
-        </Link>
-      </div>
+              onMouseEnter={(e) => {
+                playGlitch();
+                e.currentTarget.style.transform = "translateZ(20px) scale(1.06) translateX(-6px)";
+                e.currentTarget.style.borderColor = "rgba(51,214,255,0.7)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateZ(0) scale(1) translateX(0)";
+                e.currentTarget.style.borderColor = "rgba(51,214,255,0.35)";
+              }}
+            >
+              <span style={{ fontSize: "0.85rem" }}>&larr;</span>
+              <span>Home</span>
+            </Link>
+          </div>
 
-      {/* 3D Workshop Wheel — Cinematic 3D Gallery */}
-      <div
-        ref={galleryRef}
-        style={{
-          position: "relative",
-          zIndex: 5,
-          opacity: galleryRevealed ? 1 : 0,
-          transform: galleryRevealed
-            ? "translateY(0)"
-            : "translateY(40px)",
-          transition: "opacity 0.8s cubic-bezier(0.23, 1, 0.32, 1), transform 0.8s cubic-bezier(0.23, 1, 0.32, 1)",
-        }}
-      >
-        <WorkshopWheel />
-      </div>
+          {/* ── Header ─────────────────────────────────────────────── */}
+          <div
+            style={{
+              padding: "12vh 5vw 4vh",
+              maxWidth: "1300px",
+              margin: "0 auto",
+              fontFamily: 'var(--font-display), sans-serif',
+            }}
+          >
+            <div
+              style={{
+                display: "inline-block",
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                letterSpacing: "0.35em",
+                textTransform: "uppercase",
+                color: "#33d6ff",
+                marginBottom: "1rem",
+              }}
+            >
+              Conscientia · {workshopCards.length} Sessions
+            </div>
+            <h1
+              style={{
+                fontSize: "clamp(2.5rem, 8vw, 5rem)",
+                fontWeight: 900,
+                letterSpacing: "0.03em",
+                background: "linear-gradient(135deg, #fff 40%, #33d6ff 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                marginBottom: "1rem",
+                textShadow: "0 0 60px rgba(51,214,255,0.25)",
+              }}
+            >
+              Workshops
+            </h1>
+            <p
+              style={{
+                fontSize: "1.1rem",
+                color: "rgba(255,255,255,0.6)",
+                maxWidth: "700px",
+                lineHeight: 1.7,
+                letterSpacing: "0.02em",
+              }}
+            >
+              Hands-on sessions led by experts — from rocketry to quantum computing. Build real
+              skills, work on real projects, and walk away with a certificate.
+            </p>
+          </div>
 
-      {/* 3D Models — fixed overlay */}
-<<<<<<< HEAD
-      {showModels && showExperience && (
-        <div style={{ opacity: 1, transition: "opacity 0.6s ease" }}>
-          <Experience />
+          {/* ── Sections — one per unique `section` value in workshopData.js ── */}
+          {sections.map(({ section, color, cards }, sIndex) => (
+            <div
+              key={section}
+              style={{
+                maxWidth: "1300px",
+                margin: "0 auto",
+                padding: sIndex === 0 ? "2vh 5vw" : "6vh 5vw",
+                paddingBottom: sIndex === sections.length - 1 ? "10vh" : undefined,
+              }}
+            >
+              <SectionHeading title={section} accentColor={color} count={cards.length} />
+              <div className="card-grid">
+                {cards.map((card, index) => (
+                  <CardWrapper key={card.id} card={card} index={index} />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-      )}
-=======
-      <div style={{ opacity: showModels ? 1 : 0, transition: "opacity 0.6s ease" }}>
-        <Experience active={showModels} />
-      </div>
->>>>>>> origin/Nikhileswar-branch
-
-      {/* ── Pre-Conscientia Workshops ─────────────────────────── */}
-      <div style={{ position: "relative", zIndex: 10 }}>
-        <CategoryBox
-          title="Pre-Conscientia"
-          accentColor="#33d6ff"
-          glowColor="rgba(51,214,255,0.5)"
-          style={{ marginTop: "5vh" }}
-        >
-          <div data-workshop-section style={{ position: "relative", minHeight: "300vh" }} />
-        </CategoryBox>
-      </div>
-
-      {/* ── Live-Conscientia Workshops ────────────────────────── */}
-      <div style={{ position: "relative", zIndex: 10, marginBottom: "10vh" }}>
-        <CategoryBox
-          title="Live-Conscientia"
-          accentColor="#a855f7"
-          glowColor="rgba(168,85,247,0.5)"
-          style={{ marginTop: "5vh" }}
-        >
-          <div data-workshop-section style={{ position: "relative", minHeight: "180vh" }} />
-        </CategoryBox>
-      </div>
-
-      {/* ── All Cards — topmost layer ─────────────────────────── */}
-      <div data-workshop-cards style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 30, pointerEvents: "none" }}>
-        {preCards.map((card, index) => (
-          <div
-            key={card.id}
-            data-workshop-card="true"
-            style={{
-              position: "absolute",
-              top: card.layout?.top || "0",
-              left: card.layout?.left,
-              right: card.layout?.right,
-              bottom: card.layout?.bottom,
-              width: card.layout?.width,
-              pointerEvents: "auto",
-            }}
-          >
-            <CardWrapper card={card} index={index} />
-          </div>
-        ))}
-        {liveCards.map((card, index) => (
-          <div
-            key={card.id}
-            data-workshop-card="true"
-            style={{
-              position: "absolute",
-              top: card.layout?.top || "0",
-              left: card.layout?.left,
-              right: card.layout?.right,
-              bottom: card.layout?.bottom,
-              width: card.layout?.width,
-              pointerEvents: "auto",
-            }}
-          >
-            <CardWrapper card={card} index={index + preCards.length} />
-          </div>
-        ))}
-      </div>
-      </div>
-    </IntroController>
+      </IntroController>
     </>
   );
 }

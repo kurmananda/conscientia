@@ -8,7 +8,7 @@ import { useSceneActive } from "../SceneActiveContext";
 
 export default function Model3() {
   const { scene } = useGLTF("/models/rocket_future.glb");
-  const groupRef = useRef<THREE.Group>(null);
+  const groupRef = useRef(null);
   const active = useSceneActive();
 
   useFrame((_, delta) => {

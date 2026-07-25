@@ -1,23 +1,24 @@
 import { useRef, useCallback, useEffect, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
+import { AdaptiveDpr, AdaptiveEvents } from '@react-three/drei';
 import ParticleField from './ParticleField';
 import CameraRig from './CameraRig';
 
-export default function TimeFallScene({ wide, enabled = true }: { wide?: boolean; enabled?: boolean }) {
+export default function TimeFallScene({ wide, enabled = true }) {
   const mouse = useRef({ x: 0, y: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef(null);
   const dpr = useMemo(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) return [0.5, 1] as [number, number];
-    return [1, 1.5] as [number, number];
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return [0.5, 1];
+    return [1, 1.5];
   }, []);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+  const handleMouseMove = useCallback((e) => {
     const x = (e.clientX / window.innerWidth) * 2 - 1;
     const y = -((e.clientY / window.innerHeight) * 2 - 1);
     mouse.current = { x, y };
   }, []);
 
-  const handleTouchMove = useCallback((e: TouchEvent) => {
+  const handleTouchMove = useCallback((e) => {
     if (e.touches.length > 0) {
       const touch = e.touches[0];
       const x = (touch.clientX / window.innerWidth) * 2 - 1;
@@ -67,21 +68,16 @@ export default function TimeFallScene({ wide, enabled = true }: { wide?: boolean
         overflow: 'hidden',
       }}
     >
-<<<<<<< HEAD
       <Canvas
         camera={{ position: [0, 0, 1], fov: 60 }}
-        dpr={typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 1.5) : 1}
+        dpr={dpr}
         gl={{ antialias: false, powerPreference: 'high-performance' }}
       >
         <CameraRig mouse={mouse} />
-        <ParticleField count={4000} mouse={mouse} />
+        <ParticleField count={20000} mouse={mouse} />
+        <AdaptiveDpr pixelated />
+        <AdaptiveEvents />
       </Canvas>
-=======
-      <Canvas dpr={dpr} camera={{ position: [0, 0, 1], fov: 60 }}>
-    <CameraRig mouse={mouse} />
-    <ParticleField count={20000} mouse={mouse} />
-</Canvas>
->>>>>>> origin/Nikhileswar-branch
     </div>
   );
 }

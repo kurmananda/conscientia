@@ -30,40 +30,26 @@ const T = {
   exitOthers: 0.8,         // non-hero fade/blur out
   exitHero: 1.0,           // hero expansion
   exitBlackout: 0.4,      // final fade to black
-} as const;
+};
 
 // Ambient float amplitudes per depth
 const AMP = {
   0: { y: 14, x: 5,  r: 1.2 },
   1: { y: 10, x: 4,  r: 0.9 },
   2: { y: 7,  x: 3,  r: 0.6 },
-} as const;
+};
 
 // Parallax travel (px) at depth 0 – deeper tiles move proportionally less
 const PARALLAX_MAX = 28;
 
-export interface IntroRefs {
-  overlayRef:  React.RefObject<HTMLDivElement | null>;
-  logoRef:     React.RefObject<HTMLDivElement | null>;
-  galleryRef:  React.RefObject<HTMLDivElement | null>;
-  tilesRef:    React.RefObject<(HTMLDivElement | null)[]>;
-  cameraRef:   React.RefObject<HTMLDivElement | null>;
-}
-
-export function useIntroAnimation({
-  onComplete,
-  refs,
-}: {
-  onComplete: () => void;
-  refs: IntroRefs;
-}) {
+export function useIntroAnimation({ onComplete, refs }) {
   const { overlayRef, logoRef, galleryRef, tilesRef, cameraRef } = refs;
 
   // --- Internal refs (never cause re-renders) --------------------------------
-  const gsapCtx       = useRef<gsap.Context | null>(null);
-  const floatTweens   = useRef<gsap.core.Tween[]>([]);
-  const cameraTween   = useRef<gsap.core.Tween | null>(null);
-  const rafId         = useRef<number>(0);
+  const gsapCtx       = useRef(null);
+  const floatTweens   = useRef([]);
+  const cameraTween   = useRef(null);
+  const rafId         = useRef(0);
   const exitStarted   = useRef(false);
 
   // Smooth mouse position (-1 … +1 from center)
@@ -71,7 +57,7 @@ export function useIntroAnimation({
   const smoothMouse   = useRef({ x: 0, y: 0 });
 
   // ── Mouse listener ────────────────────────────────────────────────────────
-  const onMouseMove = useCallback((e: MouseEvent) => {
+  const onMouseMove = useCallback((e) => {
     targetMouse.current.x = (e.clientX / window.innerWidth  - 0.5) * 2;
     targetMouse.current.y = (e.clientY / window.innerHeight - 0.5) * 2;
   }, []);
@@ -122,7 +108,7 @@ export function useIntroAnimation({
 
   // ── Ambient float (single tile) ───────────────────────────────────────────
   const startFloat = useCallback(
-    (el: HTMLDivElement, depth: 0 | 1 | 2) => {
+    (el, depth) => {
       const amp = AMP[depth];
       const dur = 5.5 + Math.random() * 4;
       const sign = () => (Math.random() > 0.5 ? 1 : -1);
@@ -143,7 +129,7 @@ export function useIntroAnimation({
   );
 
   // ── Camera drift ──────────────────────────────────────────────────────────
-  const startCameraDrift = useCallback((camera: HTMLDivElement) => {
+  const startCameraDrift = useCallback((camera) => {
     cameraTween.current = gsap.to(camera, {
       xPercent: 1.5,
       yPercent: 1.2,
@@ -170,7 +156,7 @@ export function useIntroAnimation({
 
     const heroIndex = TILES.findIndex((t) => t.isHero);
     const heroEl    = heroIndex >= 0 ? tiles[heroIndex] : tiles[0];
-    const others    = tiles.filter((el, i) => el && i !== heroIndex) as HTMLDivElement[];
+    const others    = tiles.filter((el, i) => el && i !== heroIndex);
 
     const tl = gsap.timeline({
       onComplete: () => {

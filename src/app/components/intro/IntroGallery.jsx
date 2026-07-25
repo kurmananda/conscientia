@@ -15,16 +15,10 @@ import { TILES } from "./tiles-config";
  *       tiles   – each absolute-positioned IntroTile
  */
 
-interface IntroGalleryProps {
-  galleryRef: React.RefObject<HTMLDivElement | null>;
-  cameraRef: React.RefObject<HTMLDivElement | null>;
-  tilesRef: React.RefObject<(HTMLDivElement | null)[]>;
-}
-
-export function IntroGallery({ galleryRef, cameraRef, tilesRef }: IntroGalleryProps) {
+export function IntroGallery({ galleryRef, cameraRef, tilesRef }) {
   // Stable callback refs array – initialised once
-  const stableRefs = useRef<((el: HTMLDivElement | null) => void)[]>(
-    TILES.map((_, i) => (el: HTMLDivElement | null) => {
+  const stableRefs = useRef(
+    TILES.map((_, i) => (el) => {
       tilesRef.current[i] = el;
     })
   );

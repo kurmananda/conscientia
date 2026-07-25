@@ -1,24 +1,11 @@
-*{
+.about-page, .about-page *{
     margin:0;
     padding:0;
     box-sizing:border-box;
 }
 
-html{
-    scroll-behavior:smooth;
-}
-
-body{
-    background:#000;
-    color:white;
-    overflow-x:hidden;
-    font-family:Inter,sans-serif;
-}
-
 .about-page{
-
     background:black;
-
 }
 
 /* ---------------- HERO ---------------- */

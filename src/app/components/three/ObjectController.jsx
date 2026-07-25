@@ -20,24 +20,17 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useSceneActive } from "../SceneActiveContext";
 import { ENGINE_CONFIG, decodeScrollProgress } from "../engine/config";
-import type { ObjectKeyframe } from "../engine/types";
-
-interface ObjectControllerProps {
-  progressRef: React.MutableRefObject<number>;
-  mouseRef: React.MutableRefObject<{ x: number; y: number }>;
-  objectRefs: React.MutableRefObject<(THREE.Group | null)[]>;
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const lerp = (a, b, t) => a + (b - a) * t;
 
-function smoothstep(t: number): number {
+function smoothstep(t) {
   const c = Math.max(0, Math.min(1, t));
   return c * c * (3 - 2 * c);
 }
 
-function lerpFrame(a: ObjectKeyframe, b: ObjectKeyframe, t: number): ObjectKeyframe {
+function lerpFrame(a, b, t) {
   const s = smoothstep(t);
   return {
     position: [
@@ -59,9 +52,9 @@ function lerpFrame(a: ObjectKeyframe, b: ObjectKeyframe, t: number): ObjectKeyfr
  * Stores each material's original opacity once so we can multiply group
  * opacity against it without clamping the material's own intentional value.
  */
-const baseOpacityMap = new WeakMap<THREE.Material, number>();
+const baseOpacityMap = new WeakMap();
 
-function applyGroupOpacity(group: THREE.Group, groupOpacity: number) {
+function applyGroupOpacity(group, groupOpacity) {
   const clamped = Math.max(0, Math.min(1, groupOpacity));
 
   group.traverse((child) => {
@@ -78,14 +71,14 @@ function applyGroupOpacity(group: THREE.Group, groupOpacity: number) {
       : [child.material];
 
     for (const mat of mats) {
-      const m = mat as THREE.Material & { opacity?: number };
+      const m = mat;
       if (!("opacity" in m) || m.opacity === undefined) continue;
 
       // Capture base opacity once
       if (!baseOpacityMap.has(m)) {
         baseOpacityMap.set(m, m.opacity);
       }
-      const base = baseOpacityMap.get(m)!;
+      const base = baseOpacityMap.get(m);
 
       m.transparent = true;
       m.opacity = base * clamped;
@@ -105,14 +98,14 @@ export default function ObjectController({
   progressRef,
   mouseRef,
   objectRefs,
-}: ObjectControllerProps) {
+}) {
   const tilt = useRef({ x: 0, y: 0 });
   const active = useSceneActive();
   const mobileScale = useRef(
     typeof window !== 'undefined' && window.innerWidth < 768 ? 0.55 : 1
   );
 
-  const smoothedFrames = useRef<ObjectKeyframe[]>(
+  const smoothedFrames = useRef(
     ENGINE_CONFIG.objects.map((o) => ({ ...o.entryFrame }))
   );
 
@@ -134,7 +127,7 @@ export default function ObjectController({
       const obj = objects[i];
       if (!obj) continue;
 
-      let target: ObjectKeyframe;
+      let target;
 
       if (!inTransition) {
         if (i === activeIndex)    target = obj.activeFrame;
@@ -149,7 +142,7 @@ export default function ObjectController({
       }
 
       // Smooth toward target
-      const prev = smoothedFrames.current[i]!;
+      const prev = smoothedFrames.current[i];
       const L = FRAME_SMOOTH;
       smoothedFrames.current[i] = {
         position: [
@@ -169,7 +162,7 @@ export default function ObjectController({
       const group = objectRefs.current[i];
       if (!group) continue;
 
-      const f = smoothedFrames.current[i]!;
+      const f = smoothedFrames.current[i];
       group.position.set(f.position[0], f.position[1], f.position[2]);
       group.scale.setScalar(Math.max(0.001, f.scale * mobileScale.current));
       applyGroupOpacity(group, f.opacity);

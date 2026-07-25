@@ -1,13 +1,15 @@
-import { CardData } from "../components/parallax/ParallaxCard";
-
-export const workshopCards: CardData[] = [
+// Edit this list to add/remove/update workshops — nothing else needs to change.
+// Everything shown on the card AND on its detail page ("View" click) lives
+// here: description, highlights, requirements, format, certificate, etc.
+export const workshopCards = [
   // ── Pre-Conscientia ─────────────────────────────────────
   {
     id: "rocket",
     title: "Advanced Rocketry Workshop",
     subtitle: "Engineering the Future Through Time",
     type: "Rocketry",
-    category: "pre",
+    section: "Pre-Conscientia",
+    sectionColor: "#33d6ff",
     Duration: 3,
     Seats: 120,
     Level: 2,
@@ -18,8 +20,26 @@ export const workshopCards: CardData[] = [
     badgeIcon: "🚀",
     description:
       "Explore propulsion, aerodynamics, guidance systems and launch simulations.",
+    aboutExtra: [
+      "Teams design, build, and static-test a small solid-fuel rocket across the three days, culminating in a live launch and recovery attempt.",
+      "Mentored by IIST faculty and alumni who've worked on real launch vehicle programs.",
+    ],
+    highlights: [
+      "Propulsion fundamentals and solid/liquid fuel tradeoffs",
+      "Aerodynamic stability and fin design",
+      "Flight computer setup and telemetry",
+      "Static motor testing on the launch stand",
+      "Full launch-day simulation and recovery",
+    ],
+    requirements: [
+      "Basic physics background helpful, not required",
+      "Closed-toe shoes for the workshop floor",
+      "Enthusiasm for hands-on building",
+    ],
+    format: "In-Person",
+    certificate: "Included",
     tags: ["Rocketry", "Hands-on", "IIST", "Workshop"],
-    price: "\u20B92,499",
+    price: "₹2,499",
     layout: {
       top: "130vh",
       left: "43%",
@@ -31,7 +51,8 @@ export const workshopCards: CardData[] = [
     title: "AI & Machine Learning",
     subtitle: "Neural Networks & Deep Learning",
     type: "AI/ML",
-    category: "pre",
+    section: "Pre-Conscientia",
+    sectionColor: "#33d6ff",
     Duration: 5,
     Seats: 80,
     Level: 3,
@@ -42,8 +63,26 @@ export const workshopCards: CardData[] = [
     badgeIcon: "🤖",
     description:
       "Build intelligent systems with neural networks, transformers and generative AI models.",
+    aboutExtra: [
+      "Five days moving from first-principles neural nets to training and fine-tuning transformer models on GPU clusters.",
+      "Every participant leaves with a deployed model and a portfolio-ready project.",
+    ],
+    highlights: [
+      "Neural network fundamentals from scratch",
+      "Transformer architecture and attention",
+      "Fine-tuning pretrained language models",
+      "Prompt engineering and evaluation",
+      "Deploying a model behind a live API",
+    ],
+    requirements: [
+      "Comfortable writing Python",
+      "Laptop with 8GB+ RAM",
+      "Basic linear algebra recommended",
+    ],
+    format: "In-Person + Online",
+    certificate: "Included",
     tags: ["AI", "Python", "Deep Learning", "GPU"],
-    price: "\u20B93,999",
+    price: "₹3,999",
     layout: {
       top: "175vh",
       right: "10%",
@@ -55,7 +94,8 @@ export const workshopCards: CardData[] = [
     title: "Cybersecurity Bootcamp",
     subtitle: "Defend the Digital Frontier",
     type: "Security",
-    category: "pre",
+    section: "Pre-Conscientia",
+    sectionColor: "#33d6ff",
     Duration: 4,
     Seats: 60,
     Level: 4,
@@ -66,8 +106,26 @@ export const workshopCards: CardData[] = [
     badgeIcon: "🛡️",
     description:
       "Master penetration testing, cryptography, network defense and incident response.",
+    aboutExtra: [
+      "Four days of red-team/blue-team exercises in an isolated lab range built specifically for this bootcamp.",
+      "Wraps up with a live CTF where teams attack and defend real infrastructure.",
+    ],
+    highlights: [
+      "Penetration testing methodology (recon to report)",
+      "Cryptography fundamentals and common pitfalls",
+      "Network defense and intrusion detection",
+      "Incident response playbooks",
+      "Live capture-the-flag finale",
+    ],
+    requirements: [
+      "Comfortable with the Linux command line",
+      "Own laptop capable of running a VM",
+      "No prior security experience required",
+    ],
+    format: "In-Person",
+    certificate: "Included",
     tags: ["CyberSec", "CTF", "Ethical Hacking", "Linux"],
-    price: "\u20B93,499",
+    price: "₹3,499",
     layout: {
       top: "220vh",
       left: "35%",
@@ -79,7 +137,8 @@ export const workshopCards: CardData[] = [
     title: "Robotics & Automation",
     subtitle: "Machines That Think and Act",
     type: "Robotics",
-    category: "pre",
+    section: "Pre-Conscientia",
+    sectionColor: "#33d6ff",
     Duration: 6,
     Seats: 50,
     Level: 3,
@@ -90,8 +149,26 @@ export const workshopCards: CardData[] = [
     badgeIcon: "🤖",
     description:
       "Design, build and program autonomous robots with sensors, actuators and AI control.",
+    aboutExtra: [
+      "Six days building a fully autonomous robot from bare chassis to working sensor fusion and control loop.",
+      "Ends with a live obstacle-course challenge between teams.",
+    ],
+    highlights: [
+      "Sensor integration (ultrasonic, IMU, vision)",
+      "Motor control and PID tuning",
+      "ROS-based software architecture",
+      "Autonomous navigation and obstacle avoidance",
+      "Team obstacle-course competition",
+    ],
+    requirements: [
+      "Basic electronics knowledge helpful",
+      "Some programming experience (any language)",
+      "Laptop for flashing firmware",
+    ],
+    format: "In-Person",
+    certificate: "Included",
     tags: ["Robotics", "Arduino", "ROS", "Mechatronics"],
-    price: "\u20B94,499",
+    price: "₹4,499",
     layout: {
       top: "265vh",
       right: "45%",
@@ -103,7 +180,8 @@ export const workshopCards: CardData[] = [
     title: "Quantum Computing Lab",
     subtitle: "Beyond Classical Computation",
     type: "Quantum",
-    category: "pre",
+    section: "Pre-Conscientia",
+    sectionColor: "#33d6ff",
     Duration: 3,
     Seats: 40,
     Level: 5,
@@ -114,8 +192,26 @@ export const workshopCards: CardData[] = [
     badgeIcon: "⚛️",
     description:
       "Explore qubits, quantum gates, entanglement and run algorithms on real quantum hardware.",
+    aboutExtra: [
+      "Three intensive days covering quantum computing theory alongside hands-on coding with Qiskit.",
+      "Culminates in running a real algorithm on cloud quantum hardware.",
+    ],
+    highlights: [
+      "Qubits, superposition and entanglement",
+      "Quantum gates and circuit design",
+      "Programming with Qiskit",
+      "Grover's and Shor's algorithms, simplified",
+      "Running circuits on real quantum hardware",
+    ],
+    requirements: [
+      "Comfort with linear algebra and complex numbers",
+      "Python experience recommended",
+      "Curiosity about quantum mechanics",
+    ],
+    format: "In-Person + Online",
+    certificate: "Included",
     tags: ["Quantum", "Qiskit", "Physics", "Research"],
-    price: "\u20B95,999",
+    price: "₹5,999",
     layout: {
       top: "310vh",
       left: "10%",
@@ -127,7 +223,8 @@ export const workshopCards: CardData[] = [
     title: "Data Science & Analytics",
     subtitle: "Insights From Raw Information",
     type: "Data Science",
-    category: "pre",
+    section: "Pre-Conscientia",
+    sectionColor: "#33d6ff",
     Duration: 4,
     Seats: 95,
     Level: 2,
@@ -138,8 +235,26 @@ export const workshopCards: CardData[] = [
     badgeIcon: "📊",
     description:
       "Master statistical analysis, data visualization, and predictive modeling with real-world datasets.",
+    aboutExtra: [
+      "Four days working end-to-end on real, messy datasets — from cleaning to a deployed predictive model.",
+      "Includes a guided case study modeled on an actual industry problem.",
+    ],
+    highlights: [
+      "Data cleaning and exploratory analysis",
+      "Statistical inference fundamentals",
+      "Building visual dashboards",
+      "Predictive modeling with scikit-learn",
+      "Presenting insights to a non-technical audience",
+    ],
+    requirements: [
+      "Basic Python or willingness to learn fast",
+      "Laptop with Python 3 installed",
+      "No prior statistics background required",
+    ],
+    format: "In-Person + Online",
+    certificate: "Included",
     tags: ["Data Science", "Python", "SQL", "Analytics"],
-    price: "\u20B93,199",
+    price: "₹3,199",
     layout: {
       top: "352.5vh",
       right: "50%",
@@ -151,7 +266,8 @@ export const workshopCards: CardData[] = [
     title: "Cloud & DevOps",
     subtitle: "Infrastructure at Scale",
     type: "Cloud",
-    category: "pre",
+    section: "Pre-Conscientia",
+    sectionColor: "#33d6ff",
     Duration: 4,
     Seats: 75,
     Level: 3,
@@ -162,8 +278,26 @@ export const workshopCards: CardData[] = [
     badgeIcon: "☁️",
     description:
       "Deploy, scale and manage applications on AWS, GCP and Azure with CI/CD pipelines.",
+    aboutExtra: [
+      "Four days containerizing, deploying, and scaling a real application across cloud providers.",
+      "Finishes with a working CI/CD pipeline you keep access to after the workshop.",
+    ],
+    highlights: [
+      "Docker fundamentals and image optimization",
+      "Kubernetes orchestration basics",
+      "CI/CD pipeline design",
+      "Multi-cloud deployment (AWS, GCP, Azure)",
+      "Monitoring and auto-scaling",
+    ],
+    requirements: [
+      "Basic command-line comfort",
+      "Free-tier cloud account (setup guide provided)",
+      "Some backend development experience helpful",
+    ],
+    format: "In-Person + Online",
+    certificate: "Included",
     tags: ["Cloud", "AWS", "Docker", "Kubernetes"],
-    price: "\u20B93,699",
+    price: "₹3,699",
     layout: {
       top: "395vh",
       left: "30%",
@@ -177,7 +311,8 @@ export const workshopCards: CardData[] = [
     title: "Aerospace Engineering",
     subtitle: "Designing Aircraft of Tomorrow",
     type: "Aerospace",
-    category: "live",
+    section: "Live-Conscientia",
+    sectionColor: "#a855f7",
     Duration: 4,
     Seats: 90,
     Level: 2,
@@ -188,8 +323,26 @@ export const workshopCards: CardData[] = [
     badgeIcon: "✈️",
     description:
       "Study aerodynamics, flight mechanics, structural design and wind tunnel testing.",
+    aboutExtra: [
+      "Four days combining aerodynamics theory with real wind-tunnel testing on student-designed airfoils.",
+      "Guided by working aerospace engineers from the industry.",
+    ],
+    highlights: [
+      "Aerodynamics and lift/drag fundamentals",
+      "Flight mechanics and stability",
+      "CAD modeling of an airfoil",
+      "Wind tunnel testing session",
+      "Structural load analysis basics",
+    ],
+    requirements: [
+      "Basic physics background helpful",
+      "Laptop with CAD software (provided if needed)",
+      "Interest in aviation/aerospace",
+    ],
+    format: "In-Person",
+    certificate: "Included",
     tags: ["Aerospace", "CFD", "CAD", "Simulation"],
-    price: "\u20B93,799",
+    price: "₹3,799",
     layout: {
       top: "470vh",
       right: "20%",
@@ -201,7 +354,8 @@ export const workshopCards: CardData[] = [
     title: "Blockchain Development",
     subtitle: "Decentralized Systems & Web3",
     type: "Web3",
-    category: "live",
+    section: "Live-Conscientia",
+    sectionColor: "#a855f7",
     Duration: 4,
     Seats: 70,
     Level: 3,
@@ -212,8 +366,26 @@ export const workshopCards: CardData[] = [
     badgeIcon: "⛓️",
     description:
       "Build smart contracts, DeFi protocols and decentralized applications on Ethereum and Solana.",
+    aboutExtra: [
+      "Four days writing, testing, and deploying real smart contracts to a live testnet.",
+      "Covers both the Ethereum (Solidity) and Solana (Rust) ecosystems.",
+    ],
+    highlights: [
+      "Smart contract fundamentals in Solidity",
+      "DeFi protocol design patterns",
+      "Testing and auditing basics",
+      "Deploying to a live testnet",
+      "Intro to Solana / Rust programs",
+    ],
+    requirements: [
+      "Programming experience in any language",
+      "Laptop with MetaMask or similar wallet",
+      "Basic understanding of blockchain concepts helpful",
+    ],
+    format: "In-Person + Online",
+    certificate: "Included",
     tags: ["Blockchain", "Solidity", "Web3", "Crypto"],
-    price: "\u20B93,299",
+    price: "₹3,299",
     layout: {
       top: "520vh",
       left: "55%",
@@ -225,7 +397,8 @@ export const workshopCards: CardData[] = [
     title: "Internet of Things Lab",
     subtitle: "Connected Devices & Edge Computing",
     type: "IoT",
-    category: "live",
+    section: "Live-Conscientia",
+    sectionColor: "#a855f7",
     Duration: 3,
     Seats: 55,
     Level: 2,
@@ -236,8 +409,26 @@ export const workshopCards: CardData[] = [
     badgeIcon: "📡",
     description:
       "Design sensor networks, embedded systems and real-time data pipelines for smart environments.",
+    aboutExtra: [
+      "Three days wiring up sensor networks and streaming their data into a live dashboard.",
+      "Every team leaves with a working connected-device prototype.",
+    ],
+    highlights: [
+      "Sensor networks and embedded basics",
+      "MQTT and real-time data pipelines",
+      "Edge computing fundamentals",
+      "Building a live sensor dashboard",
+      "Power and connectivity tradeoffs",
+    ],
+    requirements: [
+      "Basic electronics comfort",
+      "Some programming experience",
+      "Laptop for flashing microcontrollers",
+    ],
+    format: "In-Person",
+    certificate: "Included",
     tags: ["IoT", "Arduino", "Sensors", "Edge"],
-    price: "\u20B92,999",
+    price: "₹2,999",
     layout: {
       top: "570vh",
       right: "10%",
@@ -249,7 +440,8 @@ export const workshopCards: CardData[] = [
     title: "Biotech & Genomics",
     subtitle: "Code Meets Biology",
     type: "Biotech",
-    category: "live",
+    section: "Live-Conscientia",
+    sectionColor: "#a855f7",
     Duration: 5,
     Seats: 45,
     Level: 4,
@@ -260,8 +452,26 @@ export const workshopCards: CardData[] = [
     badgeIcon: "🧬",
     description:
       "Analyze genomic data, model protein structures and build bioinformatics pipelines.",
+    aboutExtra: [
+      "Five days at the intersection of biology and code — from raw sequencing data to a working analysis pipeline.",
+      "Guest sessions from working computational biology researchers.",
+    ],
+    highlights: [
+      "Genomic data formats and preprocessing",
+      "Sequence alignment fundamentals",
+      "Protein structure modeling basics",
+      "Building a bioinformatics pipeline",
+      "Interpreting results like a researcher",
+    ],
+    requirements: [
+      "Basic Python helpful",
+      "Interest in biology, no degree required",
+      "Laptop with 8GB+ RAM",
+    ],
+    format: "In-Person + Online",
+    certificate: "Included",
     tags: ["Biotech", "Genomics", "Python", "Research"],
-    price: "\u20B94,799",
+    price: "₹4,799",
     layout: {
       top: "615vh",
       left: "45%",

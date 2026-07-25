@@ -3,14 +3,9 @@
 import React, { useRef, useEffect } from "react";
 import gsap from "gsap";
 
-interface CinematicIntroProps {
-  onComplete: () => void;
-  onLogoEnd?: () => void;
-}
-
-export function CinematicIntro({ onComplete, onLogoEnd = () => {} }: CinematicIntroProps) {
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const logoRef = useRef<HTMLDivElement>(null);
+export function CinematicIntro({ onComplete, onLogoEnd = () => {} }) {
+  const overlayRef = useRef(null);
+  const logoRef = useRef(null);
 
   useEffect(() => {
     const overlay = overlayRef.current;

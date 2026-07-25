@@ -5,7 +5,7 @@ import { ENGINE_CONFIG } from "./engine/config";
 
 import Scene from "./three/Scene";
 
-export default function WorkshopExperience({ active }: { active?: boolean }) {
+export default function WorkshopExperience({ active }) {
   const {
     progressRef,
     mouseSmoothRef,

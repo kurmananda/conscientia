@@ -4,20 +4,20 @@ import * as THREE from 'three';
 
 const STREAK_COUNT = 24;
 
-function seededRandom(seed: number) {
+function seededRandom(seed) {
   const x = Math.sin(seed + 1) * 43758.5453123;
   return x - Math.floor(x);
 }
 
 export default function TimeStreaks() {
-  const linesRef = useRef<THREE.LineSegments>(null!);
-  const matRef = useRef<THREE.ShaderMaterial>(null!);
+  const linesRef = useRef(null);
+  const matRef = useRef(null);
 
   const { positions, phases, speeds, brightnesses } = useMemo(() => {
-    const positions: number[] = [];
-    const phases: number[] = [];
-    const speeds: number[] = [];
-    const brightnesses: number[] = [];
+    const positions = [];
+    const phases = [];
+    const speeds = [];
+    const brightnesses = [];
 
     for (let i = 0; i < STREAK_COUNT; i++) {
       const r1 = seededRandom(i * 7.1);

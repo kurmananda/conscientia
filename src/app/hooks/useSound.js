@@ -2,35 +2,38 @@
 
 import { useCallback, useEffect } from "react";
 
-let ctx: AudioContext | null = null;
-const buffers = new Map<string, AudioBuffer>();
-const activeSources = new Map<string, AudioBufferSourceNode>();
-let unlocking = false;
+let ctx = null;
+const buffers = new Map();
+const activeSources = new Map();
 
-function unlock() {
-  if (unlocking) return;
-  unlocking = true;
-  const resume = () => {
-    if (ctx?.state === "suspended") ctx.resume().catch(() => {});
-  };
-  resume();
-  ["pointerdown", "keydown", "touchstart", "click"].forEach((e) =>
-    document.addEventListener(e, resume, { once: true })
+function ensureCtx() {
+  if (!ctx) ctx = new AudioContext();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  return ctx;
+}
+
+// Browsers only allow an AudioContext to resume from within a trusted
+// user-activation gesture (click/keydown/pointerdown/touchstart) — NOT
+// hover (mouseenter). Several sounds here play on hover, so we warm up
+// (create + resume) the shared context on the very first real gesture,
+// independent of whether a sound was actually requested. Without this,
+// a hover-triggered play() before any click permanently leaves the
+// context suspended and silent.
+if (typeof document !== "undefined") {
+  const warmUp = () => ensureCtx();
+  ["pointerdown", "keydown", "touchstart", "mousedown"].forEach((e) =>
+    document.addEventListener(e, warmUp, { once: true, passive: true })
   );
 }
 
 function getCtx() {
-  if (!ctx) {
-    ctx = new AudioContext();
-    unlock();
-  }
-  return ctx;
+  return ensureCtx();
 }
 
 export default function useSound(
-  src: string,
+  src,
   volume = 0.3,
-  maxDuration?: number,
+  maxDuration,
   single = false,
 ) {
   const play = useCallback(() => {
@@ -38,7 +41,7 @@ export default function useSound(
       const c = getCtx();
       if (c.state === "suspended") c.resume();
 
-      const doPlay = (buffer: AudioBuffer) => {
+      const doPlay = (buffer) => {
         if (single) {
           const prev = activeSources.get(src);
           if (prev) { try { prev.stop(); } catch {} activeSources.delete(src); }

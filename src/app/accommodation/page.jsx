@@ -1,9 +1,10 @@
 import SimplePageShell from '../components/SimplePageShell';
 import { SiGooglemaps } from "react-icons/si";
+import MerchSection from './MerchSection';
 
 export const metadata = {
-  title: 'Accommodation | Conscientia IIST',
-  description: 'Accommodation at Conscientia — the annual technical festival at IIST.',
+  title: 'Merch & Accommodation | Conscientia IIST',
+  description: 'Grab official merch and find accommodation info for Conscientia — the annual technical festival at IIST.',
 };
 
 const stays = [
@@ -48,10 +49,18 @@ const faqs = [
 export default function AccommodationPage() {
   return (
     <SimplePageShell
-      title="Accommodation"
-      subtitle="A berth for every traveller who crosses into Time Fall."
+      title="Merch & Accommodation"
+      subtitle="Gear up, then find your berth for the nights you'll spend at Time Fall."
     >
       <div className="mx-auto max-w-4xl px-5 pb-16 pt-8 text-slate-100">
+        <MerchSection />
+
+        <p className="mb-2 font-mono text-xs uppercase tracking-widest text-teal-400">
+          Accommodation
+        </p>
+        <p className="mb-6 max-w-[60ch] rounded-lg border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-xs text-amber-200/80">
+          Online accommodation booking is coming soon. The details below are informational for now — check back closer to the event to reserve a bed.
+        </p>
         <p className="mb-10 max-w-[60ch] text-base leading-relaxed text-slate-400">
           Conscientia runs across 3 days, and every participant, speaker, needs somewhere to land in between. Accommodation is arranged in hostel blocks on the IIST campus, a walk away from all event venues — included with your registration.
         </p>
@@ -73,7 +82,7 @@ export default function AccommodationPage() {
 
         <section className="mb-12">
           <h2 className="mb-5 font-mono text-xs uppercase tracking-widest text-teal-400">
-            Where you'll stay
+            Where you&apos;ll stay
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {stays.map((s) => (
@@ -95,7 +104,7 @@ export default function AccommodationPage() {
 
         <section className="mb-12">
           <h2 className="mb-5 font-mono text-xs uppercase tracking-widest text-teal-400">
-            What's provided
+            What&apos;s provided
           </h2>
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {facilities.map((f) => (

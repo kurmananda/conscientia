@@ -22,14 +22,9 @@ import * as THREE from "three";
 import { useSceneActive } from "../SceneActiveContext";
 import { ENGINE_CONFIG, decodeCameraProgress, decodeScrollProgress } from "../engine/config";
 
-interface CameraControllerProps {
-  progressRef: React.MutableRefObject<number>;
-  mouseRef: React.MutableRefObject<{ x: number; y: number }>;
-}
+const lerp = (a, b, t) => a + (b - a) * t;
 
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-
-function smootherstep(t: number): number {
+function smootherstep(t) {
   const c = Math.max(0, Math.min(1, t));
   return c * c * c * (c * (c * 6 - 15) + 10);
 }
@@ -42,9 +37,9 @@ const ROLL_AMOUNT     = 0.015;  // Max roll (radians) during transition
 export default function CameraController({
   progressRef,
   mouseRef,
-}: CameraControllerProps) {
+}) {
   const { camera } = useThree();
-  const cam = camera as THREE.PerspectiveCamera;
+  const cam = camera;
   const active = useSceneActive();
 
   const currentFov  = useRef(60);

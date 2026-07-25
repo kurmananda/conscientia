@@ -2,14 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
-interface AmbientMusicProps {
-  src: string;
-  volume?: number;
-  start?: boolean;
-}
-
-export default function AmbientMusic({ src, volume = 0.25, start = false }: AmbientMusicProps) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+export default function AmbientMusic({ src, volume = 0.25, start = false }) {
+  const audioRef = useRef(null);
 
   useEffect(() => {
     if (!start) return;

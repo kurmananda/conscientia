@@ -3,36 +3,25 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { decodeScrollProgress } from "./config";
 
-export interface ScrollEngineState {
-  progressRef: React.MutableRefObject<number>;
-  velocityRef: React.MutableRefObject<number>;
-  activeIndex: number;
-  scrollToSection: (index: number) => void;
-  hasScrolled: boolean;
-  mouseSmoothRef: React.MutableRefObject<{ x: number; y: number }>;
-}
-
 const LERP_FACTOR = 0.075;
 const VELOCITY_DECAY = 0.85;
 const MOUSE_INERTIA = 0.04;
 
-export function useScrollEngine(
-  scrollHeightVh: number
-): ScrollEngineState {
-  const progressRef = useRef<number>(0);
-  const velocityRef = useRef<number>(0);
-  const mouseSmoothRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const mouseRawRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+export function useScrollEngine(scrollHeightVh) {
+  const progressRef = useRef(0);
+  const velocityRef = useRef(0);
+  const mouseSmoothRef = useRef({ x: 0, y: 0 });
+  const mouseRawRef = useRef({ x: 0, y: 0 });
 
-  const rawProgressRef = useRef<number>(0);
-  const rafRef = useRef<number>(0);
-  const lastScrollY = useRef<number>(0);
+  const rawProgressRef = useRef(0);
+  const rafRef = useRef(0);
+  const lastScrollY = useRef(0);
 
-  const [activeIndex, setActiveIndex] = useState<number>(0);
-  const [hasScrolled, setHasScrolled] = useState<boolean>(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [hasScrolled, setHasScrolled] = useState(false);
 
   useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
+    const onMouseMove = (e) => {
       mouseRawRef.current = {
         x: (e.clientX / window.innerWidth) * 2 - 1,
         y: -(e.clientY / window.innerHeight) * 2 + 1,
@@ -91,7 +80,7 @@ export function useScrollEngine(
   }, [hasScrolled]);
 
   const scrollToSection = useCallback(
-    (index: number) => {
+    (index) => {
       const sectionTargets = [0.1, 0.52, 0.91];
       const target = sectionTargets[Math.min(index, 2)] ?? 0;
       const maxScroll =

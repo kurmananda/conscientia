@@ -3,20 +3,20 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
 // Seeded pseudo-random
-function seededRandom(seed: number) {
+function seededRandom(seed) {
   const x = Math.sin(seed + 1) * 43758.5453123;
   return x - Math.floor(x);
 }
 
-function buildFormations(count: number) {
-  const positions: number[] = [];
-  const sizes: number[] = [];
-  const brightnesses: number[] = [];
-  const formations: number[] = [];
-  const phases: number[] = [];
-  const layers: number[] = [];
-  const speeds: number[] = [];
-  const origPositions: number[] = [];
+function buildFormations(count) {
+  const positions = [];
+  const sizes = [];
+  const brightnesses = [];
+  const formations = [];
+  const phases = [];
+  const layers = [];
+  const speeds = [];
+  const origPositions = [];
 
   const FORMATIONS = [
     { type: 'torus',   share: 0.18 },
@@ -280,14 +280,9 @@ const fragmentShader = /* glsl */`
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-interface ParticleFieldProps {
-  count?: number;
-  mouse: React.MutableRefObject<{ x: number; y: number }>;
-}
-
-export default function ParticleField({ count = 20000, mouse }: ParticleFieldProps) {
-  const pointsRef = useRef<THREE.Points>(null!);
-  const materialRef = useRef<THREE.ShaderMaterial>(null!);
+export default function ParticleField({ count = 20000, mouse }) {
+  const pointsRef = useRef(null);
+  const materialRef = useRef(null);
   useThree();
 
   const particleCount = useMemo(() => {

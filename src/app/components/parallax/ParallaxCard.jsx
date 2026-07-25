@@ -1,48 +1,97 @@
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { ShoppingCart, Check } from "lucide-react";
 import { useParallaxTilt } from "../../hooks/useParallaxTilt";
+import useIsTouch from "../../hooks/useIsTouch";
 import useSound from "../../hooks/useSound";
+import { useAuth } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
+import useProfile from "../../hooks/useProfile";
+import usePaymentReminder from "../../hooks/usePaymentReminder";
+import PrePaymentReminderModal from "../PrePaymentReminderModal";
+import { ticketIdForCatalogItem } from "@/lib/ticketCatalog";
+import { startTiqrCheckout } from "@/lib/checkout";
 
-export interface CardData {
-  id: string;
-  title: string;
-  subtitle: string;
-  type: string;
-  category?: "pre" | "live";
-  Duration: number;
-  Seats: number;
-  Level: number;
-  image: string;
-  accentColor: string;
-  glowColor: string;
-  foilGradient: string;
-  badgeIcon: string;
-  description: string;
-  tags: string[];
-  price: string;
-  layout?: {
-    top?: string;
-    left?: string;
-    right?: string;
-    bottom?: string;
-    width?: string;
-  };
-}
-
-interface ParallaxCardProps {
-  card: CardData;
-  index: number;
-}
-
-const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
+const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
   const { ref, tilt, handleMouseMove, handleMouseLeave, handleMouseEnter } = useParallaxTilt(20);
-  const cardWidth = card.layout?.width || "500px";
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const cardWidth = width || card.layout?.width || "500px";
+  const wrapperRef = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [registering, setRegistering] = useState(false);
+  const router = useRouter();
+  const isTouch = useIsTouch();
 
   const playGlitch = useSound("/sounds/glitch.wav", 0.2, 0.15);
-  const playClick = useSound("/sounds/click.mp3", 0.25, 0.08);
-  const playTap = useSound("/sounds/tap.mp3", 0.3, undefined, true);
+  const playClick = useSound("/sounds/click.wav", 0.25, 0.08);
+  const playTap = useSound("/sounds/tap.wav", 0.3, undefined, true);
+
+  const { user } = useAuth();
+  const { addItem, hasItem } = useCart();
+  const { profile } = useProfile();
+  const { guard, modalProps } = usePaymentReminder();
+  const kind = basePath.includes("workshop") ? "workshop" : "event";
+  const cartKey = `${kind}:${card.id}`;
+  const inCart = hasItem(cartKey);
+
+  const toCartItem = () => ({
+    key: cartKey,
+    id: card.id,
+    kind,
+    ticketId: ticketIdForCatalogItem(kind),
+    title: card.title,
+    subtitle: card.subtitle,
+    priceLabel: card.price,
+    image: card.image,
+    accentColor: card.accentColor,
+  });
+
+  const handleAddToCart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (inCart) return;
+    if (!user) {
+      playClick();
+      router.push("/login?redirect=/cart");
+      return;
+    }
+    playGlitch();
+    addItem(toCartItem());
+  };
+
+  const handleRegister = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (registering) return;
+    playClick();
+    if (!user) {
+      router.push(`/login?redirect=${encodeURIComponent(`${basePath}/${card.id}`)}`);
+      return;
+    }
+    if (!profile?.name || !profile?.phone || !profile?.college) {
+      router.push("/profile");
+      return;
+    }
+    guard(() => runRegister());
+  };
+
+  const runRegister = async () => {
+    setRegistering(true);
+    try {
+      await startTiqrCheckout([toCartItem()], {
+        name: profile.name,
+        email: user.email,
+        phone: profile.phone,
+        college: profile.college,
+        city: profile.city || "",
+        gender: profile.gender || "",
+        userId: user.id,
+      });
+      // startTiqrCheckout redirects the browser on success.
+    } catch {
+      setRegistering(false);
+    }
+  };
 
   useEffect(() => {
     const el = wrapperRef.current;
@@ -59,7 +108,7 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
     return () => observer.disconnect();
   }, []);
 
-  const cardStyle: React.CSSProperties = {
+  const cardStyle = {
     transform: `
       perspective(1000px)
       rotateX(${tilt.rotateX}deg)
@@ -78,21 +127,21 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
     transformStyle: "preserve-3d",
   };
 
-  const layer1Style: React.CSSProperties = {
+  const layer1Style = {
     transform: tilt.isHovered
       ? `translateX(${tilt.rotateY * 0.4}px) translateY(${-tilt.rotateX * 0.4}px) translateZ(20px)`
       : "translateZ(0px)",
     transition: tilt.isHovered ? "transform 0.08s ease-out" : "transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
   };
 
-  const layer2Style: React.CSSProperties = {
+  const layer2Style = {
     transform: tilt.isHovered
       ? `translateX(${tilt.rotateY * 0.7}px) translateY(${-tilt.rotateX * 0.7}px) translateZ(35px)`
       : "translateZ(0px)",
     transition: tilt.isHovered ? "transform 0.08s ease-out" : "transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
   };
 
-  const shineStyle: React.CSSProperties = {
+  const shineStyle = {
     background: `radial-gradient(
       circle at ${tilt.glareX}% ${tilt.glareY}%,
       rgba(255, 255, 255, ${tilt.glareOpacity * 0.9}) 0%,
@@ -103,7 +152,7 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
     opacity: tilt.isHovered ? 1 : 0,
   };
 
-  const rainbowShineStyle: React.CSSProperties = {
+  const rainbowShineStyle = {
     background: `linear-gradient(
       ${tilt.rotateY * 3 + 135}deg,
       rgba(255, 0, 0, 0.08) 0%,
@@ -118,7 +167,7 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
     transition: tilt.isHovered ? "opacity 0.08s ease-out" : "opacity 0.6s",
   };
 
-  const foilStyle: React.CSSProperties = {
+  const foilStyle = {
     background: card.foilGradient,
     opacity: tilt.isHovered ? 0.65 + tilt.glareOpacity * 0.3 : 0.4,
     transition: tilt.isHovered ? "opacity 0.08s ease-out" : "opacity 0.6s",
@@ -191,15 +240,15 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
         />
 
         {/* Card Content - Landscape Layout */}
-        <div className="relative z-10 flex flex-row p-3">
+        <div className="relative z-10 flex flex-row p-2.5 sm:p-3">
           {/* Left Side - Image */}
-          <div style={layer2Style} className="relative mr-3 flex-shrink-0 overflow-hidden rounded-xl">
-            <div className="relative h-[200px] w-[160px] overflow-hidden rounded-xl">
+          <div style={layer2Style} className="relative mr-2.5 sm:mr-3 flex-shrink-0 overflow-hidden rounded-xl">
+            <div className="relative h-[120px] w-[95px] sm:h-[200px] sm:w-[160px] overflow-hidden rounded-xl">
               <Image
                 src={card.image}
                 alt={card.title}
                 fill
-                sizes="160px"
+                sizes="(max-width: 640px) 95px, 160px"
                 className="object-cover"
                 style={{
                   transform: tilt.isHovered
@@ -226,9 +275,9 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
                 }}
               />
               {/* Type badge on image */}
-              <div className="absolute bottom-2 left-2">
+              <div className="absolute bottom-1 left-1 sm:bottom-2 sm:left-2">
                 <span
-                  className="rounded-md px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-white"
+                  className="rounded-md px-1.5 py-0.5 text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-white"
                   style={{
                     background: "rgba(0,0,0,0.6)",
                     backdropFilter: "blur(8px)",
@@ -289,8 +338,8 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
               </div>
             </div>
 
-            {/* Description */}
-            <div style={layer1Style} className="mb-2">
+            {/* Description — skipped on mobile to keep cards compact */}
+            <div style={layer1Style} className="mb-2 hidden sm:block">
               <p className="text-[11px] leading-relaxed text-white/60 italic" style={{ fontFamily: 'var(--font-body), sans-serif', letterSpacing: "0.04em", transform: "skewX(-0.5deg)" }}>{card.description}</p>
             </div>
 
@@ -316,7 +365,7 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
             {/* Price */}
             <div style={layer1Style} className="mb-2">
               <span
-                className="text-lg font-black"
+                className="text-base sm:text-lg font-black"
                 style={{
                   color: card.accentColor,
                   textShadow: `0 0 15px ${card.glowColor}`,
@@ -330,7 +379,7 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
             {/* Buttons */}
             <div style={{ ...layer1Style, perspective: "600px" }} className="flex gap-2">
               <a
-                href={`/workshop/${card.id}`}
+                href={`${basePath}/${card.id}`}
                 className="flex-1 rounded-lg py-1.5 text-center text-[11px] font-bold uppercase tracking-wider"
                 style={{
                   background: `${card.accentColor}22`,
@@ -360,16 +409,20 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
               </a>
               <button
                 className="flex-1 rounded-lg py-1.5 text-[11px] font-bold uppercase tracking-wider"
+                disabled={registering}
                 style={{
                   background: card.accentColor,
                   color: "#000",
                   fontFamily: 'var(--font-display), sans-serif',
                   transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
                   transformStyle: "preserve-3d",
+                  opacity: registering ? 0.6 : 1,
+                  cursor: registering ? "default" : "pointer",
                   boxShadow: `0 4px 20px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`,
                 }}
-                onClick={() => playClick()}
+                onClick={handleRegister}
                 onMouseEnter={(e) => {
+                  if (registering) return;
                   playGlitch();
                   e.currentTarget.style.transform = "translateZ(25px) scale(1.08)";
                   e.currentTarget.style.boxShadow = `0 12px 40px ${card.glowColor}, 0 0 60px ${card.glowColor}40, inset 0 1px 0 rgba(255,255,255,0.3)`;
@@ -379,7 +432,34 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
                   e.currentTarget.style.boxShadow = `0 4px 20px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`;
                 }}
               >
-                Register
+                {registering ? "Starting…" : "Register"}
+              </button>
+              <button
+                onClick={handleAddToCart}
+                aria-label={inCart ? "Already in cart" : "Add to cart"}
+                title={inCart ? "Already in cart" : "Add to cart"}
+                className="flex flex-shrink-0 items-center justify-center rounded-lg"
+                style={{
+                  width: "34px",
+                  background: inCart ? `${card.accentColor}22` : "rgba(255,255,255,0.04)",
+                  border: `1px solid ${card.accentColor}55`,
+                  color: card.accentColor,
+                  cursor: inCart ? "default" : "pointer",
+                  transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
+                  transformStyle: "preserve-3d",
+                }}
+                onMouseEnter={(e) => {
+                  if (inCart) return;
+                  playGlitch();
+                  e.currentTarget.style.background = `${card.accentColor}22`;
+                  e.currentTarget.style.transform = "translateZ(20px) scale(1.08)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = inCart ? `${card.accentColor}22` : "rgba(255,255,255,0.04)";
+                  e.currentTarget.style.transform = "translateZ(0) scale(1)";
+                }}
+              >
+                {inCart ? <Check size={16} /> : <ShoppingCart size={16} />}
               </button>
             </div>
           </div>
@@ -407,8 +487,8 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
         ))}
       </div>
 
-      {/* ── Side Fire / Aura Effects ───────────────────────────── */}
-      {isVisible && <>
+      {/* ── Side Fire / Aura Effects — desktop hover-glow only, skipped on touch ── */}
+      {isVisible && !isTouch && <>
       {/* Left fire column — positioned fully outside the card */}
       <div
         className="absolute pointer-events-none"
@@ -831,6 +911,7 @@ const ParallaxCard: React.FC<ParallaxCardProps> = ({ card, index }) => {
           100% { transform: translate(50px, -110px); opacity: 0; }
         }
       `}</style>
+      <PrePaymentReminderModal {...modalProps} />
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 export default function WorkshopOverlay() {
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef(null);
 
   useEffect(() => {
     // Fade in

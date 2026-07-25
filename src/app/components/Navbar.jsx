@@ -4,11 +4,17 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserRound, Menu, X } from "lucide-react";
+import { UserRound, ShoppingCart, Menu, X } from "lucide-react";
+import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
+import useProfile from "../hooks/useProfile";
 
 const Nav = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { items: cartItems } = useCart();
+  const { user } = useAuth();
+  const { profile } = useProfile();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -26,7 +32,7 @@ const Nav = () => {
     { label: "ABOUT", path: "/about" },
     { label: "WORKSHOPS", path: "/workshop" },
     { label: "EVENTS", path: "/events" },
-    { label: "ACCOMMODATION", path: "/accommodation" },
+    { label: "MERCH & STAY", path: "/accommodation" },
     { label: "CONTACT US", path: "/contact-us" },
   ];
 
@@ -54,48 +60,62 @@ const Nav = () => {
   return (
     <>
       {/* --- Sleek Floating Navbar (Glassmorphism, No Border) --- */}
-      <nav className={`fixed top-4 left-1/2 -translate-x-1/2 w-[95%] max-w-[1400px] z-[100] transition-all duration-700 rounded-3xl flex items-center justify-between px-6 md:px-10 border border-transparent ${
-        scrolled 
-          ? "h-16 border-white/[0.06] bg-black/55 backdrop-blur-2xl shadow-[0_20px_80px_rgba(0,0,0,0.45)]" 
-          : "h-20 md:h-24 bg-black/20 backdrop-blur-md border-white/[0.04]"
+      <nav className={`fixed top-2 sm:top-4 left-1/2 -translate-x-1/2 w-[94%] sm:w-[95%] max-w-[1400px] z-[100] transition-all duration-700 rounded-2xl sm:rounded-3xl flex items-center justify-between px-3 sm:px-6 md:px-10 border border-transparent ${
+        scrolled
+          ? "h-12 sm:h-16 border-white/[0.06] bg-black/55 backdrop-blur-2xl shadow-[0_20px_80px_rgba(0,0,0,0.45)]"
+          : "h-14 sm:h-20 md:h-24 bg-black/20 backdrop-blur-md border-white/[0.04]"
       }`}>
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           whileHover={{ scale: 1.1, rotate: -5 }}
         >
           <Link href="/" className="block">
-            <Image src="/assets/logo.svg" alt="Logo" width={45} height={45} className="w-10 h-10 rounded-sm object-contain drop-shadow-2xl" />
+            <Image src="/assets/logo.svg" alt="Logo" width={45} height={45} className="w-7 h-7 sm:w-10 sm:h-10 rounded-sm object-contain drop-shadow-2xl" />
           </Link>
         </motion.div>
 
-        <div className="flex items-center gap-8 relative z-[110]">
-          <Link href="/profile" className="text-white/40 hover:text-cyan-400 transition-all duration-300 hover:scale-110">
-            <UserRound size={22} />
+        <div className="flex items-center gap-3 sm:gap-8 relative z-[110]">
+          <Link href="/profile" className="flex items-center gap-2 text-white/40 hover:text-cyan-400 transition-all duration-300 hover:scale-110">
+            <UserRound size={18} className="sm:w-[22px] sm:h-[22px]" />
+            {user && profile?.unique_code && (
+              <span className="hidden md:inline-block rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-0.5 font-mono text-[10px] tracking-[0.1em] text-cyan-300">
+                {profile.unique_code}
+              </span>
+            )}
           </Link>
-          
-          <button 
-            onClick={() => setIsMenuOpen(!isMenuOpen)} 
+
+          <Link href="/cart" className="relative text-white/40 hover:text-cyan-400 transition-all duration-300 hover:scale-110">
+            <ShoppingCart size={18} className="sm:w-[22px] sm:h-[22px]" />
+            {cartItems.length > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-cyan-400 text-[9px] font-black text-black">
+                {cartItems.length}
+              </span>
+            )}
+          </Link>
+
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="flex items-center group overflow-hidden"
           >
-            <div className="flex flex-col items-end mr-3 overflow-hidden">
+            <div className="hidden sm:flex flex-col items-end mr-3 overflow-hidden">
                 <span className="text-[9px] font-syncopate tracking-[0.4em] text-white/50 group-hover:text-cyan-400 transition-colors duration-300">
                     {isMenuOpen ? "CLOSE" : "MENU"}
                 </span>
             </div>
-            <div className="relative w-8 h-8 flex items-center justify-center">
+            <div className="relative w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center">
                 {/* Custom Hamburger Animation */}
                 <div className="flex flex-col gap-1.5 items-end">
-                    <motion.span 
-                        animate={{ rotate: isMenuOpen ? 45 : 0, y: isMenuOpen ? 4 : 0, width: isMenuOpen ? 24 : 20 }}
+                    <motion.span
+                        animate={{ rotate: isMenuOpen ? 45 : 0, y: isMenuOpen ? 4 : 0, width: isMenuOpen ? 20 : 16 }}
                         className="h-[2px] bg-white block rounded-full"
                     />
-                    <motion.span 
-                        animate={{ opacity: isMenuOpen ? 0 : 1, width: 28 }}
+                    <motion.span
+                        animate={{ opacity: isMenuOpen ? 0 : 1, width: 22 }}
                         className="h-[2px] bg-white block rounded-full"
                     />
-                    <motion.span 
-                        animate={{ rotate: isMenuOpen ? -45 : 0, y: isMenuOpen ? -4 : 0, width: isMenuOpen ? 24 : 16 }}
+                    <motion.span
+                        animate={{ rotate: isMenuOpen ? -45 : 0, y: isMenuOpen ? -4 : 0, width: isMenuOpen ? 20 : 13 }}
                         className="h-[2px] bg-white block rounded-full"
                     />
                 </div>
@@ -134,7 +154,7 @@ const Nav = () => {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={expoTransition}
-              className="relative flex h-full w-full flex-col justify-center border-l border-white/[0.06] bg-[#030303] px-10 md:w-1/2 md:px-24"
+              className="relative flex h-full w-full flex-col justify-center border-l border-white/[0.06] bg-[#030303] px-6 sm:px-10 md:w-1/2 md:px-24"
             >
               {/* Dynamic Glow */}
               <motion.div 
@@ -144,7 +164,7 @@ const Nav = () => {
                 className="absolute top-1/2 left-3/4 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-600/5 blur-[120px] rounded-full pointer-events-none" 
               />
 
-              <div className="flex flex-col gap-3 relative z-10">
+              <div className="flex flex-col gap-1.5 sm:gap-3 relative z-10">
                 {navLinks.map((item, i) => (
                   <motion.div
                     key={i}
@@ -160,7 +180,7 @@ const Nav = () => {
                     >
                       {/* Text Transitions: Refined sizing and slower stagger */}
                       <motion.div 
-                        className="flex font-syncopate font-bold text-3xl md:text-4xl lg:text-5xl tracking-[-0.02em] uppercase overflow-hidden"
+                        className="flex font-syncopate font-bold text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-[-0.02em] uppercase overflow-hidden"
                         whileHover="hovered"
                         initial="initial"
                       >
