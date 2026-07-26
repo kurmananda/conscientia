@@ -59,8 +59,8 @@ function SectionHeading({ title, accentColor, count }) {
 }
 
 export default function EventsPage() {
-  const playGlitch = useSound("/sounds/glitch.wav", 0.2, 0.15);
-  const playClick = useSound("/sounds/click.wav", 0.25, 0.08);
+  const playGlitch = useSound("/sounds/glitch.wav", 0.1, 0.15);
+  const playClick = useSound("/sounds/click.wav", 0.125, 0.08);
   const [eventCards, setEventCards] = useState([]);
   const [loading, setLoading] = useState(true);
 

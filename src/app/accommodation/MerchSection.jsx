@@ -9,7 +9,8 @@ import { Check, ShoppingCart, Minus, Plus, Truck, Ruler, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import useProfile from '../hooks/useProfile';
-import { MERCH_ITEMS, DELIVERY_FEE, ticketFor } from './merchData';
+import { MERCH_ITEMS, ticketFor } from './merchData';
+import { getCostMap } from '@/lib/ticketStore';
 
 function QtyStepper({ qty, onChange, label }) {
   const [flash, setFlash] = useState(false);
@@ -49,7 +50,7 @@ function QtyStepper({ qty, onChange, label }) {
   );
 }
 
-function MerchDialog({ item, profile, onClose, onConfirm }) {
+function MerchDialog({ item, profile, deliveryFee, onClose, onConfirm }) {
   const [qty, setQty] = useState(1);
   const [size, setSize] = useState(item.sizes[0]);
   const [wantsDelivery, setWantsDelivery] = useState(null); // null | true | false
@@ -187,7 +188,7 @@ function MerchDialog({ item, profile, onClose, onConfirm }) {
                 }}
                 className={wantsDelivery === true ? 'btn-primary text-[10px]' : 'btn-secondary text-[10px]'}
               >
-                <Truck size={14} /> Yes, deliver (+₹{DELIVERY_FEE})
+                <Truck size={14} /> Yes, deliver (+₹{deliveryFee})
               </button>
               <button
                 type="button"
@@ -273,7 +274,7 @@ function MerchDialog({ item, profile, onClose, onConfirm }) {
   );
 }
 
-function MerchCard({ item, onSelect }) {
+function MerchCard({ item, price, onSelect }) {
   const { hasItem } = useCart();
   const inCart = MERCH_SIZES(item).some((s) => hasItem(`merch:${item.id}:${s}`));
 
@@ -296,7 +297,7 @@ function MerchCard({ item, onSelect }) {
       <h3 className="text-base font-semibold">{item.title}</h3>
       <p className="text-xs text-slate-400">{item.subtitle}</p>
       <p className="mt-1 text-sm font-semibold" style={{ color: item.accentColor }}>
-        &#8377;{item.price}
+        &#8377;{price}
       </p>
 
       <div className="mt-4">
@@ -322,6 +323,19 @@ export default function MerchSection() {
   const { profile, save } = useProfile();
   const router = useRouter();
   const [activeItem, setActiveItem] = useState(null);
+  const [prices, setPrices] = useState({});
+
+  useEffect(() => {
+    let active = true;
+    getCostMap().then((map) => {
+      if (active) setPrices(map);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const deliveryFee = prices.delivery || 0;
 
   const handleSelect = (item) => {
     if (!user) {
@@ -333,6 +347,7 @@ export default function MerchSection() {
 
   const handleConfirm = async ({ qty, size, delivery }) => {
     const item = activeItem;
+    const itemPrice = prices[item.id] || 0;
     const cartKey = `merch:${item.id}:${size}`;
     addItem({
       key: cartKey,
@@ -341,8 +356,8 @@ export default function MerchSection() {
       ticketId: await ticketFor(item.id),
       title: `${item.title} (${size})`,
       subtitle: item.subtitle,
-      priceLabel: `₹${item.price}`,
-      unitPrice: item.price,
+      priceLabel: `₹${itemPrice}`,
+      unitPrice: itemPrice,
       accentColor: item.accentColor,
       qty,
     });
@@ -355,8 +370,8 @@ export default function MerchSection() {
         ticketId: await ticketFor('delivery'),
         title: 'Delivery',
         subtitle: 'Flat delivery fee (once per order)',
-        priceLabel: `₹${DELIVERY_FEE}`,
-        unitPrice: DELIVERY_FEE,
+        priceLabel: `₹${deliveryFee}`,
+        unitPrice: deliveryFee,
         qty: 1,
         details: delivery,
       });
@@ -381,7 +396,7 @@ export default function MerchSection() {
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8">
         {MERCH_ITEMS.map((item) => (
-          <MerchCard key={item.id} item={item} onSelect={handleSelect} />
+          <MerchCard key={item.id} item={item} price={prices[item.id] || 0} onSelect={handleSelect} />
         ))}
       </div>
 
@@ -389,6 +404,7 @@ export default function MerchSection() {
         <MerchDialog
           item={activeItem}
           profile={profile}
+          deliveryFee={deliveryFee}
           onClose={() => setActiveItem(null)}
           onConfirm={handleConfirm}
         />

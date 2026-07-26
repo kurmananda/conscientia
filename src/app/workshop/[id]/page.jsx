@@ -89,7 +89,7 @@ function CinematicBox({
   const { ref, visible } = useReveal(0.05);
   const boxRef = useRef(null);
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
-  const playGlass = useSound("/sounds/glass.wav", 0.05);
+  const playGlass = useSound("/sounds/glass.wav", 0.025);
   const [hovered, setHovered] = useState(false);
   const isTouch = useIsTouch();
 
@@ -384,8 +384,8 @@ export default function WorkshopDetailPage() {
   const { remaining } = useCapacity();
   const isClosed = !isRegistered && remaining(card) <= 0;
 
-  const playGlitch = useSound("/sounds/glitch.wav", 0.2, 0.15);
-  const playClick = useSound("/sounds/click.wav", 0.25, 0.08);
+  const playGlitch = useSound("/sounds/glitch.wav", 0.1, 0.15);
+  const playClick = useSound("/sounds/click.wav", 0.125, 0.08);
 
   const cartKey = card ? `workshop:${card.id}` : null;
   const inCart = cartKey ? hasItem(cartKey) : false;
@@ -630,13 +630,29 @@ export default function WorkshopDetailPage() {
             {/* Image */}
             <CinematicBox title="" accentColor={card.accentColor} glowColor={card.glowColor} delay={0.1}>
               <div className="cinematic-box-bleed" style={{ borderRadius: "16px", overflow: "hidden", height: "225px", position: "relative" }}>
-                <Image
-                  src={card.image}
-                  alt={card.title}
-                  fill
-                  sizes="100vw"
-                  style={{ objectFit: "cover" }}
-                />
+                {card.image ? (
+                  <Image
+                    src={card.image}
+                    alt={card.title}
+                    fill
+                    sizes="100vw"
+                    style={{ objectFit: "cover" }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "3rem",
+                      background: `linear-gradient(135deg, ${card.accentColor || "#33d6ff"}33, #0a0a0a)`,
+                    }}
+                  >
+                    {card.badgeIcon || "✦"}
+                  </div>
+                )}
               </div>
             </CinematicBox>
 

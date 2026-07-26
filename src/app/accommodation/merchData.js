@@ -1,6 +1,7 @@
-// Hardcoded merch catalogue for the accommodation/merch page. Ticket ids
-// live in the database (tickets table) — see src/lib/ticketStore.js.
-import { getTicketId } from '@/lib/ticketStore';
+// Hardcoded merch/accommodation/food catalogue for the accommodation page —
+// content only. Ticket ids AND prices both live in the database (tickets
+// table) — see src/lib/ticketStore.js (getTicketId/getTicketCost).
+import { getTicketId, getTicketCost } from '@/lib/ticketStore';
 
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
@@ -9,7 +10,6 @@ export const MERCH_ITEMS = [
     id: 'merch-tshirt',
     title: 'Conscientia Tee',
     subtitle: 'Official festival t-shirt',
-    price: 599,
     imageFront: '/assets/wsfront.png',
     imageBack: '/assets/wsback.png',
     sizes: SIZES,
@@ -19,7 +19,6 @@ export const MERCH_ITEMS = [
     id: 'merch-hoodie',
     title: 'Conscientia Hoodie',
     subtitle: 'Heavyweight fleece pullover',
-    price: 1299,
     imageFront: '/assets/wsfront.png',
     imageBack: '/assets/wsback.png',
     sizes: SIZES,
@@ -29,7 +28,6 @@ export const MERCH_ITEMS = [
     id: 'merch-cap',
     title: 'Conscientia Cap',
     subtitle: 'Embroidered logo cap',
-    price: 349,
     imageFront: '/assets/wsfront.png',
     imageBack: '/assets/wsback.png',
     sizes: ['One Size'],
@@ -39,15 +37,12 @@ export const MERCH_ITEMS = [
     id: 'merch-tote',
     title: 'Conscientia Tote Bag',
     subtitle: 'Canvas carry-all',
-    price: 249,
     imageFront: '/assets/wsfront.png',
     imageBack: '/assets/wsback.png',
     sizes: ['One Size'],
     accentColor: '#38bdf8',
   },
 ];
-
-export const DELIVERY_FEE = 60;
 
 // Fest dates accommodation/food are booked per-day against.
 export const STAY_DATES = [
@@ -57,15 +52,15 @@ export const STAY_DATES = [
 ];
 
 export const FOOD_ADDONS = [
-  { id: 'breakfast', label: 'Breakfast', price: 40, description: 'Continental breakfast, served daily.' },
-  { id: 'lunch', label: 'Lunch', price: 80, description: 'Full-course lunch with veg/non-veg options.' },
-  { id: 'dinner', label: 'Dinner', price: 80, description: 'Evening dinner with veg/non-veg options.' },
+  { id: 'breakfast', label: 'Breakfast', description: 'Continental breakfast, served daily.' },
+  { id: 'lunch', label: 'Lunch', description: 'Full-course lunch with veg/non-veg options.' },
+  { id: 'dinner', label: 'Dinner', description: 'Evening dinner with veg/non-veg options.' },
 ];
-
-// Per-day accommodation rate — total charged is this × number of nights
-// selected (see STAY_DATES).
-export const ACCOMMODATION_PRICE = 450;
 
 export async function ticketFor(kind) {
   return getTicketId(kind);
+}
+
+export async function priceFor(kind) {
+  return getTicketCost(kind);
 }

@@ -1,12 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, BedDouble, CalendarDays, CalendarCheck2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { ACCOMMODATION_PRICE, FOOD_ADDONS, STAY_DATES, ticketFor } from './merchData';
+import { FOOD_ADDONS, STAY_DATES, ticketFor } from './merchData';
+import { getCostMap } from '@/lib/ticketStore';
 
 function sameDates(a, b) {
   const as = [...(a || [])].sort();
@@ -87,7 +88,7 @@ function ActionButton({ cartDates, selectedDates, onAdd, onUpdate, onRemove, pri
   );
 }
 
-function FoodAddon({ addon }) {
+function FoodAddon({ addon, price }) {
   const { user } = useAuth();
   const router = useRouter();
   const { items, setItem, removeItem, hasItem } = useCart();
@@ -123,8 +124,8 @@ function FoodAddon({ addon }) {
       ticketId: await ticketFor(addon.id),
       title: addon.label,
       subtitle: `${addon.description} (${dateLabels})`,
-      priceLabel: `₹${addon.price}`,
-      unitPrice: addon.price,
+      priceLabel: `₹${price}`,
+      unitPrice: price,
       qty: selected.length,
       details: { dates: selected },
     });
@@ -140,7 +141,7 @@ function FoodAddon({ addon }) {
       <div>
         <p className="text-sm font-semibold">{addon.label}</p>
         <p className="text-xs text-slate-400">{addon.description}</p>
-        <p className="mt-1 text-xs font-semibold text-cyan-300">₹{addon.price} / day</p>
+        <p className="mt-1 text-xs font-semibold text-cyan-300">₹{price} / day</p>
       </div>
       <DatePicker selected={selected} onToggle={toggleDate} />
       <ActionButton
@@ -149,7 +150,7 @@ function FoodAddon({ addon }) {
         onAdd={commit}
         onUpdate={commit}
         onRemove={remove}
-        priceEach={addon.price}
+        priceEach={price}
         label={`${selected.length} day${selected.length > 1 ? 's' : ''}`}
       />
     </div>
@@ -160,6 +161,19 @@ export default function AccommodationBooking() {
   const { user } = useAuth();
   const router = useRouter();
   const { items, setItem, removeItem, hasItem } = useCart();
+  const [prices, setPrices] = useState({});
+
+  useEffect(() => {
+    let active = true;
+    getCostMap().then((map) => {
+      if (active) setPrices(map);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const accommodationPrice = prices.accommodation || 0;
 
   const cartAccommodation = items.find((i) => i.key === 'accommodation');
   const cartDates = cartAccommodation?.details?.dates || [];
@@ -194,8 +208,8 @@ export default function AccommodationBooking() {
       ticketId: await ticketFor('accommodation'),
       title: 'Accommodation',
       subtitle: `Hostel stay — ${dateLabels}`,
-      priceLabel: `₹${ACCOMMODATION_PRICE}`,
-      unitPrice: ACCOMMODATION_PRICE,
+      priceLabel: `₹${accommodationPrice}`,
+      unitPrice: accommodationPrice,
       qty: selected.length,
       details: { dates: selected },
     });
@@ -206,7 +220,7 @@ export default function AccommodationBooking() {
     setSelected([]);
   };
 
-  const total = useMemo(() => ACCOMMODATION_PRICE * selected.length, [selected]);
+  const total = useMemo(() => accommodationPrice * selected.length, [selected, accommodationPrice]);
   const inCart = !!cartAccommodation;
 
   return (
@@ -216,7 +230,7 @@ export default function AccommodationBooking() {
           <BedDouble size={20} className="text-cyan-300" />
           <div>
             <p className="text-sm font-semibold">Book a bed</p>
-            <p className="text-xs text-slate-400">₹{ACCOMMODATION_PRICE} per night — pick your dates below.</p>
+            <p className="text-xs text-slate-400">₹{accommodationPrice} per night — pick your dates below.</p>
           </div>
         </div>
 
@@ -229,7 +243,7 @@ export default function AccommodationBooking() {
             onAdd={commit}
             onUpdate={commit}
             onRemove={remove}
-            priceEach={ACCOMMODATION_PRICE}
+            priceEach={accommodationPrice}
             label={`${selected.length} night${selected.length > 1 ? 's' : ''}`}
           />
           {selected.length > 0 && (
@@ -252,7 +266,7 @@ export default function AccommodationBooking() {
 
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {FOOD_ADDONS.map((addon) => (
-          <FoodAddon key={addon.id} addon={addon} />
+          <FoodAddon key={addon.id} addon={addon} price={prices[addon.id] || 0} />
         ))}
       </div>
     </section>

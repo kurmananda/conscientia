@@ -175,30 +175,45 @@ const Nav = () => {
                 holds, then snaps back down behind the disc with a springy
                 little jump. While actually playing, music notes drift up
                 from behind it instead (below). */}
-            <motion.span
-              aria-hidden
-              animate={
-                muted || !playing
-                  ? { y: [0, -30, -30, 0], scale: [0.25, 1.15, 1.15, 0.25], opacity: [0.4, 1, 1, 0.4] }
-                  : { y: 0, scale: 0.25, opacity: 0 }
-              }
-              transition={
-                muted || !playing
-                  ? {
-                      duration: 5,
-                      delay: 2.8,
-                      times: [0, 0.39, 0.48, 1],
-                      ease: ["easeOut", "easeInOut", "backIn"],
-                      repeat: Infinity,
-                      repeatDelay: 2.8,
-                    }
-                  : { duration: 0.3 }
-              }
-              style={{ marginLeft: "-34px", marginTop: "-9px", transformOrigin: "center" }}
-              className="pointer-events-none absolute left-1/2 top-1/2 z-[108] whitespace-nowrap rounded-full border border-cyan-400/40 bg-black/85 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.35)]"
-            >
-              ♪ Click me
-            </motion.span>
+            {/* Three plain stacked lines — ♪ / Click / me — each reading
+                normally left-to-right, no rotation (rotating individual
+                spans doesn't reflow their layout box, which is what was
+                causing them to overlap). It lives tucked exactly under the
+                disc (opacity 0, y 0), slides straight down out from under
+                it to appear, holds, then slides back up under the disc and
+                disappears again — repeating. */}
+            <div className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-0 w-0">
+              <motion.div
+                aria-hidden
+                className="absolute left-0 flex -translate-x-1/2 flex-col items-center gap-0.5 rounded-2xl border border-cyan-400/40 bg-black/85 px-2 py-1.5 shadow-[0_0_10px_rgba(34,211,238,0.35)]"
+                animate={
+                  muted || !playing
+                    ? { y: [0, 22, 22, 0], opacity: [0, 1, 1, 0] }
+                    : { y: 0, opacity: 0 }
+                }
+                transition={
+                  muted || !playing
+                    ? {
+                        duration: 3.4,
+                        delay: 5.8,
+                        times: [0, 0.3, 0.75, 1],
+                        ease: ["backOut", "linear", "backIn"],
+                        repeat: Infinity,
+                        repeatDelay: 5.8,
+                      }
+                    : { duration: 0.2 }
+                }
+              >
+                {["♪", "Click", "me"].map((line) => (
+                  <span
+                    key={line}
+                    className="block whitespace-nowrap text-[10px] font-bold uppercase leading-none tracking-[0.1em] text-cyan-300"
+                  >
+                    {line}
+                  </span>
+                ))}
+              </motion.div>
+            </div>
 
             {!muted &&
               playing &&

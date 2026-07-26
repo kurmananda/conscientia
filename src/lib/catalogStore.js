@@ -16,6 +16,16 @@ const COLUMN_TO_FIELD = {
 
 const IGNORED_COLUMNS = new Set(['kind', 'sort_order', 'updated_at', 'updated_by']);
 
+// Text columns that are nullable in the DB but must never reach the UI as
+// null — every color/gradient string gets concatenated or .replace()'d
+// directly in ParallaxCard without a null check.
+const TEXT_COLUMNS_DEFAULT_EMPTY = new Set([
+  'title', 'subtitle', 'type', 'section', 'section_color',
+  'eligibility', 'venue', 'timing', 'image', 'badge_icon',
+  'accent_color', 'glow_color', 'foil_gradient', 'description',
+  'format', 'certificate', 'brochure_url',
+]);
+
 // Every workshop/event's real identity — price, ticket id, and the fact
 // that it exists at all — lives in `tickets`, not `catalog_items`. An admin
 // adds a new catalog item by inserting a row directly into `tickets`;
@@ -58,7 +68,8 @@ function rowToCard(row) {
   const card = {};
   for (const [column, value] of Object.entries(row)) {
     if (IGNORED_COLUMNS.has(column)) continue;
-    card[COLUMN_TO_FIELD[column] || column] = value;
+    const resolved = value == null && TEXT_COLUMNS_DEFAULT_EMPTY.has(column) ? '' : value;
+    card[COLUMN_TO_FIELD[column] || column] = resolved;
   }
   return card;
 }

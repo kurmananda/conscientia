@@ -16,8 +16,8 @@ function MusicCredit({ align = 'center' }) {
   return (
     <div className={`flex flex-col gap-3 ${isEnd ? 'items-end' : 'items-center'}`}>
       <p className="text-[10px] uppercase tracking-[0.3em] text-white/35">Music by</p>
-      <p className="font-syncopate text-3xl font-black uppercase leading-none text-white sm:text-2xl lg:text-3xl">
-        tansyn
+      <p className="font-syncopate text-5xl font-black uppercase leading-none text-white sm:text-5xl lg:text-6xl">
+        tansyN 
       </p>
       <div className={`flex flex-wrap gap-3 ${isEnd ? 'justify-end' : 'justify-center'}`}>
         <a

@@ -15,16 +15,21 @@ import { startTiqrCheckout } from "@/lib/checkout";
 import { parsePriceLabel } from "@/lib/parsePriceLabel";
 
 const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
-  const { ref, tilt, handleMouseMove, handleMouseLeave, handleMouseEnter } = useParallaxTilt(20);
   const cardWidth = width || card.layout?.width || "500px";
   const wrapperRef = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
   const [registering, setRegistering] = useState(false);
   const router = useRouter();
 
-  const playGlitch = useSound("/sounds/glitch.wav", 0.2, 0.15);
-  const playClick = useSound("/sounds/click.wav", 0.25, 0.08);
-  const playTap = useSound("/sounds/tap.wav", 0.3, undefined, true);
+  // Only the cards actually on-screen pay for a mousemove listener — a
+  // long events/workshop listing page can have 30+ of these mounted at
+  // once, and each one was tracking window mousemove unconditionally
+  // before, which is what made those pages laggy.
+  const { ref, tilt, handleMouseMove, handleMouseLeave, handleMouseEnter } = useParallaxTilt(20, isVisible);
+
+  const playGlitch = useSound("/sounds/glitch.wav", 0.1, 0.15);
+  const playClick = useSound("/sounds/click.wav", 0.125, 0.08);
+  const playTap = useSound("/sounds/tap.wav", 0.15, undefined, true);
 
   const { user } = useAuth();
   const { addItem, hasItem } = useCart();
@@ -250,21 +255,30 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
           {/* Left Side - Image */}
           <div style={layer2Style} className="relative mr-2.5 sm:mr-3 flex-shrink-0 overflow-hidden rounded-xl">
             <div className="relative h-[120px] w-[95px] sm:h-[200px] sm:w-[160px] overflow-hidden rounded-xl">
-              <Image
-                src={card.image}
-                alt={card.title}
-                fill
-                sizes="(max-width: 640px) 95px, 160px"
-                className="object-cover"
-                style={{
-                  transform: tilt.isHovered
-                    ? `scale(1.08) translateX(${-tilt.rotateY * 0.3}px) translateY(${tilt.rotateX * 0.3}px)`
-                    : "scale(1)",
-                  transition: tilt.isHovered
-                    ? "transform 0.1s ease-out"
-                    : "transform 0.7s cubic-bezier(0.23, 1, 0.32, 1)",
-                }}
-              />
+              {card.image ? (
+                <Image
+                  src={card.image}
+                  alt={card.title}
+                  fill
+                  sizes="(max-width: 640px) 95px, 160px"
+                  className="object-cover"
+                  style={{
+                    transform: tilt.isHovered
+                      ? `scale(1.08) translateX(${-tilt.rotateY * 0.3}px) translateY(${tilt.rotateX * 0.3}px)`
+                      : "scale(1)",
+                    transition: tilt.isHovered
+                      ? "transform 0.1s ease-out"
+                      : "transform 0.7s cubic-bezier(0.23, 1, 0.32, 1)",
+                  }}
+                />
+              ) : (
+                <div
+                  className="absolute inset-0 flex items-center justify-center text-2xl"
+                  style={{ background: `linear-gradient(135deg, ${card.accentColor || "#33d6ff"}33, #0a0a0a)` }}
+                >
+                  {card.badgeIcon || "✦"}
+                </div>
+              )}
               {/* Image overlay gradient */}
               <div
                 className="absolute inset-0"

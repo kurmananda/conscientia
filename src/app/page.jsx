@@ -125,7 +125,10 @@ export default function Home() {
   const hyperspeedEffectOptions = useMemo(() => HYPERSPEED_OPTIONS, []);
 
   // --- SCROLL LOGIC ---
-
+  // Visual Archives gallery commented out for now — no real photos yet
+  // (IMAGES pointed at /imags/*.jpeg, which doesn't exist). Re-enable this
+  // block plus the matching JSX section below once real images land.
+  /*
   const IMAGES = [
     '/imags/1.jpeg',
     '/imags/2.jpeg',
@@ -188,6 +191,7 @@ export default function Home() {
   const scrollNext = useCallback(() => {
     if (emblaApi) emblaApi.scrollNext();
   }, [emblaApi]);
+  */
 
   const workshopCartel = featuredWorkshopSection.cards.slice(0, 4);
 
@@ -662,7 +666,8 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* --- PHOTO GALLERY (VISUAL ARCHIVES) --- */}
+      {/* --- PHOTO GALLERY (VISUAL ARCHIVES) --- commented out for now, no real photos yet */}
+      {false && (
       <section className=" py-30 relative z-10 border-t border-white/5 bg-[#030303]/50 backdrop-blur-3xl overflow-hidden"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave} >
@@ -725,6 +730,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
 
       {/* --- INSTITUTION: THE NEXUS --- */}
       <section className="py-48 px-6 md:px-20 bg-[#070707] border-y border-white/5 relative z-10">

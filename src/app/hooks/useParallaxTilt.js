@@ -17,9 +17,9 @@ const defaultState = {
 // of snapping — the previous implementation only tracked mouse position
 // while it was literally inside the card's own box, so crossing the edge
 // jumped straight from "flat" to "near max tilt" with no transition.
-const MAX_DISTANCE = 550;
+const MAX_DISTANCE = 320;
 
-export function useParallaxTilt(maxTilt = 18) {
+export function useParallaxTilt(maxTilt = 18, enabled = true) {
   const ref = useRef(null);
   const [tilt, setTilt] = useState(defaultState);
   const animFrameRef = useRef(null);
@@ -28,10 +28,11 @@ export function useParallaxTilt(maxTilt = 18) {
   const isTouch = useIsTouch();
 
   useEffect(() => {
-    // No pointer to tilt toward on touch devices — skip mousemove/scroll/
-    // resize tracking entirely instead of paying for idle listeners on
-    // every card.
-    if (isTouch) return;
+    // No pointer to tilt toward on touch devices, and no point tracking
+    // mousemove for a card that's scrolled off-screen — skip attaching
+    // listeners entirely rather than paying for N idle window listeners
+    // (one per card) on a long listing page.
+    if (isTouch || !enabled) return;
 
     const el = ref.current;
     if (!el) return;
@@ -108,7 +109,7 @@ export function useParallaxTilt(maxTilt = 18) {
       ro.disconnect();
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [maxTilt, isTouch]);
+  }, [maxTilt, isTouch, enabled]);
 
   // No-ops kept so existing onMouseEnter/onMouseMove/onMouseLeave wiring
   // (e.g. triggering a hover sound) doesn't need to change.
