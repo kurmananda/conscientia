@@ -93,11 +93,28 @@ function CinematicBox({
   const [hovered, setHovered] = useState(false);
   const isTouch = useIsTouch();
 
+  // Two-way on-screen tracker (unlike `visible` above, which is a one-way
+  // reveal-once flag for the entrance animation) — a detail page stacks
+  // several of these boxes, and every one used to keep its own permanent
+  // window mousemove listener (with a synchronous getBoundingClientRect
+  // read + a React re-render) attached for the component's entire
+  // lifetime, whether on-screen or scrolled far past. That's heavy enough
+  // main-thread work to stall scroll until another mousemove forced a
+  // repaint. Now only the box actually in view pays for it.
+  const [onScreen, setOnScreen] = useState(false);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => setOnScreen(e.isIntersecting), { threshold: 0 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   useEffect(() => {
     // Mouse-follow spotlight/tilt is a desktop hover effect — no pointer to
-    // track on touch, so skip attaching the listener (and the rAF-throttled
-    // reflow read on every mousemove) entirely.
-    if (isTouch) return;
+    // track on touch, and no point tracking it while off-screen — skip
+    // attaching the listener entirely.
+    if (isTouch || !onScreen) return;
     const el = boxRef.current;
     if (!el) return;
     let frame = null;
@@ -117,7 +134,7 @@ function CinematicBox({
       window.removeEventListener("mousemove", handle);
       if (frame) cancelAnimationFrame(frame);
     };
-  }, [isTouch]);
+  }, [isTouch, onScreen]);
 
   const tx = (mousePos.y - 0.5) * 3;
   const ty = (mousePos.x - 0.5) * -3;

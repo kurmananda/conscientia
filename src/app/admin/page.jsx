@@ -294,16 +294,24 @@ const CATALOG_TEXT_FIELDS = [
   { key: 'brochure_url', label: 'Brochure URL' },
 ];
 
+// Stored as jsonb arrays in the DB, but edited here as a single plain-text
+// block (one line per item) rather than chips — only Coordinator Access
+// below needs true multi-value chip editing.
 const CATALOG_TEXTAREA_FIELDS = [
   { key: 'description', label: 'Description' },
+  { key: 'about_extra', label: 'About (one per line)' },
+  { key: 'highlights', label: 'Highlights (one per line)' },
+  { key: 'requirements', label: 'Requirements (one per line)' },
+  { key: 'tags', label: 'Tags (one per line)' },
 ];
 
-// List-shaped fields, edited as chips (type + Enter to add).
+// Keys within CATALOG_TEXTAREA_FIELDS that the DB stores as a jsonb array —
+// split back into an array (one entry per non-empty line) on save.
+const TEXTAREA_LIST_KEYS = new Set(['about_extra', 'highlights', 'requirements', 'tags']);
+
+// List-shaped fields, edited as chips (type + Enter to add). Coordinator
+// Access is the one field that genuinely needs multiple values.
 const CATALOG_LIST_FIELDS = [
-  { key: 'about_extra', label: 'About' },
-  { key: 'highlights', label: 'Highlights' },
-  { key: 'requirements', label: 'Requirements' },
-  { key: 'tags', label: 'Tags' },
   { key: 'access', label: 'Coordinator Access — CNS-ids (never shown publicly; grants /data visibility)' },
 ];
 
@@ -1524,6 +1532,11 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
         let value = form[f.key];
         if (f.key === 'duration' || f.key === 'seats') {
           value = value === '' ? null : Number(value);
+        } else if (TEXTAREA_LIST_KEYS.has(f.key)) {
+          value = value
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean);
         }
         fields[f.key] = value;
       }
