@@ -136,14 +136,14 @@ const Nav = () => {
           whileHover={{ scale: 1.1, rotate: -5 }}
         >
           <Link href="/" onClick={() => setIsMenuOpen(false)} className="block">
-            <Image src="/assets/logo.svg" alt="Logo" width={45} height={45} className="w-7 h-7 sm:w-10 sm:h-10 rounded-sm object-contain drop-shadow-2xl" />
+            <Image src="/assets/logo-mark.png" alt="Logo" width={110} height={50} className="w-14 h-auto sm:w-20 object-contain" />
           </Link>
         </motion.div>
 
         {/* Hourglass flourish — confined to the empty gap between the logo and the
             button cluster (this div's width IS that gap, via flex-1 in a justify-between
             row), so it can never overlap either or poke outside the bar. */}
-        <div className="pointer-events-none relative z-[105] hidden h-full flex-1 sm:block">
+        <div className="pointer-events-none relative z-[105] block h-full min-w-[36px] flex-1 overflow-hidden">
           <HourglassPendulum />
         </div>
 

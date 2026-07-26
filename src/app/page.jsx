@@ -48,7 +48,7 @@ const HYPERSPEED_OPTIONS = {
   speedUp: 2,
   carLightsFade: 0.4,
   totalSideLightSticks: 20,
-  lightPairsPerRoadWay: 80,
+  lightPairsPerRoadWay: 40,
   shoulderLinesWidthPercentage: 0.05,
   brokenLinesWidthPercentage: 0.1,
   brokenLinesLengthPercentage: 0.5,
@@ -253,9 +253,9 @@ export default function Home() {
             initial={{ opacity: 0, y: 12 }}
             animate={catalogLoading ? undefined : { opacity: 0.9, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="text-center max-w-xl mx-auto text-md md:text-md tracking-[0.2em] uppercase leading-loose items-center gap-4 flex flex-col text-white/80 font-bold"
+            className="text-center max-w-xl mx-auto text-md md:text-md tracking-[1em] uppercase leading-loose items-center gap-4 flex flex-col text-white/80 font-bold"
           >
-            TIME FALL <br /> <span className="text-xs md:text-xs font-bold text-white/70">Directed by Indian Institute of Space Science and Technology (IIST).</span>
+            TIMEFALL <br /> <span className="tracking-[0.2em] text-xs md:text-xs font-bold text-white/70">Directed by Indian Institute of Space Science and Technology (IIST).</span>
             <Image src="/assets/iistlogo.png" alt="Logo" width={55} height={55} className="w-[40px] h-[40px] md:w-[60px] md:h-[60px] object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]" />
           </motion.p>
 
@@ -676,7 +676,7 @@ export default function Home() {
             Visual Archives
           </span>
           <h2 className="section-heading text-4xl md:text-6xl">
-            <span className="text-white/50 italic">Time Fall</span> 2026
+            <span className="text-white/50 italic">Timefall</span> 2026
           </h2>
         </div>
 

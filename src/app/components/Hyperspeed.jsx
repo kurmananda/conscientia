@@ -874,7 +874,10 @@ class App {
       alpha: true
     });
     this.renderer.setSize(initW, initH, false);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
+    // Uncapped devicePixelRatio triples the shaded pixel count on a 3x-DPR
+    // phone/laptop vs a capped one — the single biggest lever on this
+    // WebGL background's frame cost.
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
 
     this.composer = new EffectComposer(this.renderer);
     container.appendChild(this.renderer.domElement);
