@@ -1,7 +1,6 @@
-// Hardcoded merch catalogue for the accommodation/merch page. Ticket ids are
-// placeholders from src/lib/ticketCatalog.js — swap for real TiQR tickets
-// once generated.
-import { ADDON_TICKET_MAPPING } from '@/lib/ticketCatalog';
+// Hardcoded merch catalogue for the accommodation/merch page. Ticket ids
+// live in the database (tickets table) — see src/lib/ticketStore.js.
+import { getTicketId } from '@/lib/ticketStore';
 
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
@@ -67,6 +66,6 @@ export const FOOD_ADDONS = [
 // selected (see STAY_DATES).
 export const ACCOMMODATION_PRICE = 450;
 
-export function ticketFor(kind) {
-  return ADDON_TICKET_MAPPING[kind];
+export async function ticketFor(kind) {
+  return getTicketId(kind);
 }

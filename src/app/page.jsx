@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useScroll, useTransform, AnimatePresence, } from "framer-motion";
-import { useRef, useState, useCallback, useMemo } from "react";
+import { useRef, useState, useCallback, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -31,8 +31,9 @@ import Autoplay from "embla-carousel-autoplay";
 
 import Hyperspeed from "./components/Hyperspeed";
 import MerchPromoNotification from "./components/MerchPromoNotification";
-import { eventCards } from "./events/eventsData";
-import { workshopCards } from "./workshop/workshopData";
+import FetchIntro from "./components/FetchIntro";
+import { getCatalog } from "@/lib/catalogStore";
+import { getPromo, DEFAULT_PROMO } from "@/lib/promoStore";
 import { groupBySection } from "./lib/groupBySection";
 
 /** Memoized — Hyperspeed re-inits WebGL when this object identity changes (see reactbits.dev). */
@@ -88,17 +89,36 @@ const WORKSHOP_ICONS = {
   Biotech: <Dna size={20} />,
 };
 
-// Live from the actual data files — the home page always mirrors whatever
-// is currently the *first* (featured) section in workshopData.js / eventsData.js,
-// so editing those files is the only thing that ever needs to happen.
-const featuredWorkshopSection = groupBySection(workshopCards)[0];
-const featuredEventSection = groupBySection(eventCards)[0];
+const EMPTY_SECTION = { section: "", color: "#33d6ff", cards: [] };
 
 export default function Home() {
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [hoveredEventIndex, setHoveredEventIndex] = useState(null);
+
+  // Live from the database — the home page always mirrors whatever is
+  // currently the *first* (featured) section for each kind.
+  const [featuredWorkshopSection, setFeaturedWorkshopSection] = useState(EMPTY_SECTION);
+  const [featuredEventSection, setFeaturedEventSection] = useState(EMPTY_SECTION);
+  const [promo, setPromo] = useState(DEFAULT_PROMO);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([getCatalog("workshop"), getCatalog("event"), getPromo("limited_drop")]).then(
+      ([workshops, events, promoData]) => {
+        if (!active) return;
+        setFeaturedWorkshopSection(groupBySection(workshops)[0] || EMPTY_SECTION);
+        setFeaturedEventSection(groupBySection(events)[0] || EMPTY_SECTION);
+        setPromo(promoData);
+        setCatalogLoading(false);
+      }
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const expoTransition = { duration: 0.2, ease: [0.85, 0, 0.15, 1] };
 
@@ -173,6 +193,7 @@ export default function Home() {
 
   return (
     <main className="bg-[#050505] min-h-screen text-white selection:bg-cyan-500/30 overflow-x-hidden relative">
+      <FetchIntro loading={catalogLoading} label="Loading" accentColor="#33d6ff" />
 
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0">
@@ -188,36 +209,53 @@ export default function Home() {
       <section className="relative z-10 flex h-screen flex-col items-center justify-center px-6">
         <div className="relative space-y-10 text-center">
           <motion.div
-            initial={{ opacity: 0, letterSpacing: "1.5em" }}
-            animate={{ opacity: 1, letterSpacing: "0.8em" }}
-            transition={{ duration: 1.5 }}
-            className="font-syncopate text-cyan-500 text-[10px] md:text-xs uppercase font-bold"
+            initial={{ opacity: 0, y: -8 }}
+            animate={catalogLoading ? undefined : { opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="font-syncopate text-cyan-500 text-[10px] md:text-xs uppercase font-bold tracking-[0.6em]"
           >
             Technical Fest
           </motion.div>
 
-          <div className="overflow-hidden">
-            <motion.h1
-              initial={{ y: "110%", rotateX: 50 }}
-              animate={{ y: 0, rotateX: 0 }}
-              transition={expoTransition}
-              className="text-[14vw] md:text-[10vw] font-syncopate font-bold leading-[0.75] bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40"
-            >
-              CONSCIENTIA
-            </motion.h1>
-          </div>
+          <motion.h1
+            initial={{ opacity: 0, y: 24 }}
+            animate={catalogLoading ? undefined : { opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.15 }}
+            className="relative flex flex-wrap justify-center px-3 sm:px-0 text-[14vw] md:text-[10vw] font-badcoma font-normal leading-[0.75]"
+          >
+            {"CONSCIENTIA".split("").map((ch, i) => (
+              <motion.span
+                key={i}
+                className="inline-block bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40"
+                animate={
+                  catalogLoading
+                    ? undefined
+                    : { y: ["0%", "-12%", "8%", "-5%", "0%"], rotate: [0, -3, 3, -1.5, 0] }
+                }
+                transition={{
+                  duration: 2.4,
+                  repeat: Infinity,
+                  repeatDelay: 1.4,
+                  ease: "easeInOut",
+                  delay: 0.9 + i * 0.06,
+                }}
+              >
+                {ch}
+              </motion.span>
+            ))}
+          </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.4 }}
-            transition={{ delay: 0.8 }}
-            className="text-center max-w-xl mx-auto text-md md:text-md tracking-[0.2em] uppercase leading-loose items-center gap-4 flex flex-col text-white/40"
+            initial={{ opacity: 0, y: 12 }}
+            animate={catalogLoading ? undefined : { opacity: 0.9, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="text-center max-w-xl mx-auto text-md md:text-md tracking-[0.2em] uppercase leading-loose items-center gap-4 flex flex-col text-white/80 font-bold"
           >
-            TIME FALL <br /> <span className="text-xs md:text-xs">Directed by Indian Institute of Space Science and Technology (IIST).</span>
+            TIME FALL <br /> <span className="text-xs md:text-xs font-bold text-white/70">Directed by Indian Institute of Space Science and Technology (IIST).</span>
             <Image src="/assets/iistlogo.png" alt="Logo" width={55} height={55} className="w-[40px] h-[40px] md:w-[60px] md:h-[60px] object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]" />
           </motion.p>
 
-          <motion.div initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ delay: 1.2, duration: 1 }} className="pt-12 flex flex-col items-center gap-6">
+          <motion.div initial={{ opacity: 0 }} animate={catalogLoading ? undefined : { opacity: 1 }} transition={{ delay: 0.6, duration: 0.5 }} className="pt-12 flex flex-col items-center gap-6">
             <button onClick={() => { location.href = "/events" }} className="group flex flex-col items-center gap-6 cursor-pointer bg-transparent border-none appearance-none">
               <div className="h-16 w-[1px] bg-cyan-500 group-hover:h-24 group-hover:bg-white transition-all duration-200 relative">
                 <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-cyan-400 rounded-full blur-[2px]" />
@@ -238,17 +276,20 @@ export default function Home() {
           className="max-w-4xl mx-auto"
         >
           <Link
-            href="/accommodation"
+            href={promo.link}
             className="glass-card group relative flex flex-col sm:flex-row items-center gap-6 sm:gap-8 overflow-hidden rounded-[2rem] border-cyan-500/25 p-5 sm:p-6 hover:border-cyan-400/50 transition-all duration-500"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-transparent to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            <div
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+              style={{ background: `linear-gradient(90deg, ${promo.accent_color}0d, transparent, ${promo.accent_color}1a)` }}
+            />
             <div className="relative flex gap-2 shrink-0">
               <motion.div
                 whileHover={{ rotate: -3, scale: 1.05 }}
                 className="relative w-24 h-28 sm:w-28 sm:h-32 rounded-2xl overflow-hidden border border-white/10 shadow-lg"
               >
                 <Image
-                  src="/assets/wsfront.png"
+                  src={promo.image_front}
                   alt="Merch front"
                   fill
                   className="object-cover"
@@ -260,7 +301,7 @@ export default function Home() {
                 className="relative w-24 h-28 sm:w-28 sm:h-32 rounded-2xl overflow-hidden border border-white/10 shadow-lg -ml-4 mt-4"
               >
                 <Image
-                  src="/assets/wsback.png"
+                  src={promo.image_back}
                   alt="Merch back"
                   fill
                   className="object-cover"
@@ -269,19 +310,26 @@ export default function Home() {
               </motion.div>
             </div>
             <div className="flex-1 text-center sm:text-left">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[9px] font-black uppercase tracking-[0.3em] text-cyan-400 mb-3">
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.3em] mb-3"
+                style={{
+                  background: `${promo.accent_color}26`,
+                  border: `1px solid ${promo.accent_color}4d`,
+                  color: promo.accent_color,
+                }}
+              >
                 <Package size={10} />
-                Limited drop
+                {promo.badge_label}
               </span>
               <h2 className="font-syncopate text-xl sm:text-2xl uppercase tracking-tight text-white group-hover:text-cyan-300 transition-colors">
-                Get official <span className="text-cyan-400">Space Merch</span>
+                {promo.heading}
               </h2>
               <p className="text-sm text-white/45 mt-2 max-w-md mx-auto sm:mx-0">
-                Hoodie-style kit for Conscientia 2026. Pick your size and delivery address on the registration page.
+                {promo.description}
               </p>
             </div>
             <div className="shrink-0 flex flex-col items-center gap-1 px-6 py-4 rounded-2xl bg-white text-black group-hover:bg-cyan-400 transition-colors duration-300">
-              <span className="font-syncopate text-2xl font-black">₹599</span>
+              <span className="font-syncopate text-2xl font-black">{promo.price}</span>
               <span className="font-syncopate text-[9px] uppercase tracking-[0.25em] flex items-center gap-1">
                 Register
                 <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
@@ -312,6 +360,7 @@ export default function Home() {
               </Link>
             </motion.div>
           </div>
+
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-8">
             <motion.div
@@ -420,6 +469,7 @@ export default function Home() {
               </Link>
             </motion.div>
           </div>
+
 
           <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-8">
             <div className="flex flex-col gap-4">

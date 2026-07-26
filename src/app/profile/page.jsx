@@ -8,10 +8,8 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import useProfile from '../hooks/useProfile';
 import ProfileAvatar from '../components/ProfileAvatar';
-import { workshopCards } from '../workshop/workshopData';
-import { eventCards } from '../events/eventsData';
-
-const CATALOG = [...workshopCards, ...eventCards];
+import FetchIntro from '../components/FetchIntro';
+import { getCatalog } from '@/lib/catalogStore';
 
 const GENDER_LABELS = {
   male: 'Male',
@@ -19,16 +17,27 @@ const GENDER_LABELS = {
   other: 'Other',
 };
 
-function findCatalogItem(id) {
-  return CATALOG.find((c) => c.id === id);
-}
-
 export default function ProfilePage() {
   const { user, loading, signOut } = useAuth();
   const { items: cartItems, removeItem } = useCart();
   const { profile, loading: profileLoading, save } = useProfile();
   const [registration, setRegistration] = useState(null);
   const [fetching, setFetching] = useState(false);
+  const [catalog, setCatalog] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([getCatalog('workshop'), getCatalog('event')]).then(([workshops, events]) => {
+      if (active) setCatalog([...workshops, ...events]);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function findCatalogItem(id) {
+    return catalog.find((c) => c.id === id);
+  }
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', college: '', city: '', gender: '', address: '' });
@@ -96,19 +105,18 @@ export default function ProfilePage() {
   };
 
   if (loading) {
-    return <ProfileShell><p className="text-white/50">Loading…</p></ProfileShell>;
+    return <FetchIntro loading label="Loading Profile" accentColor="#33d6ff" />;
   }
 
   if (!user) {
     return (
       <ProfileShell>
-        <p className="text-white/60 mb-6">Sign in to see your bookings, tickets, and cart.</p>
-        <Link
-          href="/login?redirect=/profile"
-          className="inline-flex items-center gap-2 rounded-full bg-cyan-400 px-6 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-black hover:bg-white transition-colors"
-        >
-          Sign In / Create Account
-        </Link>
+        <div className="glass-card rounded-2xl p-8 text-center">
+          <p className="text-white/60 mb-4">Sign in to see your bookings, tickets, and cart.</p>
+          <Link href="/login?redirect=/profile" className="btn-primary">
+            Sign In / Create Account
+          </Link>
+        </div>
       </ProfileShell>
     );
   }
@@ -120,6 +128,7 @@ export default function ProfilePage() {
 
   return (
     <ProfileShell>
+      <FetchIntro loading={fetching} label="Loading Profile" accentColor="#33d6ff" />
       {/* ── Identity card ─────────────────────────────────────── */}
       <div className="mb-10 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
         <div className="flex flex-wrap items-center gap-5 mb-6">

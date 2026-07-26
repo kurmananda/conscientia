@@ -5,7 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { ShoppingCart, Check } from "lucide-react";
-import { eventCards } from "@/app/events/eventsData";
+import FetchIntro from "@/app/components/FetchIntro";
+import { getCatalogItem } from "@/lib/catalogStore";
 import useSound from "@/app/hooks/useSound";
 import { useAuth } from "@/app/context/AuthContext";
 import { useCart } from "@/app/context/CartContext";
@@ -13,7 +14,6 @@ import useProfile from "@/app/hooks/useProfile";
 import usePaymentReminder from "@/app/hooks/usePaymentReminder";
 import PrePaymentReminderModal from "@/app/components/PrePaymentReminderModal";
 import useIsTouch from "@/app/hooks/useIsTouch";
-import { ticketIdForCatalogItem } from "@/lib/ticketCatalog";
 import useCapacity from "@/app/hooks/useCapacity";
 import { startTiqrCheckout } from "@/lib/checkout";
 import { parsePriceLabel } from "@/lib/parsePriceLabel";
@@ -336,8 +336,23 @@ export default function EventDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id;
-  const card = eventCards.find((c) => c.id === id);
+  const [card, setCard] = useState(null);
+  const [cardLoading, setCardLoading] = useState(true);
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
+
+  useEffect(() => {
+    let active = true;
+    setCardLoading(true);
+    getCatalogItem("event", id).then((found) => {
+      if (active) {
+        setCard(found);
+        setCardLoading(false);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [id]);
 
   const { user } = useAuth();
   const { addItem, hasItem } = useCart();
@@ -379,7 +394,7 @@ export default function EventDetailPage() {
     key: cartKey,
     id: card.id,
     kind: "event",
-    ticketId: ticketIdForCatalogItem("event"),
+    ticketId: card.ticketId,
     title: card.title,
     subtitle: card.subtitle,
     priceLabel: card.price,
@@ -435,6 +450,10 @@ export default function EventDetailPage() {
     window.addEventListener("mousemove", handle, { passive: true });
     return () => window.removeEventListener("mousemove", handle);
   }, []);
+
+  if (cardLoading) {
+    return <FetchIntro loading label="Loading Event" accentColor="#a855f7" />;
+  }
 
   if (!card) {
     return (
@@ -592,7 +611,11 @@ export default function EventDetailPage() {
                   flexShrink: 0,
                 }}
               >
-                {card.badgeIcon}
+                {/^https?:\/\//.test(card.badgeIcon || "") ? (
+                  <img src={card.badgeIcon} alt="" loading="lazy" decoding="async" style={{ width: "2.2rem", height: "2.2rem", objectFit: "contain" }} />
+                ) : (
+                  card.badgeIcon
+                )}
               </div>
             </div>
           </CinematicBox>
@@ -870,7 +893,9 @@ export default function EventDetailPage() {
                 {[
                   { label: "Duration", value: `${card.Duration} Days` },
                   { label: "Total Seats", value: String(card.Seats) },
-                  { label: "Difficulty", value: `Level ${card.Level}` },
+                  { label: "Eligibility", value: card.eligibility || "Open to all" },
+                  { label: "Venue", value: card.venue || "TBA" },
+                  { label: "Timing", value: card.timing || "TBA" },
                   { label: "Format", value: card.format },
                   { label: "Certificate", value: card.certificate },
                 ].map((item) => (
@@ -902,6 +927,53 @@ export default function EventDetailPage() {
                 ))}
               </div>
             </CinematicBox>
+
+            {Array.isArray(card.contacts) && card.contacts.length > 0 && (
+              <CinematicBox title="Contact" accentColor={card.accentColor} glowColor={card.glowColor} delay={0.28}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
+                  {card.contacts.map((c, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        paddingBottom: "0.7rem",
+                        borderBottom: i === card.contacts.length - 1 ? "none" : "1px solid rgba(255,255,255,0.05)",
+                      }}
+                    >
+                      <div>
+                        <span style={{
+                          display: "block",
+                          fontSize: "0.8rem",
+                          fontWeight: 600,
+                          color: "rgba(255,255,255,0.85)",
+                        }}>{c.name}</span>
+                        {c.role && (
+                          <span style={{
+                            fontSize: "0.65rem",
+                            color: "rgba(255,255,255,0.4)",
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                          }}>{c.role}</span>
+                        )}
+                      </div>
+                      {c.phone && (
+                        <a
+                          href={`tel:${c.phone}`}
+                          style={{
+                            fontSize: "0.8rem",
+                            fontWeight: 600,
+                            color: card.accentColor,
+                            textDecoration: "none",
+                          }}
+                        >{c.phone}</a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CinematicBox>
+            )}
 
             {/* Tags */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>

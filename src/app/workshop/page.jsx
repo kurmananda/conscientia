@@ -1,13 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import IntroController from "../components/IntroController";
 import ParallaxCard from "../components/parallax/ParallaxCard";
-import { workshopCards } from "./workshopData";
+import FetchIntro from "../components/FetchIntro";
+import { getCatalog } from "@/lib/catalogStore";
 import { groupBySection } from "../lib/groupBySection";
 import useSound from "../hooks/useSound";
-
-const sections = groupBySection(workshopCards);
 
 function CardWrapper({ card, index }) {
   return <ParallaxCard card={card} index={index} basePath="/workshop" width="100%" />;
@@ -62,6 +61,23 @@ function SectionHeading({ title, accentColor, count }) {
 export default function WorkshopPage() {
   const playGlitch = useSound("/sounds/glitch.wav", 0.2, 0.15);
   const playClick = useSound("/sounds/click.wav", 0.25, 0.08);
+  const [workshopCards, setWorkshopCards] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    getCatalog("workshop").then((cards) => {
+      if (active) {
+        setWorkshopCards(cards);
+        setLoading(false);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const sections = groupBySection(workshopCards);
 
   return (
     <>
@@ -128,7 +144,8 @@ export default function WorkshopPage() {
         />
       </div>
 
-      <IntroController>
+      <FetchIntro loading={loading} label="Loading Workshops" accentColor="#33d6ff" />
+      <>
         <div style={{ overflowX: "hidden", width: "100%" }}>
 
           {/* ── Back to Home Button ───────────────────────────────── */}
@@ -221,7 +238,7 @@ export default function WorkshopPage() {
             </p>
           </div>
 
-          {/* ── Sections — one per unique `section` value in workshopData.js ── */}
+          {/* ── Sections — one per unique `section` value in the database ── */}
           {sections.map(({ section, color, cards }, sIndex) => (
             <div
               key={section}
@@ -241,7 +258,7 @@ export default function WorkshopPage() {
             </div>
           ))}
         </div>
-      </IntroController>
+      </>
     </>
   );
 }

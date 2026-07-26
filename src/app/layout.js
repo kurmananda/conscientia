@@ -2,12 +2,12 @@ import { Space_Grotesk, Orbitron, JetBrains_Mono } from "next/font/google";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import CursorTrialWrapper from "./components/CursorTrialWrapper";
-import SiteAmbientMusic from "./components/SiteAmbientMusic";
 import ProfileCompletionModal from "./components/ProfileCompletionModal";
 import NetworkStatusToast from "./components/NetworkStatusToast";
 import FetchTracker from "./components/FetchTracker";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
+import { MusicProvider } from "./context/MusicContext";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -45,6 +45,10 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
         <link
+          href="https://fonts.cdnfonts.com/css/bad-coma"
+          rel="stylesheet"
+        />
+        <link
           href="https://fonts.googleapis.com/css2?family=Rubik+Glitch&display=swap"
           rel="stylesheet"
         />
@@ -52,15 +56,16 @@ export default function RootLayout({ children }) {
       <body className="min-h-dvh bg-black text-white antialiased">
         <AuthProvider>
           <CartProvider>
-            <SiteAmbientMusic />
-            <CursorTrialWrapper />
-            <ProfileCompletionModal />
-            <NetworkStatusToast />
-            <FetchTracker />
-            <Navbar />
-            <div className="h-[10vh] shrink-0 bg-transparent" aria-hidden />
-            <main className="relative min-h-0">{children}</main>
-            <Footer />
+            <MusicProvider>
+              <CursorTrialWrapper />
+              <ProfileCompletionModal />
+              <NetworkStatusToast />
+              <FetchTracker />
+              <Navbar />
+              <div className="h-[10vh] shrink-0 bg-transparent" aria-hidden />
+              <main className="relative min-h-0">{children}</main>
+              <Footer />
+            </MusicProvider>
           </CartProvider>
         </AuthProvider>
       </body>

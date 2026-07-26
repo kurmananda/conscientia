@@ -11,7 +11,6 @@ import usePaymentReminder from "../../hooks/usePaymentReminder";
 import useCapacity from "../../hooks/useCapacity";
 import useMyRegisteredIds from "../../hooks/useMyRegisteredIds";
 import PrePaymentReminderModal from "../PrePaymentReminderModal";
-import { ticketIdForCatalogItem } from "@/lib/ticketCatalog";
 import { startTiqrCheckout } from "@/lib/checkout";
 import { parsePriceLabel } from "@/lib/parsePriceLabel";
 
@@ -44,7 +43,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
     key: cartKey,
     id: card.id,
     kind,
-    ticketId: ticketIdForCatalogItem(kind),
+    ticketId: card.ticketId,
     title: card.title,
     subtitle: card.subtitle,
     priceLabel: card.price,
@@ -340,7 +339,17 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
                     boxShadow: `0 0 15px ${card.accentColor}66`,
                   }}
                 >
-                  {card.badgeIcon}
+                  {/^https?:\/\//.test(card.badgeIcon || "") ? (
+                    <img
+                      src={card.badgeIcon}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="h-5 w-5 object-contain"
+                    />
+                  ) : (
+                    card.badgeIcon
+                  )}
                 </div>
               </div>
             </div>

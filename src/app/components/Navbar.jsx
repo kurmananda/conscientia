@@ -1,13 +1,53 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserRound, ShoppingCart, Menu, X } from "lucide-react";
+import { UserRound, ShoppingCart, Menu, X, VolumeX, Hourglass } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import { useMusic } from "../context/MusicContext";
 import useProfile from "../hooks/useProfile";
+
+// Rolls back and forth along the navbar's vertical midline between the logo
+// and the button cluster — random travel distance, random duration (slow to
+// fast), and continuous rotation at a matching random rate each leg. Stays
+// pinned to the center line so it can never poke outside the bar.
+function HourglassPendulum() {
+  const dirRef = useRef(1);
+  const rotationRef = useRef(0);
+  const [leg, setLeg] = useState(() => ({ left: 8, duration: 2, rotate: 0 }));
+
+  const pickNextLeg = () => {
+    const distance = 15 + Math.random() * 55;
+    let nextLeft = leg.left + dirRef.current * distance;
+    if (nextLeft >= 92) {
+      nextLeft = 92;
+      dirRef.current = -1;
+    } else if (nextLeft <= 8) {
+      nextLeft = 8;
+      dirRef.current = 1;
+    }
+    const duration = (0.7 + Math.random() * 3.3) / 1.5; // random speed: slow to fast, 1.5x overall pace
+    rotationRef.current += dirRef.current * (120 + Math.random() * 600);
+    setLeg({ left: nextLeft, duration, rotate: rotationRef.current });
+  };
+
+  return (
+    <motion.div
+      aria-hidden
+      className="pointer-events-none absolute top-1/2 text-cyan-300 drop-shadow-[0_0_6px_rgba(34,211,238,0.7)]"
+      style={{ marginLeft: "-10px", marginTop: "-10px" }}
+      initial={{ left: "8%", rotate: 0, opacity: 0 }}
+      animate={{ left: `${leg.left}%`, rotate: leg.rotate, opacity: 1 }}
+      transition={{ duration: leg.duration, ease: "easeInOut" }}
+      onAnimationComplete={pickNextLeg}
+    >
+      <Hourglass size={20} />
+    </motion.div>
+  );
+}
 
 const Nav = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -15,6 +55,25 @@ const Nav = () => {
   const { items: cartItems } = useCart();
   const { user } = useAuth();
   const { profile } = useProfile();
+  const { playing, muted, toggle: toggleMusic } = useMusic();
+  const holdTimerRef = useRef(null);
+  const longPressFiredRef = useRef(false);
+
+  const handleDiscPointerDown = () => {
+    longPressFiredRef.current = false;
+    holdTimerRef.current = setTimeout(() => {
+      longPressFiredRef.current = true;
+      document.getElementById("site-footer")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 3000);
+  };
+  const clearDiscHold = () => clearTimeout(holdTimerRef.current);
+  const handleDiscClick = () => {
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false;
+      return;
+    }
+    toggleMusic();
+  };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -59,6 +118,12 @@ const Nav = () => {
 
   return (
     <>
+      <style>{`
+        @keyframes vinylSpin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+
       {/* --- Sleek Floating Navbar (Glassmorphism, No Border) --- */}
       <nav className={`fixed top-2 sm:top-4 left-1/2 -translate-x-1/2 w-[94%] sm:w-[95%] max-w-[100vw] z-[100] transition-all duration-700 rounded-2xl sm:rounded-3xl flex items-center justify-between px-3 sm:px-6 md:px-10 border border-transparent ${
         scrolled
@@ -70,22 +135,150 @@ const Nav = () => {
           animate={{ opacity: 1, y: 0 }}
           whileHover={{ scale: 1.1, rotate: -5 }}
         >
-          <Link href="/" className="block">
+          <Link href="/" onClick={() => setIsMenuOpen(false)} className="block">
             <Image src="/assets/logo.svg" alt="Logo" width={45} height={45} className="w-7 h-7 sm:w-10 sm:h-10 rounded-sm object-contain drop-shadow-2xl" />
           </Link>
         </motion.div>
 
+        {/* Hourglass flourish — confined to the empty gap between the logo and the
+            button cluster (this div's width IS that gap, via flex-1 in a justify-between
+            row), so it can never overlap either or poke outside the bar. */}
+        <div className="pointer-events-none relative z-[105] hidden h-full flex-1 sm:block">
+          <HourglassPendulum />
+        </div>
+
         <div className="flex items-center gap-3 sm:gap-8 relative z-[110]">
-          <Link href="/profile" className="flex items-center gap-2 text-white/40 hover:text-cyan-400 transition-all duration-300 hover:scale-110">
+          <Link href="/profile" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 text-white/40 hover:text-cyan-400 transition-all duration-300 hover:scale-110">
             <UserRound size={18} className="sm:w-[22px] sm:h-[22px]" />
             {user && profile?.unique_code && (
-              <span className="hidden md:inline-block rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-0.5 font-mono text-[10px] tracking-[0.1em] text-cyan-300">
+              <span className="inline-block rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-0.5 font-mono text-[10px] tracking-[0.1em] text-cyan-300">
                 {profile.unique_code}
               </span>
             )}
           </Link>
 
-          <Link href="/cart" className="relative text-white/40 hover:text-cyan-400 transition-all duration-300 hover:scale-110">
+          <button
+            type="button"
+            onClick={handleDiscClick}
+            onPointerDown={handleDiscPointerDown}
+            onPointerUp={clearDiscHold}
+            onPointerLeave={clearDiscHold}
+            onPointerCancel={clearDiscHold}
+            title="Tap to play/pause · hold 3s for music credits"
+            aria-label={playing ? "Pause background music" : "Play background music"}
+            aria-pressed={!playing}
+            className="relative flex items-center justify-center text-white/40 hover:text-cyan-400 transition-all duration-300 hover:scale-110"
+          >
+            {/* Sits centered exactly behind the disc (z-108 vs the disc's
+                z-110), semi-visible peeking out from under it at rest. While
+                muted it spends ~2s rising up from behind into full view,
+                holds, then snaps back down behind the disc with a springy
+                little jump. While actually playing, music notes drift up
+                from behind it instead (below). */}
+            <motion.span
+              aria-hidden
+              animate={
+                muted || !playing
+                  ? { y: [0, -30, -30, 0], scale: [0.25, 1.15, 1.15, 0.25], opacity: [0.4, 1, 1, 0.4] }
+                  : { y: 0, scale: 0.25, opacity: 0 }
+              }
+              transition={
+                muted || !playing
+                  ? {
+                      duration: 5,
+                      delay: 2.8,
+                      times: [0, 0.39, 0.48, 1],
+                      ease: ["easeOut", "easeInOut", "backIn"],
+                      repeat: Infinity,
+                      repeatDelay: 2.8,
+                    }
+                  : { duration: 0.3 }
+              }
+              style={{ marginLeft: "-34px", marginTop: "-9px", transformOrigin: "center" }}
+              className="pointer-events-none absolute left-1/2 top-1/2 z-[108] whitespace-nowrap rounded-full border border-cyan-400/40 bg-black/85 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.35)]"
+            >
+              ♪ Click me
+            </motion.span>
+
+            {!muted &&
+              playing &&
+              [
+                { symbol: "♪", x: 14, duration: 1.8, delay: 0 },
+                { symbol: "♫", x: -12, duration: 2.1, delay: 0.4 },
+                { symbol: "♬", x: 6, duration: 1.6, delay: 0.8 },
+                { symbol: "♪", x: -18, duration: 2.3, delay: 1.2 },
+                { symbol: "♫", x: 20, duration: 1.9, delay: 1.6 },
+                { symbol: "♩", x: -6, duration: 1.7, delay: 2 },
+              ].map((note, i) => (
+                <motion.span
+                  key={i}
+                  aria-hidden
+                  className="pointer-events-none absolute left-1/2 top-1/2 z-[108] text-cyan-300"
+                  animate={{
+                    y: [0, -34],
+                    x: [0, note.x],
+                    opacity: [0, 1, 0],
+                    scale: [0.5, 1.1],
+                    rotate: [0, note.x > 0 ? 15 : -15],
+                  }}
+                  transition={{
+                    duration: note.duration,
+                    repeat: Infinity,
+                    delay: note.delay,
+                    ease: "easeOut",
+                  }}
+                >
+                  {note.symbol}
+                </motion.span>
+              ))}
+            <svg
+              viewBox="0 0 44 44"
+              className="relative z-[110] w-[22px] h-[22px] sm:w-[26px] sm:h-[26px] drop-shadow-[0_1px_4px_rgba(0,0,0,0.7)]"
+              style={{ animation: playing ? "vinylSpin 2.4s linear infinite" : "none" }}
+            >
+              <defs>
+                <radialGradient id="vinylBody" cx="35%" cy="28%" r="80%">
+                  <stop offset="0%" stopColor="#6b6b6b" />
+                  <stop offset="30%" stopColor="#2a2a2a" />
+                  <stop offset="70%" stopColor="#161616" />
+                  <stop offset="100%" stopColor="#060606" />
+                </radialGradient>
+                <linearGradient id="vinylSheen" x1="10%" y1="0%" x2="90%" y2="100%">
+                  <stop offset="0%" stopColor="#fff" stopOpacity="0.55" />
+                  <stop offset="30%" stopColor="#fff" stopOpacity="0.08" />
+                  <stop offset="55%" stopColor="#fff" stopOpacity="0" />
+                </linearGradient>
+                <radialGradient id="vinylGlint" cx="30%" cy="25%" r="18%">
+                  <stop offset="0%" stopColor="#fff" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+                </radialGradient>
+              </defs>
+
+              <circle cx="22" cy="22" r="21" fill="url(#vinylBody)" stroke="#000" strokeWidth="0.5" />
+
+              {[19, 16.5, 14.3, 12.2, 10.3].map((r) => (
+                <circle key={r} cx="22" cy="22" r={r} fill="none" stroke="#000" strokeOpacity="0.5" strokeWidth="0.4" />
+              ))}
+              {[19, 16.5, 14.3, 12.2, 10.3].map((r) => (
+                <circle key={`hl-${r}`} cx="22" cy="22" r={r} fill="none" stroke="#fff" strokeOpacity="0.06" strokeWidth="0.3" />
+              ))}
+
+              <circle cx="22" cy="22" r="8" fill="currentColor" />
+              <circle cx="22" cy="22" r="8" fill="none" stroke="#000" strokeOpacity="0.3" strokeWidth="0.5" />
+              <circle cx="22" cy="22" r="1.6" fill="#050505" />
+
+              <circle cx="22" cy="22" r="21" fill="url(#vinylSheen)" />
+              <circle cx="22" cy="22" r="21" fill="url(#vinylGlint)" />
+            </svg>
+            {(muted || !playing) && (
+              <VolumeX
+                size={12}
+                className="absolute -bottom-1 -right-1 z-[110] rounded-full bg-black/80 p-[1px] text-amber-400"
+              />
+            )}
+          </button>
+
+          <Link href="/cart" onClick={() => setIsMenuOpen(false)} className="relative z-[115] text-white/40 hover:text-cyan-400 transition-all duration-300 hover:scale-110">
             <ShoppingCart size={18} className="sm:w-[22px] sm:h-[22px]" />
             {cartItems.length > 0 && (
               <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-cyan-400 text-[9px] font-black text-black">

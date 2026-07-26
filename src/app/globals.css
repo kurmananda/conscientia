@@ -482,6 +482,10 @@ html {
   background: linear-gradient(90deg, var(--cyan), transparent);
 }
 
+.font-badcoma {
+  font-family: 'Bad Coma', 'Orbitron', sans-serif;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;

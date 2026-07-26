@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 
 import { createClient } from '@supabase/supabase-js';
+import { getTicketMap } from '@/lib/ticketStore';
+import FetchIntro from '../components/FetchIntro';
 import { details } from 'framer-motion/client';
 
 
@@ -445,7 +447,6 @@ export default function WorkshopRegistration() {
     name: 'Summer School',
     price: 499,
     desc: 'A summer school to unravel the tangled links with electronics through the world of quantum.',
-    ticketCode: '3062',
   };
 
   const combos = [
@@ -773,20 +774,9 @@ export default function WorkshopRegistration() {
     setIsChecking(true);
 
     try {
-      // Mapping of your local IDs to TiQR Ticket IDs
-      // TiQR ticket IDs (same order as dashboard: QCES+MERCH → mega → space → merch → AI combo → workshops → summer school)
-      const TICKET_MAPPING = {
-        'c4': 3050, // QCES + MERCH Combo
-        'c3': 3049, // Mega Combo
-        'c1': 3047, // Space Combo
-        '5': 3042, // Space Merch
-        'c2': 3048, // AI Combo
-        '1': 3043, // Cube Sat
-        '2': 3044, // Launch Vehicle
-        '3': 3045, // Agentic AI
-        '4': 3046, // Python ML
-        '6': 3062, // Summer School
-      };
+      // Ticket ids for these combo/module ids live in the database (type
+      // 'combo' rows in the `tickets` table) — nothing hardcoded locally.
+      const TICKET_MAPPING = await getTicketMap();
 
       // FILTER ONLY NEW ITEMS
       const payableItems = selectedItems.filter(
@@ -971,9 +961,7 @@ export default function WorkshopRegistration() {
   // =========================================================
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a]" />
-    );
+    return <FetchIntro loading label="Loading Workshops" accentColor="#33d6ff" />;
   }
 
   return (

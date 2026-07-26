@@ -32,11 +32,11 @@ export default function CursorTrialWrapper() {
   const handRef = useRef(null);
   const minHandRef = useRef(null);
 
-  const [isTouch] = useState(
-    () => typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
-  );
+  const [isTouch, setIsTouch] = useState(false);
 
-  if (isTouch) return null;
+  useEffect(() => {
+    setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
 
   // All positions and velocities live here
   const state = useRef({
@@ -54,14 +54,16 @@ export default function CursorTrialWrapper() {
   });
 
   useEffect(() => {
+    if (isTouch) return;
     const style = document.createElement("style");
     style.id = "timefall-cursor-override";
     style.textContent = `*, *::before, *::after { cursor: none !important; }`;
     document.head.appendChild(style);
     return () => style.remove();
-  }, []);
+  }, [isTouch]);
 
   useEffect(() => {
+    if (isTouch) return;
     const dot  = dotRef.current;
     const rng  = ringRef.current;
     const hand = handRef.current;
@@ -137,7 +139,9 @@ export default function CursorTrialWrapper() {
       window.removeEventListener("mousedown", onDown);
       window.removeEventListener("mouseup",   onUp);
     };
-  }, []);
+  }, [isTouch]);
+
+  if (isTouch) return null;
 
   return (
     <>

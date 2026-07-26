@@ -5,23 +5,44 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, Sparkles, X, ArrowUpRight } from 'lucide-react';
-
-const DISMISS_KEY = 'merch_promo_dismissed';
+import { getPromo, DEFAULT_PROMOS } from '@/lib/promoStore';
 
 export default function MerchPromoNotification() {
   const [visible, setVisible] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [promo, setPromo] = useState(DEFAULT_PROMOS.exclusive);
+  const [nearFooter, setNearFooter] = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem(DISMISS_KEY) === '1') return;
+    getPromo('exclusive').then(setPromo);
+  }, []);
+
+  // Not persisted anywhere — this component lives at layout level and stays
+  // mounted across client-side navigation, so dismissing it lasts for that
+  // browsing session; a fresh page load (new tab, reload) always shows it
+  // again rather than remembering a dismissal indefinitely via storage.
+  useEffect(() => {
     const t = setTimeout(() => setVisible(true), 1200);
     return () => clearTimeout(t);
+  }, []);
+
+  // Slide out of the way (right → left, off-screen) once the footer — and
+  // its music credits, which sit in this same bottom-right corner — comes
+  // into view, so the card stops covering them.
+  useEffect(() => {
+    const footer = document.getElementById('site-footer');
+    if (!footer) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setNearFooter(entry.isIntersecting),
+      { rootMargin: '0px 0px -20% 0px' }
+    );
+    observer.observe(footer);
+    return () => observer.disconnect();
   }, []);
 
   const dismiss = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    sessionStorage.setItem(DISMISS_KEY, '1');
     setVisible(false);
   };
 
@@ -30,13 +51,19 @@ export default function MerchPromoNotification() {
       {visible && (
         <motion.div
           initial={{ opacity: 0, y: 40, scale: 0.92 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
+          animate={{
+            opacity: nearFooter ? 0 : 1,
+            y: 0,
+            scale: 1,
+            x: nearFooter ? '-120vw' : 0,
+          }}
           exit={{ opacity: 0, y: 24, scale: 0.95 }}
           transition={{ type: 'spring', stiffness: 320, damping: 28 }}
           className="fixed bottom-6 right-4 sm:right-6 z-[55] max-w-[min(100vw-2rem,22rem)]"
+          style={{ pointerEvents: nearFooter ? 'none' : 'auto' }}
         >
           <Link
-            href="/online-workshops"
+            href={promo.link}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
             className="group relative block overflow-hidden rounded-2xl border border-cyan-500/35 bg-[#0a0a0f]/90 backdrop-blur-xl shadow-[0_0_40px_rgba(6,182,212,0.25)] hover:border-cyan-400/60 hover:shadow-[0_0_60px_rgba(6,182,212,0.35)] transition-shadow duration-500"
@@ -65,7 +92,7 @@ export default function MerchPromoNotification() {
                   transition={{ duration: 0.35 }}
                 >
                   <Image
-                    src="/assets/wsfront.png"
+                    src={promo.image_front}
                     alt="Space Merch front"
                     fill
                     className="object-cover"
@@ -78,7 +105,7 @@ export default function MerchPromoNotification() {
                   transition={{ duration: 0.35 }}
                 >
                   <Image
-                    src="/assets/wsback.png"
+                    src={promo.image_back}
                     alt="Space Merch back"
                     fill
                     className="object-cover"
@@ -99,14 +126,14 @@ export default function MerchPromoNotification() {
                   </span>
                 </div>
                 <p className="font-syncopate text-sm font-bold uppercase tracking-wide text-white leading-tight">
-                  Space Merch
+                  {promo.heading}
                 </p>
                 <p className="text-[10px] text-white/45 mt-1 leading-snug">
-                  Official Conscientia 2026 kit — add at checkout
+                  {promo.description}
                 </p>
                 <p className="mt-2 flex items-center gap-2">
                   <span className="font-syncopate text-base font-black text-cyan-400">
-                    ₹599
+                    {promo.price}
                   </span>
                   <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-white/70 group-hover:text-cyan-300 transition-colors">
                     Shop now

@@ -21,17 +21,22 @@ import {
   UtensilsCrossed,
   ArrowUpDown,
   RefreshCw,
+  Layers,
+  Pencil,
 } from 'lucide-react';
-import { workshopCards } from '../workshop/workshopData';
-import { eventCards } from '../events/eventsData';
+import { getCatalog } from '@/lib/catalogStore';
+import { getPromos, DEFAULT_PROMOS } from '@/lib/promoStore';
 import { groupBySection } from '../lib/groupBySection';
 import { FOOD_ADDONS, STAY_DATES } from '../accommodation/merchData';
 
 const ADMIN_HEADER = 'x-admin-callsign';
 
-const CATALOG = [...workshopCards, ...eventCards];
-const WORKSHOP_IDS = new Set(workshopCards.map((c) => String(c.id)));
-const EVENT_IDS = new Set(eventCards.map((c) => String(c.id)));
+// Populated once by AdminDashboard's catalog-fetch effect (module-level so
+// the module-scope helper functions below — findCatalogItem, paidBuckets —
+// don't need the catalog threaded through every call site).
+let CATALOG = [];
+let WORKSHOP_IDS = new Set();
+let EVENT_IDS = new Set();
 const FOOD_ADDON_IDS = new Set(FOOD_ADDONS.map((f) => f.id));
 
 function findCatalogItem(id) {
@@ -249,8 +254,63 @@ export default function AdminPage() {
 
 const TABS = [
   { key: 'registrants', label: 'Registrants', icon: Users },
+  { key: 'catalog', label: 'Catalog', icon: Layers },
+  { key: 'tickets', label: 'Tickets', icon: Lock },
+  { key: 'promo', label: 'Promo', icon: Sparkles },
   { key: 'logs', label: 'Logs', icon: ScrollText },
   { key: 'admins', label: 'Admins', icon: ShieldCheck },
+];
+
+const PROMO_FIELDS = [
+  { key: 'badge_label', label: 'Badge Label' },
+  { key: 'heading', label: 'Heading' },
+  { key: 'price', label: 'Price' },
+  { key: 'link', label: 'Link' },
+  { key: 'image_front', label: 'Front Image URL' },
+  { key: 'image_back', label: 'Back Image URL' },
+];
+
+// Fields the catalog edit form can write — kept in sync with
+// EDITABLE_FIELDS in /api/admin/catalog/route.js. `id`, price, and any
+// ticket/payment-derived data are deliberately absent: catalog item ids are
+// also what /src/lib/ticketCatalog.js keys ticket ids off of, so they (and
+// price) must never change from this UI.
+const CATALOG_TEXT_FIELDS = [
+  { key: 'title', label: 'Title' },
+  { key: 'subtitle', label: 'Subtitle' },
+  { key: 'type', label: 'Type' },
+  { key: 'section', label: 'Section' },
+  { key: 'section_color', label: 'Section Color', hint: '#33d6ff', color: true },
+  { key: 'duration', label: 'Duration (days)' },
+  { key: 'seats', label: 'Seats' },
+  { key: 'eligibility', label: 'Eligibility' },
+  { key: 'venue', label: 'Venue' },
+  { key: 'timing', label: 'Timing' },
+  { key: 'image', label: 'Image URL', hint: 'https://…' },
+  { key: 'badge_icon', label: 'Badge URL', hint: 'https://… (or an emoji)' },
+  { key: 'accent_color', label: 'Accent Color', color: true },
+  { key: 'format', label: 'Format' },
+  { key: 'certificate', label: 'Certificate' },
+  { key: 'brochure_url', label: 'Brochure URL' },
+];
+
+const CATALOG_TEXTAREA_FIELDS = [
+  { key: 'description', label: 'Description' },
+];
+
+// List-shaped fields, edited as chips (type + Enter to add).
+const CATALOG_LIST_FIELDS = [
+  { key: 'about_extra', label: 'About' },
+  { key: 'highlights', label: 'Highlights' },
+  { key: 'requirements', label: 'Requirements' },
+  { key: 'tags', label: 'Tags' },
+  { key: 'access', label: 'Coordinator Access — CNS-ids (never shown publicly; grants /data visibility)' },
+];
+
+// Rendered with dedicated color-stop pickers instead of a plain text input.
+const CATALOG_COLOR_FIELDS = [
+  { key: 'glow_color', label: 'Glow Color' },
+  { key: 'foil_gradient', label: 'Foil Gradient' },
 ];
 
 const FILTERS = [
@@ -273,12 +333,103 @@ function AdminDashboard({ session, onLogout }) {
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsError, setLogsError] = useState('');
   const [logsLoaded, setLogsLoaded] = useState(false);
-  const [logFilter, setLogFilter] = useState('all'); // 'all' | 'update_profile' | 'login' | 'logout'
+  const [logFilter, setLogFilter] = useState('changes'); // 'all' | 'changes' | 'login' | 'logout'
   const [admins, setAdmins] = useState([]);
   const [adminsLoading, setAdminsLoading] = useState(false);
   const [adminsError, setAdminsError] = useState('');
   const [adminsLoaded, setAdminsLoaded] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [catalogReady, setCatalogReady] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([getCatalog('workshop'), getCatalog('event')]).then(([workshops, events]) => {
+      if (!active) return;
+      CATALOG = [...workshops, ...events];
+      WORKSHOP_IDS = new Set(workshops.map((c) => String(c.id)));
+      EVENT_IDS = new Set(events.map((c) => String(c.id)));
+      setCatalogReady(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const [catalogItems, setCatalogItems] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState('');
+  const [catalogLoaded, setCatalogLoaded] = useState(false);
+  const [expandedCatalogId, setExpandedCatalogId] = useState(null);
+  const [catalogKindFilter, setCatalogKindFilter] = useState('all'); // 'all' | 'workshop' | 'event'
+
+  const [promos, setPromos] = useState(null);
+  const [promoLoaded, setPromoLoaded] = useState(false);
+
+  const loadPromo = async () => {
+    const data = await getPromos();
+    setPromos(data);
+    setPromoLoaded(true);
+  };
+
+  useEffect(() => {
+    if (tab === 'promo' && !promoLoaded) loadPromo();
+  }, [tab, promoLoaded]);
+
+  const [tickets, setTickets] = useState([]);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [ticketsError, setTicketsError] = useState('');
+  const [ticketsLoaded, setTicketsLoaded] = useState(false);
+
+  const loadTicketsAdmin = async () => {
+    setTicketsLoading(true);
+    setTicketsError('');
+    try {
+      const res = await fetch('/api/admin/tickets', { headers: { [ADMIN_HEADER]: session.callsign } });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        setTicketsError(data.message || 'Failed to load tickets.');
+        return;
+      }
+      setTickets(data.data || []);
+      setTicketsLoaded(true);
+    } finally {
+      setTicketsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === 'tickets' && !ticketsLoaded) loadTicketsAdmin();
+  }, [tab, ticketsLoaded]);
+
+  const [toasts, setToasts] = useState([]);
+  const pushToast = (message, tone = 'ok') => {
+    const id = Date.now() + Math.random();
+    setToasts((cur) => [...cur, { id, message, tone }]);
+    setTimeout(() => setToasts((cur) => cur.filter((t) => t.id !== id)), 3200);
+  };
+
+  const loadCatalog = async () => {
+    setCatalogLoading(true);
+    setCatalogError('');
+    try {
+      const res = await fetch('/api/admin/catalog', {
+        headers: { [ADMIN_HEADER]: session.callsign },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCatalogError(data.message || 'Failed to load catalog.');
+        return;
+      }
+      setCatalogItems(data.data || []);
+      setCatalogLoaded(true);
+    } finally {
+      setCatalogLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === 'catalog' && !catalogLoaded) loadCatalog();
+  }, [tab, catalogLoaded]);
 
   const loadAdmins = async () => {
     setAdminsLoading(true);
@@ -355,6 +506,7 @@ function AdminDashboard({ session, onLogout }) {
     try {
       if (tab === 'logs') await loadLogs();
       else if (tab === 'admins') await loadAdmins();
+      else if (tab === 'catalog') await loadCatalog();
       else await loadUsers();
     } finally {
       setRefreshing(false);
@@ -458,6 +610,25 @@ function AdminDashboard({ session, onLogout }) {
 
   return (
     <div className="relative min-h-[calc(100dvh-12rem)] overflow-hidden bg-[#030508] text-white">
+      <div className="pointer-events-none fixed bottom-6 right-6 z-[200] flex flex-col gap-2">
+        <AnimatePresence>
+          {toasts.map((t) => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.95 }}
+              className={`rounded-lg border px-4 py-2 text-xs font-medium shadow-lg backdrop-blur-md ${
+                t.tone === 'error'
+                  ? 'border-red-500/40 bg-red-500/15 text-red-200'
+                  : 'border-cyan-500/40 bg-cyan-500/15 text-cyan-200'
+              }`}
+            >
+              {t.message}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(6,182,212,0.12),transparent_55%)]" />
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.04]"
@@ -524,6 +695,129 @@ function AdminDashboard({ session, onLogout }) {
         </div>
 
         <AnimatePresence mode="wait">
+          {tab === 'tickets' && (
+            <motion.div
+              key="tickets"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+            >
+              <p className="mb-4 text-[10px] uppercase tracking-[0.2em] text-cyan-400/80">
+                Read-only — the only place ticket ids exist. Managed directly in Supabase, not this
+                portal. Adding a workshop/event row there makes it appear (blank) in the Catalog tab.
+              </p>
+              {ticketsLoading && <p className="text-sm text-white/40">Loading tickets…</p>}
+              {ticketsError && (
+                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                  {ticketsError}
+                </p>
+              )}
+              {!ticketsLoading && !ticketsError && <TicketsTable tickets={tickets} />}
+            </motion.div>
+          )}
+
+          {tab === 'promo' && (
+            <motion.div
+              key="promo"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+            >
+              {!promos ? (
+                <p className="text-sm text-white/40">Loading…</p>
+              ) : (
+                <div className="space-y-6">
+                  <div>
+                    <p className="mb-3 text-[10px] uppercase tracking-[0.2em] text-cyan-400/80">
+                      Limited Drop — homepage strip
+                    </p>
+                    <PromoEditor
+                      id="limited_drop"
+                      promo={promos.limited_drop}
+                      session={session}
+                      pushToast={pushToast}
+                      onSaved={loadPromo}
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-3 text-[10px] uppercase tracking-[0.2em] text-cyan-400/80">
+                      Exclusive — floating notification
+                    </p>
+                    <PromoEditor
+                      id="exclusive"
+                      promo={promos.exclusive}
+                      session={session}
+                      pushToast={pushToast}
+                      onSaved={loadPromo}
+                    />
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {tab === 'catalog' && (
+            <motion.div
+              key="catalog"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className="space-y-2"
+            >
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                {[
+                  { key: 'all', label: 'All' },
+                  { key: 'workshop', label: 'Workshops' },
+                  { key: 'event', label: 'Events' },
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setCatalogKindFilter(key)}
+                    className={`rounded-full border px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${
+                      catalogKindFilter === key
+                        ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-200'
+                        : 'border-white/10 bg-white/[0.02] text-white/50 hover:border-white/25 hover:text-white/80'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {catalogLoading && <p className="text-sm text-white/40">Loading catalog…</p>}
+              {catalogError && (
+                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                  {catalogError}
+                </p>
+              )}
+              {!catalogLoading && !catalogError && catalogItems.length === 0 && (
+                <p className="text-sm text-white/40">No catalog items found.</p>
+              )}
+              {!catalogLoading &&
+                !catalogError &&
+                catalogItems
+                  .filter((item) => catalogKindFilter === 'all' || item.kind === catalogKindFilter)
+                  .map((item) => (
+                    <CatalogItemRow
+                      key={item.id}
+                      item={item}
+                      session={session}
+                      expanded={expandedCatalogId === item.id}
+                      onToggle={() =>
+                        setExpandedCatalogId((cur) => (cur === item.id ? null : item.id))
+                      }
+                      onCollapse={() => setExpandedCatalogId(null)}
+                      onSaved={loadCatalog}
+                      pushToast={pushToast}
+                    />
+                  ))}
+            </motion.div>
+          )}
+
           {tab === 'admins' && (
             <motion.div
               key="admins"
@@ -572,13 +866,17 @@ function AdminDashboard({ session, onLogout }) {
             >
               <div className="mb-1 flex flex-wrap gap-2">
                 {[
+                  { key: 'changes', label: 'Changes' },
                   { key: 'all', label: 'All' },
-                  { key: 'update_profile', label: 'Updates' },
                   { key: 'login', label: 'Logins' },
                   { key: 'logout', label: 'Logouts' },
                 ].map(({ key, label }) => {
                   const count =
-                    key === 'all' ? logs.length : logs.filter((l) => l.action === key).length;
+                    key === 'all'
+                      ? logs.length
+                      : key === 'changes'
+                      ? logs.filter((l) => l.action?.startsWith('update_')).length
+                      : logs.filter((l) => l.action === key).length;
                   const active = logFilter === key;
                   return (
                     <button
@@ -607,7 +905,12 @@ function AdminDashboard({ session, onLogout }) {
                 <p className="text-sm text-white/40">No admin actions logged yet.</p>
               )}
               {!logsLoading && !logsError && logs.length > 0 && (() => {
-                const filteredLogs = logFilter === 'all' ? logs : logs.filter((l) => l.action === logFilter);
+                const filteredLogs =
+                  logFilter === 'all'
+                    ? logs
+                    : logFilter === 'changes'
+                    ? logs.filter((l) => l.action?.startsWith('update_'))
+                    : logs.filter((l) => l.action === logFilter);
                 return filteredLogs.length === 0 ? (
                   <p className="text-sm text-white/40">No logs match this filter.</p>
                 ) : (
@@ -709,6 +1012,7 @@ function AdminDashboard({ session, onLogout }) {
                       expanded={expanded === u.user_id}
                       onToggle={() => setExpanded(expanded === u.user_id ? null : u.user_id)}
                       onSaved={loadUsers}
+                      pushToast={pushToast}
                     />
                   ))}
                   {filtered.length === 0 && (
@@ -740,6 +1044,7 @@ function AdminDashboard({ session, onLogout }) {
                               )
                             }
                             onSaved={loadUsers}
+                            pushToast={pushToast}
                             subtitle={row.itemTitle}
                           />
                         ))}
@@ -806,7 +1111,7 @@ function LogRow({ log }) {
   );
 }
 
-function UserRow({ user, session, expanded, onToggle, onSaved, subtitle }) {
+function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtitle }) {
   const [form, setForm] = useState({
     accommodation_checkin: user.accommodation_checkin || '',
     accommodation_checkout: user.accommodation_checkout || '',
@@ -841,9 +1146,11 @@ function UserRow({ user, session, expanded, onToggle, onSaved, subtitle }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setSaveMsg(data.message || 'Save failed.');
+        pushToast?.(`Failed to save "${user.name || user.unique_code || user.user_id}": ${data.message || 'unknown error'}`, 'error');
         return;
       }
       setSaveMsg('Saved.');
+      pushToast?.(`Saved changes to "${user.name || user.unique_code || user.user_id}".`);
       onSaved?.();
     } finally {
       setSaving(false);
@@ -1040,6 +1347,668 @@ function UserRow({ user, session, expanded, onToggle, onSaved, subtitle }) {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+// Value for `field.key` off the raw catalog_items row, used to seed the
+// edit form. List fields come back as arrays; joined with newlines for the
+// textarea.
+const FIELD_ALIASES = {
+  section_color: 'sectionColor',
+  duration: 'Duration',
+  seats: 'Seats',
+  badge_icon: 'badgeIcon',
+  accent_color: 'accentColor',
+  glow_color: 'glowColor',
+  foil_gradient: 'foilGradient',
+  about_extra: 'aboutExtra',
+  brochure_url: 'brochureUrl',
+};
+
+function catalogFieldValue(item, key) {
+  const value = item[FIELD_ALIASES[key] || key];
+  if (Array.isArray(value)) return value.join('\n');
+  return value ?? '';
+}
+
+function catalogFieldArray(item, key) {
+  const value = item[FIELD_ALIASES[key] || key];
+  return Array.isArray(value) ? value : [];
+}
+
+// Chip-based list editor — replaces the old "one item per line" textarea.
+// Type a value, press Enter/comma to add it as a chip; click × to remove.
+function TagListInput({ values, onChange, disabled, placeholder }) {
+  const [draft, setDraft] = useState('');
+
+  const commit = () => {
+    const v = draft.trim();
+    if (v) onChange([...values, v]);
+    setDraft('');
+  };
+
+  return (
+    <div
+      className={`flex flex-wrap items-center gap-1.5 rounded-lg border border-white/15 bg-black/40 p-2 ${
+        disabled ? 'opacity-40' : ''
+      }`}
+    >
+      {values.map((v, i) => (
+        <span
+          key={i}
+          className="inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] text-cyan-200"
+        >
+          {v}
+          {!disabled && (
+            <button
+              type="button"
+              onClick={() => onChange(values.filter((_, idx) => idx !== i))}
+              className="text-cyan-300/60 hover:text-cyan-100"
+            >
+              ×
+            </button>
+          )}
+        </span>
+      ))}
+      <input
+        type="text"
+        value={draft}
+        disabled={disabled}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            commit();
+          } else if (e.key === 'Backspace' && !draft && values.length) {
+            onChange(values.slice(0, -1));
+          }
+        }}
+        onBlur={commit}
+        placeholder={placeholder}
+        className="min-w-[120px] flex-1 bg-transparent px-1 py-1 text-xs text-white outline-none placeholder:text-white/25"
+      />
+    </div>
+  );
+}
+
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+function parseRgba(value) {
+  const m = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)/i.exec(value || '');
+  if (!m) return { hex: '#33d6ff', alpha: 0.5 };
+  const toHex = (n) => Number(n).toString(16).padStart(2, '0');
+  return {
+    hex: `#${toHex(m[1])}${toHex(m[2])}${toHex(m[3])}`,
+    alpha: m[4] !== undefined ? Number(m[4]) : 1,
+  };
+}
+
+function composeRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function parseGradientStops(value) {
+  const stops = [...(value || '').matchAll(/#[0-9a-fA-F]{6}/g)].map((m) => m[0]);
+  while (stops.length < 3) stops.push(['#0b1c2f', '#123f5d', '#081019'][stops.length]);
+  return stops.slice(0, 3);
+}
+
+function composeGradient(stops) {
+  return `linear-gradient(135deg,${stops.join(',')})`;
+}
+
+// Icon-only toggle for the per-field "Skip" control. Off = the field is
+// included in the save. Clicking it just makes it glow amber — that's the
+// entire "skipped" state, no label needed.
+function SkipToggle({ skipped, onChange }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!skipped)}
+      title={skipped ? 'Skipped — click to include' : 'Click to skip this field'}
+      className="inline-flex items-center gap-1.5"
+    >
+      <span
+        className="h-4 w-4 shrink-0 rounded-full border transition-all duration-200"
+        style={
+          skipped
+            ? {
+                borderColor: 'rgba(245,158,11,0.7)',
+                background: 'rgba(245,158,11,0.35)',
+                boxShadow: '0 0 10px 2px rgba(245,158,11,0.8)',
+              }
+            : {
+                borderColor: 'rgba(255,255,255,0.2)',
+                background: 'rgba(255,255,255,0.03)',
+                boxShadow: 'none',
+              }
+        }
+      />
+      <span className={`text-[9px] font-black uppercase tracking-[0.15em] ${skipped ? 'text-amber-300' : 'text-white/30'}`}>
+        Skip
+      </span>
+    </button>
+  );
+}
+
+const EMPTY_CONTACT = { name: '', role: '', phone: '' };
+
+function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved, pushToast }) {
+  const scalarFields = [...CATALOG_TEXT_FIELDS, ...CATALOG_TEXTAREA_FIELDS, ...CATALOG_COLOR_FIELDS];
+  const allFields = [...scalarFields, ...CATALOG_LIST_FIELDS];
+
+  const [form, setForm] = useState(() =>
+    Object.fromEntries(scalarFields.map((f) => [f.key, catalogFieldValue(item, f.key)]))
+  );
+  const [listForm, setListForm] = useState(() =>
+    Object.fromEntries(CATALOG_LIST_FIELDS.map((f) => [f.key, catalogFieldArray(item, f.key)]))
+  );
+  const [skip, setSkip] = useState(() => Object.fromEntries([...allFields, { key: 'contacts' }].map((f) => [f.key, false])));
+  const [contacts, setContacts] = useState(() =>
+    Array.isArray(item.contacts) && item.contacts.length ? item.contacts : [EMPTY_CONTACT]
+  );
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState('');
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveMsg('');
+    try {
+      const fields = {};
+      for (const f of scalarFields) {
+        if (skip[f.key]) continue; // admin chose to leave this field unchanged
+        let value = form[f.key];
+        if (f.key === 'duration' || f.key === 'seats') {
+          value = value === '' ? null : Number(value);
+        }
+        fields[f.key] = value;
+      }
+      for (const f of CATALOG_LIST_FIELDS) {
+        if (skip[f.key]) continue;
+        fields[f.key] = listForm[f.key];
+      }
+      if (!skip.contacts) {
+        fields.contacts = contacts
+          .map((c) => ({ name: c.name.trim(), role: c.role.trim(), phone: c.phone.trim() }))
+          .filter((c) => c.name || c.role || c.phone);
+      }
+
+      const res = await fetch(`/api/admin/catalog`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', [ADMIN_HEADER]: session.callsign },
+        body: JSON.stringify({ id: item.id, kind: item.kind, fields }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        setSaveMsg(data.message || 'Failed to save.');
+        pushToast?.(`Failed to save "${item.title || item.id}": ${data.message || 'unknown error'}`, 'error');
+        return;
+      }
+      setSaveMsg('Saved.');
+      pushToast?.(`Saved changes to "${item.title || item.id}".`);
+      onSaved?.();
+      setTimeout(() => onCollapse?.(), 450);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputClass =
+    'w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs outline-none transition-colors focus:border-cyan-500/60';
+
+  const glow = parseRgba(form.glow_color);
+  const gradientStops = parseGradientStops(form.foil_gradient);
+
+  return (
+    <div className="glass-card overflow-hidden rounded-xl transition-colors hover:border-cyan-500/20">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-3 p-4 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[10px] uppercase tracking-wide text-cyan-300">
+            {item.kind}
+          </span>
+          <div>
+            <p className="font-semibold text-white">{item.title}</p>
+            <p className="font-mono text-[10px] text-white/40">
+              id: {item.id} · price: {item.price} · ticket: {item.ticket_id}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-white/40">
+          <Pencil size={13} />
+          <ChevronDown size={16} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-white/10 p-4">
+              <p className="mb-3 text-[10px] uppercase tracking-[0.2em] text-white/30">
+                ID, price &amp; ticket are locked here — manage them from the Tickets tab
+              </p>
+              <div className="mb-6 grid grid-cols-3 gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                <div>
+                  <label className="mb-1 block text-[10px] uppercase tracking-[0.2em] text-white/40">ID</label>
+                  <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white/50">
+                    {item.id}
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] uppercase tracking-[0.2em] text-white/40">Price</label>
+                  <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white/50">
+                    {item.price ?? '—'}
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] uppercase tracking-[0.2em] text-white/40">
+                    Ticket ID
+                  </label>
+                  <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white/50">
+                    {item.ticket_id ?? '—'}
+                  </p>
+                </div>
+              </div>
+
+              <p className="mb-3 text-[10px] uppercase tracking-[0.2em] text-cyan-400/80">
+                Content fields — the glowing dot skips a field
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {CATALOG_TEXT_FIELDS.map((f) => (
+                  <div key={f.key}>
+                    <div className="mb-1 flex items-center justify-between">
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-white/40">{f.label}</label>
+                      <SkipToggle
+                        skipped={skip[f.key]}
+                        onChange={(val) => setSkip({ ...skip, [f.key]: val })}
+                      />
+                    </div>
+                    {f.color ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={HEX_COLOR_RE.test(form[f.key]) ? form[f.key] : '#33d6ff'}
+                          disabled={skip[f.key]}
+                          onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                          className="h-9 w-11 shrink-0 cursor-pointer rounded-lg border border-white/15 bg-black/40 p-1 disabled:opacity-40"
+                        />
+                        <input
+                          type="text"
+                          value={form[f.key]}
+                          disabled={skip[f.key]}
+                          onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                          placeholder={f.hint}
+                          className={`${inputClass} disabled:opacity-40`}
+                        />
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        value={form[f.key]}
+                        disabled={skip[f.key]}
+                        onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                        placeholder={f.hint}
+                        className={`${inputClass} disabled:opacity-40`}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Glow Color — hex swatch + alpha slider composing an rgba() string */}
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <div className="mb-1 flex items-center justify-between">
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-white/40">Glow Color</label>
+                    <SkipToggle
+                      skipped={skip.glow_color}
+                      onChange={(val) => setSkip({ ...skip, glow_color: val })}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={glow.hex}
+                      disabled={skip.glow_color}
+                      onChange={(e) => setForm({ ...form, glow_color: composeRgba(e.target.value, glow.alpha) })}
+                      className="h-9 w-11 shrink-0 cursor-pointer rounded-lg border border-white/15 bg-black/40 p-1 disabled:opacity-40"
+                    />
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={glow.alpha}
+                      disabled={skip.glow_color}
+                      onChange={(e) => setForm({ ...form, glow_color: composeRgba(glow.hex, Number(e.target.value)) })}
+                      className="w-full disabled:opacity-40"
+                    />
+                    <span
+                      className="h-9 w-9 shrink-0 rounded-lg border border-white/15"
+                      style={{ background: form.glow_color }}
+                    />
+                  </div>
+                </div>
+
+                {/* Foil Gradient — 3 hex swatches composing a linear-gradient() string */}
+                <div>
+                  <div className="mb-1 flex items-center justify-between">
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-white/40">Foil Gradient</label>
+                    <SkipToggle
+                      skipped={skip.foil_gradient}
+                      onChange={(val) => setSkip({ ...skip, foil_gradient: val })}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {gradientStops.map((stop, i) => (
+                      <input
+                        key={i}
+                        type="color"
+                        value={stop}
+                        disabled={skip.foil_gradient}
+                        onChange={(e) => {
+                          const next = [...gradientStops];
+                          next[i] = e.target.value;
+                          setForm({ ...form, foil_gradient: composeGradient(next) });
+                        }}
+                        className="h-9 w-11 shrink-0 cursor-pointer rounded-lg border border-white/15 bg-black/40 p-1 disabled:opacity-40"
+                      />
+                    ))}
+                    <span
+                      className="h-9 w-full rounded-lg border border-white/15"
+                      style={{ background: form.foil_gradient }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-3">
+                {CATALOG_TEXTAREA_FIELDS.map((f) => (
+                  <div key={f.key}>
+                    <div className="mb-1 flex items-center justify-between">
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-white/40">{f.label}</label>
+                      <SkipToggle
+                        skipped={skip[f.key]}
+                        onChange={(val) => setSkip({ ...skip, [f.key]: val })}
+                      />
+                    </div>
+                    <textarea
+                      rows={3}
+                      value={form[f.key]}
+                      disabled={skip[f.key]}
+                      onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                      className={`${inputClass} disabled:opacity-40`}
+                    />
+                  </div>
+                ))}
+
+                {CATALOG_LIST_FIELDS.map((f) => (
+                  <div key={f.key}>
+                    <div className="mb-1 flex items-center justify-between">
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-white/40">{f.label}</label>
+                      <SkipToggle
+                        skipped={skip[f.key]}
+                        onChange={(val) => setSkip({ ...skip, [f.key]: val })}
+                      />
+                    </div>
+                    <TagListInput
+                      values={listForm[f.key]}
+                      disabled={skip[f.key]}
+                      onChange={(vals) => setListForm({ ...listForm, [f.key]: vals })}
+                      placeholder="Type and press Enter…"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Contact Details — repeatable name/role/phone rows */}
+              <div className="mt-3">
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-white/40">Contact Details</label>
+                  <SkipToggle
+                    skipped={skip.contacts}
+                    onChange={(val) => setSkip({ ...skip, contacts: val })}
+                  />
+                </div>
+                <div className={`space-y-2 ${skip.contacts ? 'opacity-40' : ''}`}>
+                  {contacts.map((c, i) => (
+                    <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[2fr_2fr_2fr_auto]">
+                      <input
+                        type="text"
+                        value={c.name}
+                        disabled={skip.contacts}
+                        onChange={(e) => {
+                          const next = [...contacts];
+                          next[i] = { ...next[i], name: e.target.value };
+                          setContacts(next);
+                        }}
+                        placeholder="Name"
+                        className={inputClass}
+                      />
+                      <input
+                        type="text"
+                        value={c.role}
+                        disabled={skip.contacts}
+                        onChange={(e) => {
+                          const next = [...contacts];
+                          next[i] = { ...next[i], role: e.target.value };
+                          setContacts(next);
+                        }}
+                        placeholder="Role"
+                        className={inputClass}
+                      />
+                      <input
+                        type="text"
+                        value={c.phone}
+                        disabled={skip.contacts}
+                        onChange={(e) => {
+                          const next = [...contacts];
+                          next[i] = { ...next[i], phone: e.target.value };
+                          setContacts(next);
+                        }}
+                        placeholder="Phone"
+                        className={inputClass}
+                      />
+                      <button
+                        type="button"
+                        disabled={skip.contacts}
+                        onClick={() => setContacts(contacts.filter((_, idx) => idx !== i))}
+                        className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 text-xs text-red-300 transition-colors hover:border-red-400/60 disabled:opacity-40"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={skip.contacts}
+                    onClick={() => setContacts([...contacts, { ...EMPTY_CONTACT }])}
+                    className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300 transition-colors hover:border-cyan-400/60 disabled:opacity-40"
+                  >
+                    + Add Contact
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="btn-primary text-[10px] disabled:opacity-60"
+                >
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
+                {saveMsg && <span className="text-xs text-white/40">{saveMsg}</span>}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function PromoEditor({ id, promo, session, pushToast, onSaved }) {
+  const [form, setForm] = useState({ ...DEFAULT_PROMOS[id], ...promo });
+  const [saving, setSaving] = useState(false);
+
+  const inputClass =
+    'w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs outline-none transition-colors focus:border-cyan-500/60';
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/promo', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', [ADMIN_HEADER]: session.callsign },
+        body: JSON.stringify({ id, fields: form }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        pushToast?.(`Failed to save promo: ${data.message || 'unknown error'}`, 'error');
+        return;
+      }
+      pushToast?.(`Saved "${id === 'limited_drop' ? 'Limited Drop' : 'Exclusive'}" promo settings.`);
+      onSaved?.();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="glass-card rounded-xl p-4">
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {PROMO_FIELDS.map((f) => (
+          <div key={f.key}>
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.2em] text-white/40">{f.label}</label>
+            <input
+              type="text"
+              value={form[f.key] || ''}
+              onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+              className={inputClass}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-[10px] uppercase tracking-[0.2em] text-white/40">Description</label>
+          <textarea
+            rows={3}
+            value={form.description || ''}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            className={inputClass}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.2em] text-white/40">Accent Color</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={/^#[0-9a-fA-F]{6}$/.test(form.accent_color) ? form.accent_color : '#33d6ff'}
+                onChange={(e) => setForm({ ...form, accent_color: e.target.value })}
+                className="h-9 w-11 shrink-0 cursor-pointer rounded-lg border border-white/15 bg-black/40 p-1"
+              />
+              <input
+                type="text"
+                value={form.accent_color || ''}
+                onChange={(e) => setForm({ ...form, accent_color: e.target.value })}
+                className={inputClass}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.2em] text-white/40">Secondary Color</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={/^#[0-9a-fA-F]{6}$/.test(form.secondary_color) ? form.secondary_color : '#a855f7'}
+                onChange={(e) => setForm({ ...form, secondary_color: e.target.value })}
+                className="h-9 w-11 shrink-0 cursor-pointer rounded-lg border border-white/15 bg-black/40 p-1"
+              />
+              <input
+                type="text"
+                value={form.secondary_color || ''}
+                onChange={(e) => setForm({ ...form, secondary_color: e.target.value })}
+                className={inputClass}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="btn-primary text-[10px] disabled:opacity-60"
+        >
+          {saving ? 'Saving…' : 'Save Promo Settings'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+function TicketsTable({ tickets }) {
+  if (tickets.length === 0) {
+    return <p className="text-sm text-white/40">No tickets yet — add rows directly in Supabase.</p>;
+  }
+  return (
+    <div className="glass-card overflow-hidden rounded-xl">
+      <div style={{ overflowX: 'auto' }}>
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr className="border-b border-white/10 bg-white/[0.02] text-left">
+              {['ID', 'Type', 'Cost', 'Ticket ID'].map((h) => (
+                <th
+                  key={h}
+                  className="whitespace-nowrap px-3 py-2.5 text-[10px] uppercase tracking-[0.08em] text-white/40"
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {tickets.map((t, i) => (
+              <tr
+                key={t.id}
+                className="border-b border-white/5"
+                style={{ background: i % 2 === 1 ? 'rgba(255,255,255,0.015)' : 'transparent' }}
+              >
+                <td className="px-3 py-2 font-mono text-white/70">{t.id}</td>
+                <td className="px-3 py-2">
+                  <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 text-[10px] uppercase text-cyan-300">
+                    {t.type}
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-white/70">{t.cost || '—'}</td>
+                <td className="px-3 py-2 font-mono text-white/70">{t.ticket_id ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

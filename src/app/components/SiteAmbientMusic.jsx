@@ -2,10 +2,18 @@
 
 import { useEffect, useRef } from "react";
 
+// Edit these two to swap the background track: `src` must be a direct
+// audio file URL (mp3/wav — e.g. your own hosting or a CDN link to a
+// track you have the rights to play; a youtube.com/watch URL will NOT
+// work here since YouTube doesn't serve raw audio files). `volume` is
+// 0–1.
+const AMBIENT_TRACK_SRC = "/sounds/ambient.wav";
+const AMBIENT_TRACK_VOLUME = 0.4;
+
 // Mounted once in the root layout so it persists across client-side
 // navigation (layouts don't remount on route change) — background music
 // keeps playing continuously site-wide instead of restarting per page.
-export default function SiteAmbientMusic({ src = "/sounds/ambient.wav", volume = 0.15 }) {
+export default function SiteAmbientMusic({ src = AMBIENT_TRACK_SRC, volume = AMBIENT_TRACK_VOLUME }) {
   const audioRef = useRef(null);
   const startedRef = useRef(false);
 
