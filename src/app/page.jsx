@@ -225,7 +225,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 24 }}
             animate={catalogLoading ? undefined : { opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.15 }}
-            className="relative flex flex-wrap justify-center px-3 sm:px-0 text-[14vw] md:text-[10vw] font-badcoma font-normal leading-[0.75]"
+            className="relative flex flex-nowrap justify-center whitespace-nowrap px-1 sm:px-0 text-[12vw] md:text-[10vw] font-badcoma font-normal leading-[0.75]"
           >
             {"CONSCIENTIA".split("").map((ch, i) => (
               <motion.span
@@ -264,7 +264,7 @@ export default function Home() {
               <div className="h-16 w-[1px] bg-cyan-500 group-hover:h-24 group-hover:bg-white transition-all duration-200 relative">
                 <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-cyan-400 rounded-full blur-[2px]" />
               </div>
-              <span className="font-syncopate text-[9px] tracking-[0.5em] text-white/40 group-hover:text-cyan-400 transition-colors uppercase">Register for an event</span>
+              <span className="font-syncopate text-sm tracking-[0.5em] text-white/40 group-hover:text-cyan-400 transition-colors uppercase">Register for an event</span>
             </button>
           </motion.div>
         </div>

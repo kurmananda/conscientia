@@ -2,6 +2,17 @@ import { NextResponse } from 'next/server';
 import { createServerSupabase } from '../../_supabase-server';
 import { requireAdmin } from '@/lib/adminAuth';
 
+// GET route handlers are statically cached by default in the App Router
+// unless explicitly opted out — reading the admin header off the raw
+// Request object here doesn't count as "using a dynamic API" for Next's
+// caching heuristics (only cookies()/headers() from next/headers do), so
+// without this, a production build could keep serving one cached snapshot
+// of the catalog indefinitely regardless of what's actually changed in the
+// DB since. Forcing dynamic + no-store guarantees every request hits the
+// database fresh.
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /**
  * Admin catalog listing: every row in `tickets` (type workshop/event) is a
  * catalog item, whether or not it has content yet — `tickets` is the only
@@ -44,7 +55,10 @@ export async function GET(req) {
     kind: ticket.type,
   }));
 
-  return NextResponse.json({ success: true, data: items });
+  return NextResponse.json(
+    { success: true, data: items },
+    { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
+  );
 }
 
 // price and ticket_id are never accepted here — they live in `tickets`,

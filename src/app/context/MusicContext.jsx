@@ -40,27 +40,38 @@ export function MusicProvider({ children }) {
     // Starts muted by default — the vinyl-disc toggle is what unmutes it.
     audio.play().then(() => setPlaying(true)).catch(() => {});
 
-    // Pause whenever the page isn't the thing in front of the user — either
-    // another tab (visibilitychange) or another application entirely
-    // (window blur, which visibilitychange alone doesn't reliably catch:
-    // switching to another app while the browser window stays technically
-    // "visible" on screen doesn't always flip document.hidden). Resume on
-    // whichever fires back to front, unless the user had explicitly paused.
-    const onHide = () => audio.pause();
-    const onShow = () => {
-      if (!userPausedRef.current && !document.hidden && document.hasFocus()) {
+    // Pause only when the tab is genuinely hidden (visibilitychange — the
+    // one unambiguous "user actually left" signal). There used to also be
+    // a window blur/focus pair meant to catch switching to another
+    // application, but window blur fires on plenty of same-tab things too
+    // (an element inside the page taking focus, certain navigations, etc.)
+    // — that false-positive was pausing the music on ordinary in-app
+    // navigation, e.g. opening an event's detail page.
+    const onVisibility = () => {
+      if (document.hidden) {
+        audio.pause();
+      } else if (!userPausedRef.current) {
         audio.play().catch(() => {});
       }
     };
-    const onVisibility = () => (document.hidden ? onHide() : onShow());
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("blur", onHide);
-    window.addEventListener("focus", onShow);
+
+    // Belt-and-suspenders: something else on the page (a newly-mounted
+    // autoplaying <video> — e.g. FetchIntro's loading background — can
+    // make the browser's own media-focus heuristics pause other playing
+    // media, independent of any of our own listeners above). Rather than
+    // chase every possible external trigger, just treat any pause that
+    // wasn't us calling toggle() and isn't a hidden tab as unintended, and
+    // resume automatically.
+    const onPause = () => {
+      if (userPausedRef.current || document.hidden) return;
+      audio.play().catch(() => {});
+    };
+    audio.addEventListener("pause", onPause);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("blur", onHide);
-      window.removeEventListener("focus", onShow);
+      audio.removeEventListener("pause", onPause);
       audio.pause();
       audio.src = "";
     };

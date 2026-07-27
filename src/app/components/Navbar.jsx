@@ -387,7 +387,7 @@ const Nav = () => {
                       className="group inline-block"
                     >
                       {/* Text Transitions: Refined sizing and slower stagger */}
-                      <motion.div 
+                      <motion.div
                         className="flex font-syncopate font-bold text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-[-0.02em] uppercase overflow-hidden"
                         whileHover="hovered"
                         initial="initial"
@@ -421,16 +421,16 @@ const Nav = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8, ...expoTransition }}
-                className="absolute bottom-16 flex flex-col gap-6"
+                className="absolute bottom-8 flex flex-col gap-6"
               >
-                <div className="flex gap-8 items-center flex flex-col md:flex-row sm:flex-row">
+                <div className="flex space-x-8 gap-3 items-left flex flex-col md:flex-row sm:flex-row">
                   {socialLinks.map((social) => (
                     <Link
                       key={social.label}
                       href={social.href}
                       target="_blank"
                       rel="noreferrer"
-                      className="group text-[10px] font-syncopate uppercase tracking-[0.5em] text-white/20 hover:text-cyan-400 hover:tracking-[0.6em] transition-all duration-500">
+                      className="group text-[10px] font-syncopate font-bold uppercase tracking-[0.5em] text-white/50 hover:text-cyan-400 hover:tracking-[0.6em] transition-all duration-500 ease-out">
                       <div className="flex items-center gap-2">
                     <img
                       src={social.icon}
@@ -438,7 +438,8 @@ const Nav = () => {
                       className="
                         w-5 h-5
                         transition-all
-                        duration-300
+                        duration-500
+                        ease-out
                         group-hover:scale-125
                         group-hover:-translate-y-1
                       "

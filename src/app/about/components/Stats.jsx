@@ -23,7 +23,7 @@ const stats = [
     label: "Events",
   },
   {
-    number: 8,
+    number: 4,
     suffix: "",
     label: "Domains",
   },

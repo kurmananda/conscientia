@@ -42,12 +42,12 @@ function formatPhone(e164) {
 function ContactCard({ name, role, phone }) {
   const waNumber = phone.replace('+', '');
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition-colors hover:border-cyan-500/40 hover:bg-white/[0.05]">
+    <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 transition-colors hover:border-cyan-500/40 hover:bg-white/[0.05]">
       <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-cyan-500/10 blur-2xl opacity-0 transition-opacity group-hover:opacity-100" />
-      <div className="relative">
-        <p className="text-lg font-semibold text-white">{name}</p>
-        <p className="text-xs uppercase tracking-widest text-white/40 mt-1">{role}</p>
-        <p className="text-sm text-cyan-400/90 mt-2 font-mono">{formatPhone(phone)}</p>
+      <div className="relative min-w-0">
+        <p className="text-base sm:text-lg font-semibold text-white break-words">{name}</p>
+        <p className="text-[10px] sm:text-xs uppercase tracking-widest text-white/40 mt-1">{role}</p>
+        <p className="text-xs sm:text-sm text-cyan-400/90 mt-2 font-mono break-all">{formatPhone(phone)}</p>
 
         <div className="mt-4 flex gap-3">
           <a
@@ -85,29 +85,29 @@ export default function ContactPage() {
       <div className="space-y-10">
         <a
           href="mailto:support@conscientiaiist.org"
-          className="group flex items-center justify-between gap-4 rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 to-transparent p-5 hover:border-cyan-400/60 hover:from-cyan-500/15 transition-colors"
+          className="group flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 to-transparent p-4 sm:p-5 hover:border-cyan-400/60 hover:from-cyan-500/15 transition-colors"
         >
-          <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cyan-400/15 text-cyan-300">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+            <div className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full bg-cyan-400/15 text-cyan-300">
+              <svg className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M4 4h16v16H4z" strokeLinecap="round" strokeLinejoin="round" opacity="0" />
                 <path d="M3 6h18v12H3z" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M3 7l9 6 9-6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-widest text-white/40">Email</p>
-              <p className="text-lg text-cyan-400/90 font-mono">support@conscientiaiist.org</p>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs uppercase tracking-widest text-white/40">Email</p>
+              <p className="text-sm sm:text-lg text-cyan-400/90 font-mono break-all">support@conscientiaiist.org</p>
             </div>
           </div>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50 group-hover:text-white transition-colors">
+          <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.2em] text-white/50 group-hover:text-white transition-colors">
             Send mail →
           </span>
         </a>
 
         {groups.map((group) => (
           <div key={group.title}>
-            <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-3">
+            <h3 className="text-base sm:text-xl font-semibold text-white mb-4 flex items-center gap-3">
               <span className="h-px flex-1 max-w-6 bg-cyan-400/50" />
               {group.title}
             </h3>
@@ -118,6 +118,10 @@ export default function ContactPage() {
             </div>
           </div>
         ))}
+
+        <p className="text-center text-[10px] uppercase tracking-[0.25em] text-white/25 pt-4">
+          Website built by Kurmananda, Shaurya
+        </p>
       </div>
     </SimplePageShell>
   );

@@ -28,41 +28,9 @@ const TEXT_COLUMNS_DEFAULT_EMPTY = new Set([
 
 // Every workshop/event's real identity — price, ticket id, and the fact
 // that it exists at all — lives in `tickets`, not `catalog_items`. An admin
-// adds a new catalog item by inserting a row directly into `tickets`;
-// until content is filled in via the admin portal, this produces the blank
-// placeholder card below so it still shows up (empty) in the catalog.
-function blankContent(ticket) {
-  return {
-    id: ticket.id,
-    kind: ticket.type,
-    title: '',
-    subtitle: '',
-    type: '',
-    section: '',
-    sectionColor: '',
-    Duration: null,
-    Seats: null,
-    eligibility: '',
-    venue: '',
-    timing: '',
-    image: '',
-    badgeIcon: '',
-    accentColor: '',
-    glowColor: '',
-    foilGradient: '',
-    description: '',
-    aboutExtra: [],
-    highlights: [],
-    requirements: [],
-    format: '',
-    certificate: '',
-    tags: [],
-    brochureUrl: '',
-    layout: {},
-    contacts: [],
-    access: [],
-  };
-}
+// adds a new catalog item by inserting a row directly into `tickets`; until
+// content is filled in via the admin portal, both getCatalog and
+// getCatalogItem below simply exclude it from what the public site can see.
 
 function rowToCard(row) {
   const card = {};
@@ -92,9 +60,16 @@ export async function getCatalog(kind) {
   const contentById = Object.fromEntries((content || []).map((row) => [row.id, rowToCard(row)]));
   const contentOrder = (content || []).map((row) => row.id);
 
-  const cards = (tickets || []).map((ticket) =>
-    withTicket(contentById[ticket.id] || blankContent(ticket), ticket)
-  );
+  // Tickets with no matching catalog_items row (or an empty title) haven't
+  // actually been filled in yet — these used to still render publicly as
+  // blank/incomplete placeholder cards ("skipped" content, from the admin's
+  // point of view). The public site should only ever show items that are
+  // actually finished; the blank-placeholder behavior stays for the admin
+  // portal itself (see /api/admin/catalog), which needs to see everything,
+  // filled in or not.
+  const cards = (tickets || [])
+    .filter((ticket) => contentById[ticket.id]?.title)
+    .map((ticket) => withTicket(contentById[ticket.id], ticket));
 
   // Preserve catalog_items' sort_order for items that have content; items
   // that only exist as a bare ticket row (no content yet) go at the end.
@@ -121,6 +96,9 @@ export async function getCatalogItem(kind, id) {
   if (ticketError) console.error('[catalogStore] getCatalogItem ticket', ticketError);
   if (contentError) console.error('[catalogStore] getCatalogItem content', contentError);
 
-  if (!ticket) return null;
-  return withTicket(contentRow ? rowToCard(contentRow) : blankContent(ticket), ticket);
+  // Same as getCatalog: an item with no content filled in yet (or an empty
+  // title) isn't finished, and shouldn't be reachable on the public site
+  // even by a direct link to its detail page.
+  if (!ticket || !contentRow?.title) return null;
+  return withTicket(rowToCard(contentRow), ticket);
 }

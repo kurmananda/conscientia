@@ -76,9 +76,9 @@ export default function CursorTrialWrapper() {
     const onDown = () => { s.clicking = true; };
     const onUp   = () => { s.clicking = false; };
 
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mousedown", onDown);
-    window.addEventListener("mouseup",   onUp);
+    window.addEventListener("mousemove", onMove, { passive: true });
+    window.addEventListener("mousedown", onDown, { passive: true });
+    window.addEventListener("mouseup",   onUp,   { passive: true });
 
     const animate = () => {
       // ── Speed ──────────────────────────────────────────────

@@ -1,27 +1,24 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import useIsTouch from "./useIsTouch";
 
-const defaultState = {
-  rotateX: 0,
-  rotateY: 0,
-  glareX: 50,
-  glareY: 50,
-  glareOpacity: 0,
-  shadowX: 0,
-  shadowY: 0,
-  isHovered: false,
-  scale: 1,
-};
-
 // Beyond this distance (px) from the card's center, tilt fades to ~0 instead
 // of snapping — the previous implementation only tracked mouse position
 // while it was literally inside the card's own box, so crossing the edge
 // jumped straight from "flat" to "near max tilt" with no transition.
 const MAX_DISTANCE = 320;
 
+// Everything here used to go through React state (setTilt on every
+// mousemove frame), which meant every currently-visible card re-rendered —
+// recomputing several gradient-string style objects — up to 60 times a
+// second. With several cards on screen at once that's the actual lag: the
+// main thread gets so busy the whole page (scroll, the custom cursor, other
+// input) stutters. The continuous tilt/shadow values are now written
+// straight to the DOM node via the ref, bypassing React entirely; only
+// `isHovered` — which flips rarely, just on enter/exit — stays as state,
+// since it drives a couple of separate low-frequency UI bits.
 export function useParallaxTilt(maxTilt = 18, enabled = true) {
   const ref = useRef(null);
-  const [tilt, setTilt] = useState(defaultState);
+  const [isHovered, setIsHovered] = useState(false);
   const animFrameRef = useRef(null);
   const rectRef = useRef(null);
   const wasFlatRef = useRef(true);
@@ -62,9 +59,9 @@ export function useParallaxTilt(maxTilt = 18, enabled = true) {
         const dy = e.clientY - centerY;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // Far outside the falloff radius and already at rest: skip the
-        // state update entirely so off-screen/unrelated cards don't
-        // re-render on every mousemove.
+        // Far outside the falloff radius and already at rest: skip all
+        // work entirely so off-screen/unrelated cards don't do anything
+        // on every mousemove.
         if (distance > MAX_DISTANCE && wasFlatRef.current) return;
 
         const falloff = Math.max(0, 1 - distance / MAX_DISTANCE);
@@ -78,26 +75,15 @@ export function useParallaxTilt(maxTilt = 18, enabled = true) {
           e.clientY >= rect.top &&
           e.clientY <= rect.bottom;
 
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        const glareX = Math.max(0, Math.min(100, (mouseX / rect.width) * 100));
-        const glareY = Math.max(0, Math.min(100, (mouseY / rect.height) * 100));
-        const distFromCenter = Math.sqrt(xPct * xPct + yPct * yPct);
-        const glareOpacity = isInside ? Math.min(distFromCenter * 1.2, 0.6) : 0;
-
         wasFlatRef.current = falloff === 0 && !isInside;
 
-        setTilt({
-          rotateX: -yPct * maxTilt * 2 * falloff,
-          rotateY: xPct * maxTilt * 2 * falloff,
-          glareX,
-          glareY,
-          glareOpacity,
-          shadowX: xPct * 40 * falloff,
-          shadowY: yPct * 40 * falloff,
-          isHovered: isInside,
-          scale: isInside ? 1.04 : 1,
-        });
+        const rotateX = -yPct * maxTilt * 2 * falloff;
+        const rotateY = xPct * maxTilt * 2 * falloff;
+        const scale = isInside ? 1.04 : 1;
+
+        el.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})`;
+
+        setIsHovered((prev) => (prev === isInside ? prev : isInside));
       });
     };
 
@@ -108,6 +94,7 @@ export function useParallaxTilt(maxTilt = 18, enabled = true) {
       window.removeEventListener("resize", updateRect);
       ro.disconnect();
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (el) el.style.transform = "";
     };
   }, [maxTilt, isTouch, enabled]);
 
@@ -117,5 +104,5 @@ export function useParallaxTilt(maxTilt = 18, enabled = true) {
   const handleMouseEnter = useCallback(() => {}, []);
   const handleMouseLeave = useCallback(() => {}, []);
 
-  return { ref, tilt, handleMouseMove, handleMouseLeave, handleMouseEnter };
+  return { ref, isHovered, handleMouseMove, handleMouseLeave, handleMouseEnter };
 }

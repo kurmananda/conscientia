@@ -62,9 +62,17 @@
   --color-ghost: var(--ghost);
   --color-horizon: var(--horizon);
 }
+/* overflow-y is set explicitly alongside overflow-x on both html and body
+   below — per spec, setting only overflow-x to something other than
+   visible silently promotes the other axis's visible to auto, so without
+   this both html AND body become independent scroll containers with their
+   own scrollbars. That's the "scrollbar inside a scrollbar" bug: scrolling
+   over content scrolls whichever one the cursor happens to be over, and it
+   can get stuck against the wrong one's scroll limit. */
 html {
     scroll-behavior: smooth;
     overflow-x: hidden;
+    overflow-y: visible;
     max-width: 100vw;
 }
 
@@ -73,6 +81,7 @@ body {
   color: var(--ghost);
   font-family: var(--font-body), sans-serif;
   overflow-x: hidden;
+  overflow-y: visible;
   max-width: 100vw;
 }
 
@@ -375,10 +384,14 @@ body {
   100% { top: 100%; }
 }
 
-/* ── Performance hint ─────────────────────────────────── */
-html {
-  will-change: scroll-position;
-}
+/* `will-change: scroll-position` on html used to live here as a
+   "performance hint" — actually a known anti-pattern: it forces the whole
+   document onto its own compositing layer, which on pages stacking many
+   other will-change/transform/fixed-position layers (like the event/
+   workshop detail pages) can make scroll happen on a layer that desyncs
+   from what's painted, until another input event forces a repaint —
+   exactly the "second scrollbar, stuck until I move the mouse" symptom.
+   Removed. */
 
 /* ── Shared design-system components ──────────────────────────
    Reusable primitives so pages read as one visual system instead

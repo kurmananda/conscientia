@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronDown,
@@ -422,6 +422,7 @@ function AdminDashboard({ session, onLogout }) {
     try {
       const res = await fetch('/api/admin/catalog', {
         headers: { [ADMIN_HEADER]: session.callsign },
+        cache: 'no-store',
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -1360,28 +1361,24 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
 }
 
 // Value for `field.key` off the raw catalog_items row, used to seed the
-// edit form. List fields come back as arrays; joined with newlines for the
-// textarea.
-const FIELD_ALIASES = {
-  section_color: 'sectionColor',
-  duration: 'Duration',
-  seats: 'Seats',
-  badge_icon: 'badgeIcon',
-  accent_color: 'accentColor',
-  glow_color: 'glowColor',
-  foil_gradient: 'foilGradient',
-  about_extra: 'aboutExtra',
-  brochure_url: 'brochureUrl',
-};
-
+// edit form. This `item` is the raw DB row from /api/admin/catalog (snake_
+// case column names throughout) — NOT the camelCase card shape catalogStore.js
+// builds for the public event/workshop pages, so field keys map straight to
+// `item[key]` with no translation. (There used to be a FIELD_ALIASES map
+// here copied from catalogStore.js's camelCase transform — accent_color ->
+// accentColor, duration -> Duration, etc. — which meant every one of those
+// fields was silently reading a property that doesn't exist on this raw
+// shape and always came back blank/undefined, regardless of what was
+// actually saved in the DB. List fields come back as arrays; joined with
+// newlines for the textarea.
 function catalogFieldValue(item, key) {
-  const value = item[FIELD_ALIASES[key] || key];
+  const value = item[key];
   if (Array.isArray(value)) return value.join('\n');
   return value ?? '';
 }
 
 function catalogFieldArray(item, key) {
-  const value = item[FIELD_ALIASES[key] || key];
+  const value = item[key];
   return Array.isArray(value) ? value : [];
 }
 
@@ -1399,7 +1396,7 @@ function TagListInput({ values, onChange, disabled, placeholder }) {
   return (
     <div
       className={`flex flex-wrap items-center gap-1.5 rounded-lg border border-white/15 bg-black/40 p-2 ${
-        disabled ? 'opacity-40' : ''
+        disabled ? 'opacity-90' : ''
       }`}
     >
       {values.map((v, i) => (
@@ -1515,12 +1512,70 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
   const [listForm, setListForm] = useState(() =>
     Object.fromEntries(CATALOG_LIST_FIELDS.map((f) => [f.key, catalogFieldArray(item, f.key)]))
   );
-  const [skip, setSkip] = useState(() => Object.fromEntries([...allFields, { key: 'contacts' }].map((f) => [f.key, false])));
+  // "Skip" flags used to be pure in-memory UI state — they always started
+  // back at all-false, so anything you'd marked skipped looked "unlocked"
+  // the moment you reopened the item, whether that was a fresh page load,
+  // a different admin session, or even just this item scrolling out of the
+  // filtered list and back in. Persisted per item+field in localStorage now,
+  // so it actually stays set until you deliberately un-skip it.
+  const skipStorageKey = `admin_catalog_skip:${item.id}`;
+  const [skip, setSkipState] = useState(() => {
+    const defaults = Object.fromEntries([...allFields, { key: 'contacts' }].map((f) => [f.key, false]));
+    if (typeof window === 'undefined') return defaults;
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(skipStorageKey) || '{}');
+      return { ...defaults, ...saved };
+    } catch {
+      return defaults;
+    }
+  });
+  const setSkip = (next) => {
+    setSkipState(next);
+    try {
+      window.localStorage.setItem(skipStorageKey, JSON.stringify(next));
+    } catch {
+      // localStorage unavailable (private mode, quota, etc.) — skip still
+      // works for the current session via React state, just won't persist.
+    }
+  };
   const [contacts, setContacts] = useState(() =>
     Array.isArray(item.contacts) && item.contacts.length ? item.contacts : [EMPTY_CONTACT]
   );
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
+
+  // Snapshot of what was actually loaded from the DB. Saving only ever
+  // sends fields whose value has genuinely changed from this — per-item
+  // accent/glow/foil colors (and anything else you didn't touch) never get
+  // re-submitted, so they can't be clobbered by a save that was only meant
+  // to change one other field.
+  const initialFormRef = useRef(form);
+  const initialListFormRef = useRef(listForm);
+  const initialContactsRef = useRef(contacts);
+
+  // This row stays mounted (never remounts) for the whole time the admin
+  // panel's Catalog tab is open — collapsing/expanding is just a height
+  // animation, not an unmount, and `item` is a brand-new object every time
+  // the list re-fetches after any save. Without this, the form's local
+  // state was frozen at whatever it saw on the very first render — a fresh
+  // page load would show it right, but from then on it would silently
+  // drift out of sync with the real DB (edit BGMI, save, and its accent
+  // color/eligibility/etc. would keep showing the pre-edit value forever,
+  // because nothing ever told this component to re-read `item`). Re-sync
+  // every time the row is opened, so what you see is always current.
+  useEffect(() => {
+    if (!expanded) return;
+    const freshForm = Object.fromEntries(scalarFields.map((f) => [f.key, catalogFieldValue(item, f.key)]));
+    const freshListForm = Object.fromEntries(CATALOG_LIST_FIELDS.map((f) => [f.key, catalogFieldArray(item, f.key)]));
+    const freshContacts = Array.isArray(item.contacts) && item.contacts.length ? item.contacts : [EMPTY_CONTACT];
+    setForm(freshForm);
+    setListForm(freshListForm);
+    setContacts(freshContacts);
+    initialFormRef.current = freshForm;
+    initialListFormRef.current = freshListForm;
+    initialContactsRef.current = freshContacts;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, item]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -1529,6 +1584,7 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
       const fields = {};
       for (const f of scalarFields) {
         if (skip[f.key]) continue; // admin chose to leave this field unchanged
+        if (form[f.key] === initialFormRef.current[f.key]) continue; // untouched — don't resend
         let value = form[f.key];
         if (f.key === 'duration' || f.key === 'seats') {
           value = value === '' ? null : Number(value);
@@ -1542,12 +1598,16 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
       }
       for (const f of CATALOG_LIST_FIELDS) {
         if (skip[f.key]) continue;
+        if (JSON.stringify(listForm[f.key]) === JSON.stringify(initialListFormRef.current[f.key])) continue;
         fields[f.key] = listForm[f.key];
       }
       if (!skip.contacts) {
-        fields.contacts = contacts
+        const normalizedContacts = contacts
           .map((c) => ({ name: c.name.trim(), role: c.role.trim(), phone: c.phone.trim() }))
           .filter((c) => c.name || c.role || c.phone);
+        if (JSON.stringify(normalizedContacts) !== JSON.stringify(initialContactsRef.current)) {
+          fields.contacts = normalizedContacts;
+        }
       }
 
       const res = await fetch(`/api/admin/catalog`, {
@@ -1571,7 +1631,7 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
   };
 
   const inputClass =
-    'w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs outline-none transition-colors focus:border-cyan-500/60';
+    'w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs text-white outline-none transition-colors focus:border-cyan-500/60 disabled:text-white disabled:opacity-90';
 
   const glow = parseRgba(form.glow_color);
   const gradientStops = parseGradientStops(form.foil_gradient);
@@ -1584,11 +1644,18 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
         className="flex w-full items-center justify-between gap-3 p-4 text-left"
       >
         <div className="flex items-center gap-3">
+          <span
+            title={item.accent_color || 'No accent color set'}
+            className="h-4 w-4 shrink-0 rounded-full border border-white/20"
+            style={{ background: item.accent_color || 'transparent' }}
+          />
           <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[10px] uppercase tracking-wide text-cyan-300">
             {item.kind}
           </span>
           <div>
-            <p className="font-semibold text-white">{item.title}</p>
+            <p className="font-semibold text-white">
+              {item.title || <span className="italic text-white/30">No content yet — click to add</span>}
+            </p>
             <p className="font-mono text-[10px] text-white/40">
               id: {item.id} · price: {item.price} · ticket: {item.ticket_id}
             </p>
@@ -1664,7 +1731,7 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
                           disabled={skip[f.key]}
                           onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
                           placeholder={f.hint}
-                          className={`${inputClass} disabled:opacity-40`}
+                          className={`${inputClass} disabled:opacity-90`}
                         />
                       </div>
                     ) : (
@@ -1674,7 +1741,7 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
                         disabled={skip[f.key]}
                         onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
                         placeholder={f.hint}
-                        className={`${inputClass} disabled:opacity-40`}
+                        className={`${inputClass} disabled:opacity-90`}
                       />
                     )}
                   </div>
@@ -1763,7 +1830,7 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
                       value={form[f.key]}
                       disabled={skip[f.key]}
                       onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-                      className={`${inputClass} disabled:opacity-40`}
+                      className={`${inputClass} disabled:opacity-90`}
                     />
                   </div>
                 ))}
@@ -1796,7 +1863,7 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
                     onChange={(val) => setSkip({ ...skip, contacts: val })}
                   />
                 </div>
-                <div className={`space-y-2 ${skip.contacts ? 'opacity-40' : ''}`}>
+                <div className={`space-y-2 ${skip.contacts ? 'opacity-90' : ''}`}>
                   {contacts.map((c, i) => (
                     <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[2fr_2fr_2fr_auto]">
                       <input
@@ -1880,7 +1947,7 @@ function PromoEditor({ id, promo, session, pushToast, onSaved }) {
   const [saving, setSaving] = useState(false);
 
   const inputClass =
-    'w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs outline-none transition-colors focus:border-cyan-500/60';
+    'w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs text-white outline-none transition-colors focus:border-cyan-500/60 disabled:text-white disabled:opacity-90';
 
   const handleSave = async () => {
     setSaving(true);

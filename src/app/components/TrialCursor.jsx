@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
-const MAX_POINTS = 22;
+const MAX_POINTS = 12;
+const MAX_PARTICLES = 36;
 
 const CURSOR_COLOR = {
   r: 0,
@@ -60,12 +61,18 @@ export default function TrialCursor() {
     let lastSpawnX = -100;
     let lastSpawnY = -100;
 
+    let running = false;
+
     const onMove = (e) => {
       targetX = e.clientX;
       targetY = e.clientY;
+      if (!running) {
+        running = true;
+        rafRef.current = requestAnimationFrame(animate);
+      }
     };
 
-    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mousemove", onMove, { passive: true });
 
     const onMouseDown = (e) => {
       const particleCount = 18;
@@ -92,7 +99,7 @@ export default function TrialCursor() {
       }
     };
 
-    window.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousedown", onMouseDown, { passive: true });
 
     const animate = () => {
       smoothX += (targetX - smoothX) * 0.35;
@@ -153,7 +160,7 @@ export default function TrialCursor() {
       // ── 2. SPAWN MOVEMENT PARTICLES ──────────────────────
       const moveDist = Math.hypot(smoothX - lastSpawnX, smoothY - lastSpawnY);
       if (moveDist > 6 && smoothX > -50 && smoothY > -50) {
-        if (particlesRef.current.length < 80) {
+        if (particlesRef.current.length < MAX_PARTICLES) {
           const size = Math.random() * 2.2 + 1.2;
           const typeRand = Math.random();
           const type = typeRand < 0.3 ? "diamond" : typeRand < 0.55 ? "star" : "circle";
@@ -230,16 +237,23 @@ export default function TrialCursor() {
       }
 
       // Slowly decay when cursor stops
-      if (Math.abs(targetX - smoothX) < 0.2 && Math.abs(targetY - smoothY) < 0.2) {
-        if (pointsRef.current.length > 0) {
-          pointsRef.current.shift();
-        }
+      const isIdle = Math.abs(targetX - smoothX) < 0.2 && Math.abs(targetY - smoothY) < 0.2;
+      if (isIdle && pointsRef.current.length > 0) {
+        pointsRef.current.shift();
+      }
+
+      // Nothing left to animate — stop the loop entirely instead of running
+      // this (fairly heavy) canvas redraw forever. onMove wakes it back up.
+      if (isIdle && pointsRef.current.length === 0 && particlesRef.current.length === 0) {
+        running = false;
+        return;
       }
 
       rafRef.current = requestAnimationFrame(animate);
     };
 
     rafRef.current = requestAnimationFrame(animate);
+    running = true;
 
     return () => {
       cancelAnimationFrame(rafRef.current);

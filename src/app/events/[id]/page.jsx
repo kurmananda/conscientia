@@ -504,7 +504,7 @@ export default function EventDetailPage() {
   }
 
   return (
-    <div style={{ position: "relative", minHeight: "100vh", color: "#fff", overflowX: "hidden", maxWidth: "100vw" }}>
+    <div style={{ position: "relative", color: "#fff", overflowX: "hidden", maxWidth: "100vw" }} className="overflow-y-hidden">
       {/* Ambient background music — loops while on this page */}
 
 

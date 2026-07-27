@@ -70,7 +70,7 @@ export default function Hero() {
       <div className="hero-content">
 
         <p className="hero-tag">
-          ABOUT CONSCIENTIA
+          ABOUT CONSCIENTIA · IIST
         </p>
 
         <h1 ref={title}>
@@ -89,9 +89,9 @@ export default function Hero() {
           className="hero-subtitle"
           ref={subtitle}
         >
-          A community where technology,
-          research and creativity merge to
-          shape the future.
+          The annual techno-cultural fest of the Indian
+          Institute of Space Science and Technology — where
+          engineering, research and creativity launch together.
         </p>
 
       </div>

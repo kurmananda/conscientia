@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { parsePriceLabel } from '@/lib/parsePriceLabel';
 import { useAuth } from './AuthContext';
@@ -237,11 +237,18 @@ export function CartProvider({ children }) {
 
   const hasItem = useCallback((key) => items.some((i) => i.key === key), [items]);
 
-  return (
-    <CartContext.Provider value={{ items, addItem, setItem, removeItem, updateQty, clear, hasItem }}>
-      {children}
-    </CartContext.Provider>
+  // Every function here is already useCallback'd (identity only changes
+  // with `items`), but the context value object itself was still a fresh
+  // literal every render — meaning every consumer (every card on a listing
+  // page reads this directly, plus again via usePaymentReminder) re-rendered
+  // on any CartProvider render at all, not just ones where the cart
+  // actually changed. Memoizing the value object fixes that.
+  const value = useMemo(
+    () => ({ items, addItem, setItem, removeItem, updateQty, clear, hasItem }),
+    [items, addItem, setItem, removeItem, updateQty, clear, hasItem]
   );
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
 export function useCart() {

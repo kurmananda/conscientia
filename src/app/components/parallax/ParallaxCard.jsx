@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShoppingCart, Check } from "lucide-react";
 import { useParallaxTilt } from "../../hooks/useParallaxTilt";
@@ -25,11 +26,10 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
   // long events/workshop listing page can have 30+ of these mounted at
   // once, and each one was tracking window mousemove unconditionally
   // before, which is what made those pages laggy.
-  const { ref, tilt, handleMouseMove, handleMouseLeave, handleMouseEnter } = useParallaxTilt(20, isVisible);
+  const { ref, isHovered, handleMouseMove, handleMouseLeave, handleMouseEnter } = useParallaxTilt(20, isVisible);
 
   const playGlitch = useSound("/sounds/glitch.wav", 0.1, 0.15);
   const playClick = useSound("/sounds/click.wav", 0.125, 0.08);
-  const playTap = useSound("/sounds/tap.wav", 0.15, undefined, true);
 
   const { user } = useAuth();
   const { addItem, hasItem } = useCart();
@@ -108,64 +108,52 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
     const el = wrapperRef.current;
     if (!el) return;
 
+    // Pre-trigger a bit before the card is actually on-screen so the reveal
+    // has time to finish before it scrolls into view. This used to be
+    // 1000px — on a long listing page that meant a single scroll gesture
+    // could cross the trigger boundary for a dozen-plus cards at once, all
+    // starting their (expensive: filter:blur is not cheap to animate)
+    // reveal transition in the same frame. A smaller margin keeps that
+    // batch size sane while still front-loading the reveal.
     const observer = new IntersectionObserver(
       ([entry]) => {
         setIsVisible(entry.isIntersecting);
       },
-      { threshold: 0.05 }
+      { threshold: 0.05, rootMargin: "250px 0px 250px 0px" }
     );
 
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
+  // The continuous rotateX/rotateY/scale tilt is applied straight to the
+  // DOM node by useParallaxTilt now (no React state, no re-render per
+  // mousemove frame — that per-card re-render triggered on every mouse
+  // pixel moved, multiplied across every visible card, was the actual lag).
+  // These derived layers only need the low-frequency `isHovered` boolean;
+  // they no longer micro-follow the exact tilt angle, which is what let
+  // the continuous state go away.
   const cardStyle = {
-    transform: `
-      perspective(1000px)
-      rotateX(${tilt.rotateX}deg)
-      rotateY(${tilt.rotateY}deg)
-      scale(${tilt.scale})
-    `,
-    transition: "transform 0.08s ease-out, box-shadow 0.08s ease-out",
-    boxShadow: tilt.isHovered
-      ? `
-          ${tilt.shadowX}px ${tilt.shadowY + 20}px 60px rgba(0,0,0,0.7),
-          ${tilt.shadowX * 0.5}px ${tilt.shadowY * 0.5 + 10}px 30px rgba(0,0,0,0.4),
-          0 0 80px ${card.glowColor},
-          0 0 120px ${card.glowColor}
-        `
+    transition: "box-shadow 0.15s ease-out",
+    boxShadow: isHovered
+      ? `0 30px 60px rgba(0,0,0,0.7), 0 10px 30px rgba(0,0,0,0.4), 0 0 80px ${card.glowColor}, 0 0 120px ${card.glowColor}`
       : `0 20px 60px rgba(0,0,0,0.5), 0 8px 20px rgba(0,0,0,0.3), 0 0 40px ${card.glowColor}`,
     transformStyle: "preserve-3d",
   };
 
   const layer1Style = {
-    transform: tilt.isHovered
-      ? `translateX(${tilt.rotateY * 0.4}px) translateY(${-tilt.rotateX * 0.4}px) translateZ(20px)`
-      : "translateZ(0px)",
-    transition: tilt.isHovered ? "transform 0.08s ease-out" : "transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
+    transform: isHovered ? "translateZ(20px)" : "translateZ(0px)",
+    transition: isHovered ? "transform 0.15s ease-out" : "transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
   };
 
   const layer2Style = {
-    transform: tilt.isHovered
-      ? `translateX(${tilt.rotateY * 0.7}px) translateY(${-tilt.rotateX * 0.7}px) translateZ(35px)`
-      : "translateZ(0px)",
-    transition: tilt.isHovered ? "transform 0.08s ease-out" : "transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
-  };
-
-  const shineStyle = {
-    background: `radial-gradient(
-      circle at ${tilt.glareX}% ${tilt.glareY}%,
-      rgba(255, 255, 255, ${tilt.glareOpacity * 0.9}) 0%,
-      rgba(255, 255, 255, ${tilt.glareOpacity * 0.4}) 25%,
-      transparent 60%
-    )`,
-    transition: tilt.isHovered ? "opacity 0.08s ease-out" : "opacity 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
-    opacity: tilt.isHovered ? 1 : 0,
+    transform: isHovered ? "translateZ(35px)" : "translateZ(0px)",
+    transition: isHovered ? "transform 0.15s ease-out" : "transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
   };
 
   const rainbowShineStyle = {
     background: `linear-gradient(
-      ${tilt.rotateY * 3 + 135}deg,
+      135deg,
       rgba(255, 0, 0, 0.08) 0%,
       rgba(255, 165, 0, 0.08) 15%,
       rgba(255, 255, 0, 0.08) 30%,
@@ -174,39 +162,50 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
       rgba(238, 130, 238, 0.08) 75%,
       rgba(255, 0, 0, 0.08) 100%
     )`,
-    opacity: tilt.isHovered ? 1 : 0,
-    transition: tilt.isHovered ? "opacity 0.08s ease-out" : "opacity 0.6s",
+    opacity: isHovered ? 1 : 0,
+    transition: isHovered ? "opacity 0.15s ease-out" : "opacity 0.6s",
   };
 
   const foilStyle = {
     background: card.foilGradient,
-    opacity: tilt.isHovered ? 0.65 + tilt.glareOpacity * 0.3 : 0.4,
-    transition: tilt.isHovered ? "opacity 0.08s ease-out" : "opacity 0.6s",
+    opacity: isHovered ? 0.8 : 0.4,
+    transition: isHovered ? "opacity 0.15s ease-out" : "opacity 0.6s",
   };
 
   return (
     <div
       ref={wrapperRef}
-      className="group relative cursor-pointer"
+      className="group relative cursor-pointer h-full"
       style={{
+        // No `filter: blur()` in this transition anymore — animating blur
+        // is expensive to rasterize, and with several cards crossing the
+        // reveal threshold in the same scroll gesture, several of them
+        // animating blur at once was a real cost. The resting (fully
+        // revealed) look is identical either way; only the transient
+        // entrance animation is a touch less soft now.
         opacity: isVisible ? 1 : 0,
         transform: isVisible
           ? "translateY(0) scale(1) rotateX(0deg)"
           : "translateY(80px) scale(0.7) rotateX(8deg)",
-        filter: isVisible ? "blur(0px)" : "blur(8px)",
         transition: isVisible
-          ? "opacity 0.8s cubic-bezier(0.23, 1, 0.32, 1), transform 0.8s cubic-bezier(0.23, 1, 0.32, 1), filter 0.8s cubic-bezier(0.23, 1, 0.32, 1)"
-          : "opacity 0.3s ease-in, transform 0.3s ease-in, filter 0.3s ease-in",
+          ? "opacity 0.35s cubic-bezier(0.23, 1, 0.32, 1), transform 0.35s cubic-bezier(0.23, 1, 0.32, 1)"
+          : "opacity 0.2s ease-in, transform 0.2s ease-in",
         overflow: "visible",
+        // While a card is still translated/faded pre-reveal it shouldn't
+        // intercept clicks meant for whatever now overlaps its resting
+        // position — without this, a fast scroll-then-click could land on
+        // an about-to-reveal card instead of the one actually under the
+        // cursor, making the click appear to do nothing.
+        pointerEvents: isVisible ? "auto" : "none",
       }}
     >
       {/* Main Card */}
       <div
         ref={ref}
-        onMouseEnter={() => { playTap(); handleMouseEnter(); }}
+        onMouseEnter={handleMouseEnter}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="relative select-none overflow-hidden rounded-2xl"
+        className="relative select-none overflow-hidden rounded-2xl h-full"
         style={{ ...cardStyle, width: cardWidth }}
       >
         {/* Card Base Background */}
@@ -217,9 +216,6 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
 
         {/* Rainbow Holographic Sheen */}
         <div className="pointer-events-none absolute inset-0 z-30 rounded-2xl" style={rainbowShineStyle} />
-
-        {/* Shine Highlight Overlay */}
-        <div className="pointer-events-none absolute inset-0 z-40 rounded-2xl" style={shineStyle} />
 
         {/* Card Border */}
         <div
@@ -263,11 +259,9 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
                   sizes="(max-width: 640px) 95px, 160px"
                   className="object-cover"
                   style={{
-                    transform: tilt.isHovered
-                      ? `scale(1.08) translateX(${-tilt.rotateY * 0.3}px) translateY(${tilt.rotateX * 0.3}px)`
-                      : "scale(1)",
-                    transition: tilt.isHovered
-                      ? "transform 0.1s ease-out"
+                    transform: isHovered ? "scale(1.08)" : "scale(1)",
+                    transition: isHovered
+                      ? "transform 0.3s ease-out"
                       : "transform 0.7s cubic-bezier(0.23, 1, 0.32, 1)",
                   }}
                 />
@@ -311,7 +305,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
           </div>
 
           {/* Right Side - Content */}
-          <div className="flex min-w-0 flex-1 flex-col justify-between">
+          <div className="flex min-w-0 flex-1 flex-col">
             {/* Header */}
             <div style={layer1Style} className="mb-2">
               <div className="flex items-start justify-between">
@@ -406,11 +400,15 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
               </span>
             </div>
 
-            {/* Buttons */}
-            <div style={{ ...layer1Style, perspective: "600px" }} className="flex gap-2">
-              <a
+            {/* Buttons — pinned to the bottom of the card via mt-auto, not
+                spread out among the header/tags/price above. View gets its
+                own full-width row on top; Cart + Register share the row
+                below it. */}
+            <div style={{ ...layer1Style, perspective: "600px" }} className="mt-auto flex flex-col gap-2">
+              <Link
                 href={`${basePath}/${card.id}`}
-                className="flex-1 rounded-lg py-1.5 text-center text-[11px] font-bold uppercase tracking-wider"
+                prefetch
+                className="rounded-lg py-3 text-center text-xs font-bold uppercase tracking-wider"
                 style={{
                   background: `${card.accentColor}22`,
                   color: card.accentColor,
@@ -436,90 +434,92 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
                 onClick={() => playClick()}
               >
                 View
-              </a>
-              {isRegistered ? (
-                <div
-                  className="flex-1 flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-bold uppercase tracking-wider"
-                  style={{
-                    background: `${card.accentColor}18`,
-                    color: card.accentColor,
-                    border: `1px solid ${card.accentColor}55`,
-                    fontFamily: 'var(--font-display), sans-serif',
-                  }}
-                >
-                  <Check size={14} />
-                  Registered
-                </div>
-              ) : isClosed ? (
-                <div
-                  className="flex-1 flex items-center justify-center rounded-lg py-1.5 text-[11px] font-bold uppercase tracking-wider"
-                  style={{
-                    background: "rgba(255,255,255,0.04)",
-                    color: "rgba(255,255,255,0.35)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    fontFamily: 'var(--font-display), sans-serif',
-                  }}
-                >
-                  Closed
-                </div>
-              ) : (
-                <>
-                  <button
-                    className="flex-1 rounded-lg py-1.5 text-[11px] font-bold uppercase tracking-wider"
-                    disabled={registering}
+              </Link>
+              <div className="flex gap-2">
+                {isRegistered ? (
+                  <div
+                    className="flex-1 flex items-center justify-center gap-1.5 rounded-lg py-3 text-[11px] font-bold uppercase tracking-wider"
                     style={{
-                      background: card.accentColor,
-                      color: "#000",
-                      fontFamily: 'var(--font-display), sans-serif',
-                      transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
-                      transformStyle: "preserve-3d",
-                      opacity: registering ? 0.6 : 1,
-                      cursor: registering ? "default" : "pointer",
-                      boxShadow: `0 4px 20px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`,
-                    }}
-                    onClick={handleRegister}
-                    onMouseEnter={(e) => {
-                      if (registering) return;
-                      playGlitch();
-                      e.currentTarget.style.transform = "translateZ(25px) scale(1.08)";
-                      e.currentTarget.style.boxShadow = `0 12px 40px ${card.glowColor}, 0 0 60px ${card.glowColor}40, inset 0 1px 0 rgba(255,255,255,0.3)`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateZ(0) scale(1)";
-                      e.currentTarget.style.boxShadow = `0 4px 20px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`;
-                    }}
-                  >
-                    {registering ? "Starting…" : "Register"}
-                  </button>
-                  <button
-                    onClick={handleAddToCart}
-                    aria-label={inCart ? "Already in cart" : "Add to cart"}
-                    title={inCart ? "Already in cart" : "Add to cart"}
-                    className="flex flex-shrink-0 items-center justify-center rounded-lg"
-                    style={{
-                      width: "34px",
-                      background: inCart ? `${card.accentColor}22` : "rgba(255,255,255,0.04)",
-                      border: `1px solid ${card.accentColor}55`,
+                      background: `${card.accentColor}18`,
                       color: card.accentColor,
-                      cursor: inCart ? "default" : "pointer",
-                      transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
-                      transformStyle: "preserve-3d",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (inCart) return;
-                      playGlitch();
-                      e.currentTarget.style.background = `${card.accentColor}22`;
-                      e.currentTarget.style.transform = "translateZ(20px) scale(1.08)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = inCart ? `${card.accentColor}22` : "rgba(255,255,255,0.04)";
-                      e.currentTarget.style.transform = "translateZ(0) scale(1)";
+                      border: `1px solid ${card.accentColor}55`,
+                      fontFamily: 'var(--font-display), sans-serif',
                     }}
                   >
-                    {inCart ? <Check size={16} /> : <ShoppingCart size={16} />}
-                  </button>
-                </>
-              )}
+                    <Check size={14} />
+                    Registered
+                  </div>
+                ) : isClosed ? (
+                  <div
+                    className="flex-1 flex items-center justify-center rounded-lg py-3 text-[11px] font-bold uppercase tracking-wider"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      color: "rgba(255,255,255,0.35)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      fontFamily: 'var(--font-display), sans-serif',
+                    }}
+                  >
+                    Closed
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      className="flex-1 rounded-lg py-3 text-[11px] font-bold uppercase tracking-wider"
+                      disabled={registering}
+                      style={{
+                        background: card.accentColor,
+                        color: "#000",
+                        fontFamily: 'var(--font-display), sans-serif',
+                        transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
+                        transformStyle: "preserve-3d",
+                        opacity: registering ? 0.6 : 1,
+                        cursor: registering ? "default" : "pointer",
+                        boxShadow: `0 4px 20px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`,
+                      }}
+                      onClick={handleRegister}
+                      onMouseEnter={(e) => {
+                        if (registering) return;
+                        playGlitch();
+                        e.currentTarget.style.transform = "translateZ(25px) scale(1.08)";
+                        e.currentTarget.style.boxShadow = `0 12px 40px ${card.glowColor}, 0 0 60px ${card.glowColor}40, inset 0 1px 0 rgba(255,255,255,0.3)`;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateZ(0) scale(1)";
+                        e.currentTarget.style.boxShadow = `0 4px 20px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`;
+                      }}
+                    >
+                      {registering ? "Starting…" : "Register"}
+                    </button>
+                    <button
+                      onClick={handleAddToCart}
+                      aria-label={inCart ? "Already in cart" : "Add to cart"}
+                      title={inCart ? "Already in cart" : "Add to cart"}
+                      className="flex flex-shrink-0 items-center justify-center rounded-lg"
+                      style={{
+                        width: "52px",
+                        background: inCart ? `${card.accentColor}22` : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${card.accentColor}55`,
+                        color: card.accentColor,
+                        cursor: inCart ? "default" : "pointer",
+                        transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
+                        transformStyle: "preserve-3d",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (inCart) return;
+                        playGlitch();
+                        e.currentTarget.style.background = `${card.accentColor}22`;
+                        e.currentTarget.style.transform = "translateZ(20px) scale(1.08)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = inCart ? `${card.accentColor}22` : "rgba(255,255,255,0.04)";
+                        e.currentTarget.style.transform = "translateZ(0) scale(1)";
+                      }}
+                    >
+                      {inCart ? <Check size={22} /> : <ShoppingCart size={22} />}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -568,8 +568,8 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             top: "-25%",
             bottom: "-25%",
             width: "180px",
-            background: `radial-gradient(ellipse at 90% 50%, ${card.accentColor}${tilt.isHovered ? "70" : "30"}, transparent 65%)`,
-            filter: `blur(${tilt.isHovered ? "10px" : "22px"})`,
+            background: `radial-gradient(ellipse at 90% 50%, ${card.accentColor}${isHovered ? "70" : "30"}, transparent 65%)`,
+            filter: `blur(${isHovered ? "10px" : "22px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
           }}
         />
@@ -582,8 +582,8 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             bottom: "5%",
             width: "24px",
             background: `linear-gradient(to bottom, transparent 2%, ${card.accentColor}bb 20%, ${card.accentColor} 45%, ${card.accentColor}ff 50%, ${card.accentColor} 55%, ${card.accentColor}bb 80%, transparent 98%)`,
-            opacity: tilt.isHovered ? 1 : 0.55,
-            filter: `blur(${tilt.isHovered ? "1px" : "2px"})`,
+            opacity: isHovered ? 1 : 0.55,
+            filter: `blur(${isHovered ? "1px" : "2px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireStripLeft 1.8s ease-in-out infinite",
           }}
@@ -597,8 +597,8 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             bottom: "8%",
             width: "40px",
             background: `linear-gradient(to bottom, transparent, ${card.accentColor}99, ${card.accentColor}ee, ${card.accentColor}99, transparent)`,
-            opacity: tilt.isHovered ? 0.9 : 0.4,
-            filter: `blur(${tilt.isHovered ? "4px" : "8px"})`,
+            opacity: isHovered ? 0.9 : 0.4,
+            filter: `blur(${isHovered ? "4px" : "8px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireFlickerInner 1.2s ease-in-out infinite alternate",
           }}
@@ -612,8 +612,8 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             bottom: "3%",
             width: "60px",
             background: `linear-gradient(to bottom, transparent 5%, ${card.accentColor}66 30%, ${card.accentColor}88 50%, ${card.accentColor}66 70%, transparent 95%)`,
-            opacity: tilt.isHovered ? 0.7 : 0.25,
-            filter: `blur(${tilt.isHovered ? "8px" : "14px"})`,
+            opacity: isHovered ? 0.7 : 0.25,
+            filter: `blur(${isHovered ? "8px" : "14px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireFlickerInner 1.6s ease-in-out 0.2s infinite alternate",
           }}
@@ -626,8 +626,8 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             top: "-15%",
             bottom: "-15%",
             width: "140px",
-            background: `radial-gradient(ellipse at 70% 50%, ${card.accentColor}${tilt.isHovered ? "55" : "18"}, transparent 55%)`,
-            filter: `blur(${tilt.isHovered ? "12px" : "28px"})`,
+            background: `radial-gradient(ellipse at 70% 50%, ${card.accentColor}${isHovered ? "55" : "18"}, transparent 55%)`,
+            filter: `blur(${isHovered ? "12px" : "28px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "smokeDrift 3s ease-in-out infinite",
           }}
@@ -644,7 +644,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
               borderRadius: "50%",
               background: `radial-gradient(circle, #fff 0%, ${card.accentColor} 40%, transparent 70%)`,
               boxShadow: `0 0 ${10 + i * 3}px ${card.accentColor}, 0 0 ${20 + i * 4}px ${card.accentColor}80, 0 0 ${30 + i * 5}px ${card.accentColor}40`,
-              opacity: tilt.isHovered ? 1 : 0.35,
+              opacity: isHovered ? 1 : 0.35,
               animation: `emberLeft${i % 4} ${2 + i * 0.2}s ease-out ${i * 0.12}s infinite`,
               transition: "opacity 0.5s ease",
             }}
@@ -662,7 +662,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
               borderRadius: "50%",
               background: "#fff",
               boxShadow: `0 0 6px ${card.accentColor}, 0 0 14px ${card.accentColor}`,
-              opacity: tilt.isHovered ? 0.9 : 0.2,
+              opacity: isHovered ? 0.9 : 0.2,
               animation: `sparkLeft${i % 3} ${1 + i * 0.12}s linear ${i * 0.08}s infinite`,
               transition: "opacity 0.4s ease",
             }}
@@ -689,8 +689,8 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             top: "-25%",
             bottom: "-25%",
             width: "180px",
-            background: `radial-gradient(ellipse at 10% 50%, ${card.accentColor}${tilt.isHovered ? "70" : "30"}, transparent 65%)`,
-            filter: `blur(${tilt.isHovered ? "10px" : "22px"})`,
+            background: `radial-gradient(ellipse at 10% 50%, ${card.accentColor}${isHovered ? "70" : "30"}, transparent 65%)`,
+            filter: `blur(${isHovered ? "10px" : "22px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
           }}
         />
@@ -703,8 +703,8 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             bottom: "5%",
             width: "24px",
             background: `linear-gradient(to bottom, transparent 2%, ${card.accentColor}bb 20%, ${card.accentColor} 45%, ${card.accentColor}ff 50%, ${card.accentColor} 55%, ${card.accentColor}bb 80%, transparent 98%)`,
-            opacity: tilt.isHovered ? 1 : 0.55,
-            filter: `blur(${tilt.isHovered ? "1px" : "2px"})`,
+            opacity: isHovered ? 1 : 0.55,
+            filter: `blur(${isHovered ? "1px" : "2px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireStripRight 1.8s ease-in-out 0.4s infinite",
           }}
@@ -718,8 +718,8 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             bottom: "8%",
             width: "40px",
             background: `linear-gradient(to bottom, transparent, ${card.accentColor}99, ${card.accentColor}ee, ${card.accentColor}99, transparent)`,
-            opacity: tilt.isHovered ? 0.9 : 0.4,
-            filter: `blur(${tilt.isHovered ? "4px" : "8px"})`,
+            opacity: isHovered ? 0.9 : 0.4,
+            filter: `blur(${isHovered ? "4px" : "8px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireFlickerInner 1.4s ease-in-out 0.3s infinite alternate",
           }}
@@ -733,8 +733,8 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             bottom: "3%",
             width: "60px",
             background: `linear-gradient(to bottom, transparent 5%, ${card.accentColor}66 30%, ${card.accentColor}88 50%, ${card.accentColor}66 70%, transparent 95%)`,
-            opacity: tilt.isHovered ? 0.7 : 0.25,
-            filter: `blur(${tilt.isHovered ? "8px" : "14px"})`,
+            opacity: isHovered ? 0.7 : 0.25,
+            filter: `blur(${isHovered ? "8px" : "14px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireFlickerInner 1.6s ease-in-out 0.2s infinite alternate",
           }}
@@ -747,8 +747,8 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             top: "-15%",
             bottom: "-15%",
             width: "140px",
-            background: `radial-gradient(ellipse at 30% 50%, ${card.accentColor}${tilt.isHovered ? "55" : "18"}, transparent 55%)`,
-            filter: `blur(${tilt.isHovered ? "12px" : "28px"})`,
+            background: `radial-gradient(ellipse at 30% 50%, ${card.accentColor}${isHovered ? "55" : "18"}, transparent 55%)`,
+            filter: `blur(${isHovered ? "12px" : "28px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "smokeDrift 3.2s ease-in-out 0.5s infinite",
           }}
@@ -765,7 +765,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
               borderRadius: "50%",
               background: `radial-gradient(circle, #fff 0%, ${card.accentColor} 40%, transparent 70%)`,
               boxShadow: `0 0 ${10 + i * 3}px ${card.accentColor}, 0 0 ${20 + i * 4}px ${card.accentColor}80, 0 0 ${30 + i * 5}px ${card.accentColor}40`,
-              opacity: tilt.isHovered ? 1 : 0.35,
+              opacity: isHovered ? 1 : 0.35,
               animation: `emberRight${i % 4} ${2 + i * 0.2}s ease-out ${i * 0.12 + 0.1}s infinite`,
               transition: "opacity 0.5s ease",
             }}
@@ -783,7 +783,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
               borderRadius: "50%",
               background: "#fff",
               boxShadow: `0 0 6px ${card.accentColor}, 0 0 14px ${card.accentColor}`,
-              opacity: tilt.isHovered ? 0.9 : 0.2,
+              opacity: isHovered ? 0.9 : 0.2,
               animation: `sparkRight${i % 3} ${1 + i * 0.12}s linear ${i * 0.08 + 0.05}s infinite`,
               transition: "opacity 0.4s ease",
             }}
@@ -810,8 +810,8 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             right: 0,
             height: "16px",
             background: `linear-gradient(to right, transparent, ${card.accentColor}dd, transparent)`,
-            opacity: tilt.isHovered ? 0.9 : 0.4,
-            filter: `blur(${tilt.isHovered ? "1px" : "3px"})`,
+            opacity: isHovered ? 0.9 : 0.4,
+            filter: `blur(${isHovered ? "1px" : "3px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireStripTop 2s ease-in-out infinite",
           }}
@@ -823,8 +823,8 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             left: "-20%",
             right: "-20%",
             height: "70px",
-            background: `radial-gradient(ellipse at center bottom, ${card.accentColor}${tilt.isHovered ? "60" : "22"}, transparent 60%)`,
-            filter: `blur(${tilt.isHovered ? "6px" : "16px"})`,
+            background: `radial-gradient(ellipse at center bottom, ${card.accentColor}${isHovered ? "60" : "22"}, transparent 60%)`,
+            filter: `blur(${isHovered ? "6px" : "16px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
           }}
         />
@@ -849,8 +849,8 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             right: 0,
             height: "16px",
             background: `linear-gradient(to right, transparent, ${card.accentColor}dd, transparent)`,
-            opacity: tilt.isHovered ? 0.9 : 0.4,
-            filter: `blur(${tilt.isHovered ? "1px" : "3px"})`,
+            opacity: isHovered ? 0.9 : 0.4,
+            filter: `blur(${isHovered ? "1px" : "3px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireStripBottom 2s ease-in-out 0.6s infinite",
           }}
@@ -862,8 +862,8 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             left: "-20%",
             right: "-20%",
             height: "70px",
-            background: `radial-gradient(ellipse at center top, ${card.accentColor}${tilt.isHovered ? "60" : "22"}, transparent 60%)`,
-            filter: `blur(${tilt.isHovered ? "6px" : "16px"})`,
+            background: `radial-gradient(ellipse at center top, ${card.accentColor}${isHovered ? "60" : "22"}, transparent 60%)`,
+            filter: `blur(${isHovered ? "6px" : "16px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
           }}
         />

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Search } from "lucide-react";
 import ParallaxCard from "../components/parallax/ParallaxCard";
 import FetchIntro from "../components/FetchIntro";
 import { getCatalog } from "@/lib/catalogStore";
@@ -63,6 +64,7 @@ export default function EventsPage() {
   const playClick = useSound("/sounds/click.wav", 0.125, 0.08);
   const [eventCards, setEventCards] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -77,7 +79,14 @@ export default function EventsPage() {
     };
   }, []);
 
-  const sections = groupBySection(eventCards);
+  const query = search.trim().toLowerCase();
+  const filteredCards = query
+    ? eventCards.filter((c) =>
+        [c.title, c.subtitle, c.section, c.type].filter(Boolean).some((v) => v.toLowerCase().includes(query))
+      )
+    : eventCards;
+
+  const sections = groupBySection(filteredCards);
 
   return (
     <>
@@ -237,7 +246,59 @@ export default function EventsPage() {
               From high-stakes coding battles to visionary keynotes — every event is crafted to challenge,
               inspire, and connect.
             </p>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.6rem",
+                marginTop: "2rem",
+                maxWidth: "420px",
+                padding: "0.7rem 1.3rem",
+                borderRadius: "40px",
+                border: "1.5px solid rgba(168,85,247,0.3)",
+                background: "linear-gradient(135deg, rgba(168,85,247,0.1), rgba(0,0,0,0.5))",
+                backdropFilter: "blur(16px)",
+                boxShadow: "0 4px 25px rgba(168,85,247,0.1), inset 0 1px 0 rgba(255,255,255,0.05)",
+                transition: "border-color 0.3s ease",
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(168,85,247,0.7)"; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(168,85,247,0.3)"; }}
+            >
+              <Search size={15} style={{ color: "rgba(168,85,247,0.8)", flexShrink: 0 }} />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search events…"
+                style={{
+                  flex: 1,
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  color: "#fff",
+                  fontSize: "0.85rem",
+                  fontFamily: 'var(--font-display), sans-serif',
+                }}
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  aria-label="Clear search"
+                  style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: "1rem", lineHeight: 1 }}
+                >
+                  &times;
+                </button>
+              )}
+            </div>
           </div>
+
+          {!loading && query && filteredCards.length === 0 && (
+            <p style={{ textAlign: "center", padding: "4vh 5vw 0", color: "rgba(255,255,255,0.4)", fontSize: "0.95rem" }}>
+              No events match &ldquo;{search}&rdquo;.
+            </p>
+          )}
 
           {/* ── Sections — one per unique `section` value in the database ── */}
           {sections.map(({ section, color, cards }, sIndex) => (

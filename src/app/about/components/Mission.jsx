@@ -108,8 +108,9 @@ export default function Mission() {
 
           <p className="mission-description">
 
-            Conscientia is a student-driven innovation community
-            where curiosity evolves into research, collaboration,
+            Conscientia is IIST&apos;s student-run fest — a launchpad where
+            workshops, hands-on events and open competitions turn
+            classroom curiosity into research, collaboration,
             engineering and real-world impact.
 
           </p>
