@@ -82,9 +82,15 @@ export async function GET(req) {
       };
     });
 
+    const { data: teams } = await supabase
+      .from('event_teams')
+      .select('id, leader_unique_code, member_codes, confirmed')
+      .eq('event_id', itemId)
+      .order('created_at', { ascending: true });
+
     return NextResponse.json({
       success: true,
-      data: { item: { id: item.id, kind: item.kind, title: item.title }, participants },
+      data: { item: { id: item.id, kind: item.kind, title: item.title }, participants, teams: teams || [] },
     });
   } catch (err) {
     console.error('[data/registrants GET]', err);

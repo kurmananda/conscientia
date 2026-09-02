@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 
 export default function LoginPage() {
   return (
@@ -15,7 +16,7 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
-  const { authenticate } = useAuth();
+  const { authenticate, authenticateWithGoogle } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/profile';
@@ -26,7 +27,25 @@ function LoginForm() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const checkTimer = useRef(null);
+
+  // No redirect round-trip — the Google button hands us a signed ID token
+  // directly, the server verifies it and returns a session. Mandatory
+  // fields are still enforced afterwards: ProfileCompletionModal (mounted
+  // globally) forces the same name/phone/college/etc. form regardless of
+  // how someone signed in.
+  const handleGoogleCredential = async (idToken) => {
+    setError('');
+    setGoogleBusy(true);
+    const result = await authenticateWithGoogle(idToken);
+    setGoogleBusy(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    router.push(redirectTo);
+  };
 
   const handleEmailBlur = () => {
     const trimmed = email.trim();
@@ -116,6 +135,16 @@ function LoginForm() {
               {label}
             </button>
           ))}
+        </div>
+
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
+          <GoogleSignInButton onCredential={handleGoogleCredential} disabled={googleBusy} />
+        </motion.div>
+
+        <div className="mb-4 flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-white/30">
+          <span className="h-px flex-1 bg-white/10" />
+          or
+          <span className="h-px flex-1 bg-white/10" />
         </div>
 
         <motion.form

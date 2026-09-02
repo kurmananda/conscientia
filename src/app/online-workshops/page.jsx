@@ -146,8 +146,12 @@ function formatTiqrBookingError(data) {
   return joined.length > 380 ? `${joined.slice(0, 377)}…` : joined;
 }
 
-/** TiQR puts the checkout link in different places for single vs bulk responses. */
-function pickTiqrPaymentUrl(data) {
+/**
+ * TiQR puts the checkout link in different places for single vs bulk responses.
+ * @param {string[]} [excludeUrls] - values to ignore (e.g. the callback_url we
+ *   sent, which TiQR echoes back and which otherwise matches the url-key fallback)
+ */
+function pickTiqrPaymentUrl(data, excludeUrls = []) {
   if (!data || typeof data !== 'object') return '';
 
   const ok = (u) =>
@@ -180,6 +184,32 @@ function pickTiqrPaymentUrl(data) {
         b?.payment_url ||
         b?.url_to_redirect;
       if (ok(u)) return u;
+    }
+  }
+
+  // Fallback: TiQR has moved the checkout link before without notice, so scan
+  // the whole payload for any string under a url/link/redirect-ish key.
+  // Exclude "callback"-ish keys and the callback_url we sent, since TiQR
+  // echoes the request back and that is NOT the payment gateway link.
+  const urlKeyPattern = /url|link|redirect/i;
+  const callbackKeyPattern = /callback/i;
+  const seen = new Set();
+  const stack = [data];
+  while (stack.length) {
+    const node = stack.pop();
+    if (!node || typeof node !== 'object' || seen.has(node)) continue;
+    seen.add(node);
+    for (const [key, value] of Object.entries(node)) {
+      if (
+        typeof value === 'string' &&
+        urlKeyPattern.test(key) &&
+        !callbackKeyPattern.test(key) &&
+        !excludeUrls.includes(value) &&
+        ok(value)
+      ) {
+        return value;
+      }
+      if (value && typeof value === 'object') stack.push(value);
     }
   }
 
@@ -917,7 +947,7 @@ export default function WorkshopRegistration() {
       const finalUid = usedBulk
         ? bookingData.uid
         : bookingData.booking?.uid || bookingData.uid;
-      const redirectUrl = pickTiqrPaymentUrl(bookingData);
+      const redirectUrl = pickTiqrPaymentUrl(bookingData, [callback_url]);
 
       localStorage.setItem(
         'tiqr_booking_id',
@@ -933,8 +963,22 @@ export default function WorkshopRegistration() {
         redirectUrl || ''
       );
 
+      // Free (₹0) tickets come back from TiQR already `status: 'confirmed'`
+      // with an empty `payment` object — there is no checkout page to send
+      // the user to.
+      const isAlreadyConfirmed = usedBulk
+        ? Array.isArray(bookingData.bookings) &&
+          bookingData.bookings.length > 0 &&
+          bookingData.bookings.every(
+            (b) => String(b?.status || '').toLowerCase() === 'confirmed'
+          )
+        : String(bookingData.booking?.status || bookingData.status || '').toLowerCase() ===
+          'confirmed';
+
       if (redirectUrl) {
         window.location.href = redirectUrl;
+      } else if (isAlreadyConfirmed) {
+        window.location.href = `${window.location.origin}/payment-success?uid=${encodeURIComponent(finalUid || '')}`;
       } else {
         console.error(
           '[TiQR] success but no checkout URL — refusing fake success page',

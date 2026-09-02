@@ -221,6 +221,15 @@ export default function Home() {
             Technical Fest
           </motion.div>
 
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            animate={catalogLoading ? undefined : { opacity: 0.9, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="text-center max-w-xl mx-auto text-md md:text-md tracking-[1em] leading-loose items-center gap-4 flex flex-col text-white/80 font-bold"
+          ><span className="tracking-[0.08em] text-xl md:text-2xl font-black text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.35)]">Indian Institute of Space Science and Technology </span>
+          <span className="tracking-[0.08em] text-lg md:text-xl font-black text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.35)]">presents</span>
+           </motion.p>
+
           <motion.h1
             initial={{ opacity: 0, y: 24 }}
             animate={catalogLoading ? undefined : { opacity: 1, y: 0 }}
@@ -255,11 +264,10 @@ export default function Home() {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="text-center max-w-xl mx-auto text-md md:text-md tracking-[1em] uppercase leading-loose items-center gap-4 flex flex-col text-white/80 font-bold"
           >
-            TIMEFALL <br /> <span className="tracking-[0.2em] text-xs md:text-xs font-bold text-white/70">Directed by Indian Institute of Space Science and Technology (IIST).</span>
-            <Image src="/assets/iistlogo.png" alt="Logo" width={55} height={55} className="w-[40px] h-[40px] md:w-[60px] md:h-[60px] object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]" />
+            TIMEFALL 2026<br /><Image src="/assets/iistlogo.png" alt="Logo" width={90} height={90} className="w-[64px] h-[64px] md:w-[90px] md:h-[90px] object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]" />
           </motion.p>
 
-          <motion.div initial={{ opacity: 0 }} animate={catalogLoading ? undefined : { opacity: 1 }} transition={{ delay: 0.6, duration: 0.5 }} className="pt-12 flex flex-col items-center gap-6">
+          <motion.div initial={{ opacity: 0 }} animate={catalogLoading ? undefined : { opacity: 1 }} transition={{ delay: 0.6, duration: 0.5 }} className="pt-2 flex flex-col items-center gap-6">
             <button onClick={() => { location.href = "/events" }} className="group flex flex-col items-center gap-6 cursor-pointer bg-transparent border-none appearance-none">
               <div className="h-16 w-[1px] bg-cyan-500 group-hover:h-24 group-hover:bg-white transition-all duration-200 relative">
                 <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-cyan-400 rounded-full blur-[2px]" />

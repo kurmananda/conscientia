@@ -91,7 +91,8 @@ const Nav = () => {
     { label: "ABOUT", path: "/about" },
     { label: "WORKSHOPS", path: "/workshop" },
     { label: "EVENTS", path: "/events" },
-    { label: "MERCH & STAY", path: "/accommodation" },
+    { label: "MERCH", path: "/merch" },
+    { label: "ACCOMMODATION", path: "/accommodation" },
     { label: "CONTACT US", path: "/contact-us" },
   ];
 

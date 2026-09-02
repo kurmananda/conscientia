@@ -499,6 +499,18 @@ body {
   font-family: 'Bad Coma', 'Orbitron', sans-serif;
 }
 
+.prize-pool-banner {
+  background: rgba(255,193,7,0.08);
+  border: 1px solid rgba(255,193,7,0.4);
+  backdrop-filter: blur(8px);
+  animation: prizePoolBannerPulse 2.2s ease-in-out infinite;
+}
+
+@keyframes prizePoolBannerPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(255,193,7,0.2); }
+  50% { box-shadow: 0 0 34px rgba(255,193,7,0.4); }
+}
+
 .chip {
   display: inline-flex;
   align-items: center;

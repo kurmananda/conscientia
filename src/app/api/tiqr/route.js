@@ -60,6 +60,10 @@ export async function POST(req) {
       console.log('[TiQR] upstream ok', {
         keys: data && typeof data === 'object' ? Object.keys(data) : [],
       });
+    } else {
+      // Always log the full body in prod so a missing checkout link is
+      // diagnosable from function logs instead of only a user bug report.
+      console.log('[TiQR] upstream ok body', JSON.stringify(data));
     }
     return NextResponse.json(data);
   } catch (error) {

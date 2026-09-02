@@ -26,11 +26,11 @@ function SectionHeading({ title, accentColor, count }) {
       />
       <h2
         style={{
-          fontFamily: 'var(--font-display), sans-serif',
-          fontSize: "clamp(1.2rem, 3vw, 1.8rem)",
-          fontWeight: 700,
+          fontFamily: 'var(--font-anton), sans-serif',
+          fontSize: "clamp(1.4rem, 3.4vw, 2.1rem)",
+          fontWeight: 400,
           color: accentColor,
-          letterSpacing: "0.15em",
+          letterSpacing: "0.08em",
           textTransform: "uppercase",
           margin: 0,
           textShadow: `0 0 30px ${accentColor}40`,
@@ -41,8 +41,8 @@ function SectionHeading({ title, accentColor, count }) {
       {count != null && (
         <span
           style={{
-            fontFamily: 'var(--font-display), sans-serif',
-            fontSize: "0.7rem",
+            fontFamily: 'var(--font-bebas), sans-serif',
+            fontSize: "0.85rem",
             fontWeight: 600,
             letterSpacing: "0.1em",
             color: `${accentColor}99`,
@@ -85,6 +85,7 @@ export default function WorkshopPage() {
         [c.title, c.subtitle, c.section, c.type].filter(Boolean).some((v) => v.toLowerCase().includes(query))
       )
     : workshopCards;
+
   const sections = groupBySection(filteredCards);
 
   return (
@@ -152,7 +153,7 @@ export default function WorkshopPage() {
         />
       </div>
 
-      <FetchIntro loading={loading} label="Loading Workshops" accentColor="#33d6ff" />
+      <FetchIntro loading={loading} label="Loading Workshops" accentColor="#a855f7" />
       <>
         <div style={{ overflowX: "hidden", width: "100%" }}>
 
@@ -219,14 +220,15 @@ export default function WorkshopPage() {
             </div>
             <h1
               style={{
-                fontSize: "clamp(2.5rem, 8vw, 5rem)",
-                fontWeight: 900,
-                letterSpacing: "0.03em",
+                fontFamily: 'var(--font-alfa), sans-serif',
+                fontSize: "clamp(2.8rem, 9vw, 5.5rem)",
+                fontWeight: 400,
+                letterSpacing: "0.02em",
                 background: "linear-gradient(135deg, #fff 40%, #33d6ff 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
-                marginBottom: "1rem",
+                marginBottom: "1.1rem",
                 textShadow: "0 0 60px rgba(51,214,255,0.25)",
               }}
             >
@@ -234,11 +236,12 @@ export default function WorkshopPage() {
             </h1>
             <p
               style={{
-                fontSize: "1.1rem",
-                color: "rgba(255,255,255,0.6)",
-                maxWidth: "700px",
-                lineHeight: 1.7,
-                letterSpacing: "0.02em",
+                fontFamily: 'var(--font-noto), sans-serif',
+                fontSize: "1.3rem",
+                color: "rgba(255,255,255,0.68)",
+                maxWidth: "720px",
+                lineHeight: 1.75,
+                letterSpacing: "0.01em",
               }}
             >
               Hands-on sessions led by experts — from rocketry to quantum computing. Build real
@@ -254,16 +257,16 @@ export default function WorkshopPage() {
                 maxWidth: "420px",
                 padding: "0.7rem 1.3rem",
                 borderRadius: "40px",
-                border: "1.5px solid rgba(51,214,255,0.3)",
-                background: "linear-gradient(135deg, rgba(51,214,255,0.1), rgba(0,0,0,0.5))",
+                border: "1.5px solid rgba(168,85,247,0.3)",
+                background: "linear-gradient(135deg, rgba(168,85,247,0.1), rgba(0,0,0,0.5))",
                 backdropFilter: "blur(16px)",
-                boxShadow: "0 4px 25px rgba(51,214,255,0.1), inset 0 1px 0 rgba(255,255,255,0.05)",
+                boxShadow: "0 4px 25px rgba(168,85,247,0.1), inset 0 1px 0 rgba(255,255,255,0.05)",
                 transition: "border-color 0.3s ease",
               }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(51,214,255,0.7)"; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(51,214,255,0.3)"; }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(168,85,247,0.7)"; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(168,85,247,0.3)"; }}
             >
-              <Search size={15} style={{ color: "rgba(51,214,255,0.8)", flexShrink: 0 }} />
+              <Search size={15} style={{ color: "rgba(168,85,247,0.8)", flexShrink: 0 }} />
               <input
                 type="text"
                 value={search}

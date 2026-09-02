@@ -1,9 +1,19 @@
-import { Space_Grotesk, Orbitron, JetBrains_Mono } from "next/font/google";
+import {
+  Space_Grotesk,
+  Orbitron,
+  JetBrains_Mono,
+  Noto_Sans,
+  Bebas_Neue,
+  Alfa_Slab_One,
+  Anton,
+  Rubik_Mono_One,
+} from "next/font/google";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import CursorTrialWrapper from "./components/CursorTrialWrapper";
 import ProfileCompletionModal from "./components/ProfileCompletionModal";
 import NetworkStatusToast from "./components/NetworkStatusToast";
+import CartToast from "./components/CartToast";
 import FetchTracker from "./components/FetchTracker";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
@@ -29,6 +39,43 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+// Events pages typography: Noto Sans / Bebas Neue for descriptions and body
+// copy, Alfa Slab One / Anton for headings, Rubik Mono One for the event
+// name on the detail page.
+const notoSans = Noto_Sans({
+  subsets: ["latin"],
+  variable: "--font-noto",
+  display: "swap",
+});
+
+const bebasNeue = Bebas_Neue({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-bebas",
+  display: "swap",
+});
+
+const alfaSlabOne = Alfa_Slab_One({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-alfa",
+  display: "swap",
+});
+
+const anton = Anton({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-anton",
+  display: "swap",
+});
+
+const rubikMonoOne = Rubik_Mono_One({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-rubikmono",
+  display: "swap",
+});
+
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -36,7 +83,10 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} ${orbitron.variable} ${jetbrainsMono.variable}`}>
+    <html
+      lang="en"
+      className={`${spaceGrotesk.variable} ${orbitron.variable} ${jetbrainsMono.variable} ${notoSans.variable} ${bebasNeue.variable} ${alfaSlabOne.variable} ${anton.variable} ${rubikMonoOne.variable}`}
+    >
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -60,6 +110,7 @@ export default function RootLayout({ children }) {
               <CursorTrialWrapper />
               <ProfileCompletionModal />
               <NetworkStatusToast />
+              <CartToast />
               <FetchTracker />
               <Navbar />
               <div className="h-[10vh] shrink-0 bg-transparent" aria-hidden />

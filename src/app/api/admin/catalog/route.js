@@ -55,6 +55,16 @@ export async function GET(req) {
     kind: ticket.type,
   }));
 
+  // Same order the public site uses (see catalogStore.getCatalog): by
+  // sort_order within each kind, items with no content row (so no
+  // sort_order yet) pushed to the end instead of interleaved randomly.
+  items.sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind < b.kind ? -1 : 1;
+    const av = a.sort_order ?? Infinity;
+    const bv = b.sort_order ?? Infinity;
+    return av - bv;
+  });
+
   return NextResponse.json(
     { success: true, data: items },
     { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
@@ -88,9 +98,15 @@ const EDITABLE_FIELDS = [
   'certificate',
   'tags',
   'brochure_url',
+  'prize_pool',
+  'event_date',
+  'group_size',
+  'strike_price',
   'layout',
   'contacts',
   'access',
+  'sort_order',
+  'hidden_fields',
 ];
 
 /**

@@ -7,6 +7,12 @@ export const metadata = {
 
 const groups = [
   {
+    title: 'Technical Queries',
+    people: [
+      { name: 'Kurmananda', role: 'Web Dev Head', phone: '+919491978534' },
+    ],
+  },
+  {
     title: 'Events and Accommodation Queries',
     people: [
       { name: 'Vedendra Vardhan', role: 'Vice Chief Coordinator', phone: '+918317658835' },
@@ -118,10 +124,6 @@ export default function ContactPage() {
             </div>
           </div>
         ))}
-
-        <p className="text-center text-[10px] uppercase tracking-[0.25em] text-white/25 pt-4">
-          Website built by Kurmananda, Shaurya
-        </p>
       </div>
     </SimplePageShell>
   );

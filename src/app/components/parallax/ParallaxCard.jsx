@@ -2,24 +2,22 @@ import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ShoppingCart, Check } from "lucide-react";
+import { ShoppingCart, Check, Calendar, Clock } from "lucide-react";
 import { useParallaxTilt } from "../../hooks/useParallaxTilt";
 import useSound from "../../hooks/useSound";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import useProfile from "../../hooks/useProfile";
-import usePaymentReminder from "../../hooks/usePaymentReminder";
+import EvergreenCountdown from "../EvergreenCountdown";
 import useCapacity from "../../hooks/useCapacity";
 import useMyRegisteredIds from "../../hooks/useMyRegisteredIds";
-import PrePaymentReminderModal from "../PrePaymentReminderModal";
-import { startTiqrCheckout } from "@/lib/checkout";
+import { showCartToast } from "@/lib/cartToast";
 import { parsePriceLabel } from "@/lib/parsePriceLabel";
 
 const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
   const cardWidth = width || card.layout?.width || "500px";
   const wrapperRef = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [registering, setRegistering] = useState(false);
   const router = useRouter();
 
   // Only the cards actually on-screen pay for a mousemove listener — a
@@ -32,9 +30,8 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
   const playClick = useSound("/sounds/click.wav", 0.125, 0.08);
 
   const { user } = useAuth();
-  const { addItem, hasItem } = useCart();
+  const { items, addItem, hasItem } = useCart();
   const { profile } = useProfile();
-  const { guard, modalProps } = usePaymentReminder();
   const kind = basePath.includes("workshop") ? "workshop" : "event";
   const cartKey = `${kind}:${card.id}`;
   const inCart = hasItem(cartKey);
@@ -68,40 +65,34 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
     }
     playGlitch();
     addItem(toCartItem());
+    showCartToast("Added to cart — check it out there");
   };
 
-  const handleRegister = (e) => {
+  // Registering no longer books/pays instantly — it just adds the item to
+  // the shared cart, same as the cart icon button. If merch or
+  // accommodation isn't in the cart yet, send the user straight to that
+  // page next instead of leaving it to a dismissible reminder.
+  const handleRegister = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (registering || isClosed || isRegistered) return;
+    if (isClosed || isRegistered || inCart) return;
     playClick();
     if (!user) {
       router.push(`/login?redirect=${encodeURIComponent(`${basePath}/${card.id}`)}`);
       return;
     }
-    if (!profile?.name || !profile?.phone || !profile?.college) {
+    if (!profile?.name || !profile?.phone || !profile?.college || !profile?.college_id || !profile?.aadhaar_number) {
       router.push("/profile");
       return;
     }
-    guard(() => runRegister());
-  };
-
-  const runRegister = async () => {
-    setRegistering(true);
-    try {
-      await startTiqrCheckout([toCartItem()], {
-        name: profile.name,
-        email: user.email,
-        phone: profile.phone,
-        college: profile.college,
-        city: profile.city || "",
-        gender: profile.gender || "",
-        userId: user.id,
-      });
-      // startTiqrCheckout redirects the browser on success.
-    } catch {
-      setRegistering(false);
-    }
+    // Navigating away mid-request aborts the in-flight cart upsert (surfaces
+    // as a "Failed to fetch" console error) — wait for it to land first.
+    await addItem(toCartItem());
+    showCartToast("Added to cart — check it out there");
+    const missingMerch = !items.some((i) => i.kind === "merch");
+    const missingAccommodation = !items.some((i) => i.kind === "accommodation");
+    if (missingMerch) router.push("/merch");
+    else if (missingAccommodation) router.push("/accommodation");
   };
 
   useEffect(() => {
@@ -217,35 +208,6 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
         {/* Rainbow Holographic Sheen */}
         <div className="pointer-events-none absolute inset-0 z-30 rounded-2xl" style={rainbowShineStyle} />
 
-        {/* Card Border */}
-        <div
-          className="absolute rounded-2xl"
-          style={{
-            top: "-2px",
-            left: "-2px",
-            right: "-2px",
-            bottom: "-2px",
-            borderRadius: "18px",
-            background: `linear-gradient(135deg, ${card.accentColor}88 0%, transparent 50%, ${card.accentColor}44 100%)`,
-            padding: "1.5px",
-          }}
-        >
-          <div className="h-full w-full rounded-2xl bg-transparent" />
-        </div>
-
-        {/* Inner border line */}
-        <div
-          className="absolute rounded-2xl"
-          style={{
-            top: "-0.5px",
-            left: "-0.5px",
-            right: "-0.5px",
-            bottom: "-0.5px",
-            borderRadius: "15px",
-            border: `1px solid ${card.accentColor}55`,
-          }}
-        />
-
         {/* Card Content - Landscape Layout */}
         <div className="relative z-10 flex flex-row p-2.5 sm:p-3">
           {/* Left Side - Image */}
@@ -291,7 +253,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
               {/* Type badge on image */}
               <div className="absolute bottom-1 left-1 sm:bottom-2 sm:left-2">
                 <span
-                  className="rounded-md px-1.5 py-0.5 text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-white"
+                  className="rounded-md px-2 py-0.5 text-xs sm:text-sm font-semibold uppercase tracking-wide text-white"
                   style={{
                     background: "rgba(0,0,0,0.6)",
                     backdropFilter: "blur(8px)",
@@ -310,34 +272,19 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             <div style={layer1Style} className="mb-2">
               <div className="flex items-start justify-between">
                 <div className="min-w-0 flex-1">
-                  <div
-                    className="mb-0.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest"
-                    style={{
-                      background: `${card.accentColor}33`,
-                      color: card.accentColor,
-                      border: `1px solid ${card.accentColor}66`,
-                      textShadow: `0 0 10px ${card.accentColor}`,
-                      fontFamily: 'var(--font-display), sans-serif',
-                    }}
-                  >
-                    {card.type}
-                  </div>
                   <h3
-                    className="text-base font-black uppercase leading-tight tracking-tight text-white"
+                    className="text-2xl sm:text-3xl font-black uppercase leading-tight tracking-tight text-white"
                     style={{
                       textShadow: `0 0 20px ${card.accentColor}`,
-                      fontFamily: "'Rubik Glitch', sans-serif",
+                      fontFamily: "var(--font-anton), sans-serif",
                       fontWeight: 400,
-                      letterSpacing: "0.08em",
-                      fontStyle: "italic",
-                      transform: "skewX(-0.8deg)",
+                      letterSpacing: "0.01em",
                     }}
                   >
                     <span className="digital-interference scanline-sweep digital-flicker" style={{ position: "relative" }}>
                       <span className="glitch-text" data-text={card.title}>{card.title}</span>
                     </span>
                   </h3>
-                  <p className="mt-0.5 text-[10px] text-white/50 italic" style={{ fontFamily: 'var(--font-body), sans-serif', letterSpacing: "0.04em" }}>{card.subtitle}</p>
                 </div>
                 <div
                   className="ml-2 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-xl"
@@ -362,42 +309,85 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
               </div>
             </div>
 
-            {/* Description — skipped on mobile to keep cards compact */}
-            <div style={layer1Style} className="mb-2 hidden sm:block">
-              <p className="text-[11px] leading-relaxed text-white/60 italic" style={{ fontFamily: 'var(--font-body), sans-serif', letterSpacing: "0.04em", transform: "skewX(-0.5deg)" }}>{card.description}</p>
-            </div>
-
-            {/* Tags */}
-            <div style={layer1Style} className="mb-2 flex flex-wrap gap-1">
-              {card.tags.map((tag) => (
+            {/* Prize pool — full-width pulsing banner so it reads at a
+                glance while scrolling, well above the price/tags row. */}
+            {card.prizePool && (
+              <div
+                style={{
+                  ...layer1Style,
+                  background: "rgba(255,193,7,0.08)",
+                  border: "1px solid rgba(255,193,7,0.4)",
+                }}
+                className="prize-pool-pulse mb-2 flex items-center justify-center gap-1.5 rounded-lg py-1.5 backdrop-blur-sm"
+              >
+                <span className="text-sm sm:text-base">🏆</span>
                 <span
-                  key={tag}
-                  className="rounded-full px-1.5 py-0.5 text-[9px] font-medium italic"
+                  className="text-[11px] sm:text-sm font-black uppercase tracking-wide"
                   style={{
-                    background: `${card.accentColor}18`,
-                    color: `${card.accentColor}cc`,
-                    border: `1px solid ${card.accentColor}33`,
-                    fontFamily: 'var(--font-body), sans-serif',
-                    letterSpacing: "0.04em",
+                    fontFamily: 'var(--font-display), sans-serif',
+                    color: "#ffd54f",
+                    textShadow: "0 0 12px rgba(255,193,7,0.7)",
                   }}
                 >
-                  {tag}
+                  {card.prizePool}
                 </span>
-              ))}
+              </div>
+            )}
+
+            {/* Description — skipped on mobile to keep cards compact */}
+            <div style={layer1Style} className="mb-2 hidden sm:block">
+              <p className="text-sm leading-relaxed text-white/65" style={{ fontFamily: 'var(--font-noto), sans-serif', letterSpacing: "0.01em" }}>{card.description}</p>
             </div>
+
+            {/* Date and Time — shown as two separate rows, not one combined
+                string, so each can be styled/skipped independently. */}
+            {card.eventDate && (
+              <div style={layer1Style} className="mb-1 flex items-center gap-1.5">
+                <Calendar size={13} style={{ color: card.accentColor, flexShrink: 0 }} />
+                <span
+                  className="text-sm font-bold uppercase tracking-wide"
+                  style={{
+                    color: card.accentColor,
+                    fontFamily: 'var(--font-bebas), sans-serif',
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  {card.eventDate}
+                </span>
+              </div>
+            )}
+            {card.timing && (
+              <div style={layer1Style} className="mb-2 flex items-center gap-1.5">
+                <Clock size={13} style={{ color: card.accentColor, flexShrink: 0 }} />
+                <span
+                  className="text-[11px] font-bold uppercase tracking-wide"
+                  style={{
+                    color: card.accentColor,
+                    fontFamily: 'var(--font-body), sans-serif',
+                    letterSpacing: "0.03em",
+                  }}
+                >
+                  {card.timing}
+                </span>
+              </div>
+            )}
 
             {/* Price */}
             <div style={layer1Style} className="mb-2">
               <span
-                className="text-base sm:text-lg font-black"
+                className="text-lg sm:text-xl font-black"
                 style={{
                   color: card.accentColor,
                   textShadow: `0 0 15px ${card.glowColor}`,
                   fontFamily: 'var(--font-display), sans-serif',
                 }}
               >
-                {card.price}
+                {card.strikePrice && (
+                  <span className="mr-1.5 text-white/35 line-through font-medium">{card.strikePrice}</span>
+                )}
+                {card.price} <span className="text-[11px] sm:text-xs font-medium normal-case text-white/50">(registration fee)</span>
               </span>
+              <EvergreenCountdown className="mt-1 block text-[9px] sm:text-[10px] font-bold text-amber-300/90" />
             </div>
 
             {/* Buttons — pinned to the bottom of the card via mt-auto, not
@@ -433,7 +423,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
                 }}
                 onClick={() => playClick()}
               >
-                View
+                View Details
               </Link>
               <div className="flex gap-2">
                 {isRegistered ? (
@@ -465,20 +455,20 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
                   <>
                     <button
                       className="flex-1 rounded-lg py-3 text-[11px] font-bold uppercase tracking-wider"
-                      disabled={registering}
+                      disabled={inCart}
                       style={{
                         background: card.accentColor,
                         color: "#000",
                         fontFamily: 'var(--font-display), sans-serif',
                         transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
                         transformStyle: "preserve-3d",
-                        opacity: registering ? 0.6 : 1,
-                        cursor: registering ? "default" : "pointer",
+                        opacity: inCart ? 0.6 : 1,
+                        cursor: inCart ? "default" : "pointer",
                         boxShadow: `0 4px 20px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`,
                       }}
                       onClick={handleRegister}
                       onMouseEnter={(e) => {
-                        if (registering) return;
+                        if (inCart) return;
                         playGlitch();
                         e.currentTarget.style.transform = "translateZ(25px) scale(1.08)";
                         e.currentTarget.style.boxShadow = `0 12px 40px ${card.glowColor}, 0 0 60px ${card.glowColor}40, inset 0 1px 0 rgba(255,255,255,0.3)`;
@@ -488,7 +478,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
                         e.currentTarget.style.boxShadow = `0 4px 20px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`;
                       }}
                     >
-                      {registering ? "Starting…" : "Register"}
+                      {inCart ? "Added to Cart" : "Register"}
                     </button>
                     <button
                       onClick={handleAddToCart}
@@ -557,7 +547,9 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
           top: "-5%",
           bottom: "-5%",
           width: "200px",
-          zIndex: 5,
+          zIndex: -1,
+          willChange: "opacity",
+          transform: "translateZ(0)",
         }}
       >
         {/* Deep background glow */}
@@ -568,7 +560,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             top: "-25%",
             bottom: "-25%",
             width: "180px",
-            background: `radial-gradient(ellipse at 90% 50%, ${card.accentColor}${isHovered ? "70" : "30"}, transparent 65%)`,
+            background: `radial-gradient(ellipse at 90% 50%, ${card.accentColor}${isHovered ? "45" : "16"}, transparent 65%)`,
             filter: `blur(${isHovered ? "10px" : "22px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
           }}
@@ -582,7 +574,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             bottom: "5%",
             width: "24px",
             background: `linear-gradient(to bottom, transparent 2%, ${card.accentColor}bb 20%, ${card.accentColor} 45%, ${card.accentColor}ff 50%, ${card.accentColor} 55%, ${card.accentColor}bb 80%, transparent 98%)`,
-            opacity: isHovered ? 1 : 0.55,
+            opacity: isHovered ? 0.6 : 0.25,
             filter: `blur(${isHovered ? "1px" : "2px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireStripLeft 1.8s ease-in-out infinite",
@@ -597,7 +589,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             bottom: "8%",
             width: "40px",
             background: `linear-gradient(to bottom, transparent, ${card.accentColor}99, ${card.accentColor}ee, ${card.accentColor}99, transparent)`,
-            opacity: isHovered ? 0.9 : 0.4,
+            opacity: isHovered ? 0.55 : 0.2,
             filter: `blur(${isHovered ? "4px" : "8px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireFlickerInner 1.2s ease-in-out infinite alternate",
@@ -612,7 +604,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             bottom: "3%",
             width: "60px",
             background: `linear-gradient(to bottom, transparent 5%, ${card.accentColor}66 30%, ${card.accentColor}88 50%, ${card.accentColor}66 70%, transparent 95%)`,
-            opacity: isHovered ? 0.7 : 0.25,
+            opacity: isHovered ? 0.4 : 0.12,
             filter: `blur(${isHovered ? "8px" : "14px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireFlickerInner 1.6s ease-in-out 0.2s infinite alternate",
@@ -626,14 +618,14 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             top: "-15%",
             bottom: "-15%",
             width: "140px",
-            background: `radial-gradient(ellipse at 70% 50%, ${card.accentColor}${isHovered ? "55" : "18"}, transparent 55%)`,
+            background: `radial-gradient(ellipse at 70% 50%, ${card.accentColor}${isHovered ? "35" : "10"}, transparent 55%)`,
             filter: `blur(${isHovered ? "12px" : "28px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "smokeDrift 3s ease-in-out infinite",
           }}
         />
         {/* Large flowing embers */}
-        {[...Array(10)].map((_, i) => (
+        {[...Array(5)].map((_, i) => (
           <div
             key={`left-big-${i}`}
             style={{
@@ -644,14 +636,14 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
               borderRadius: "50%",
               background: `radial-gradient(circle, #fff 0%, ${card.accentColor} 40%, transparent 70%)`,
               boxShadow: `0 0 ${10 + i * 3}px ${card.accentColor}, 0 0 ${20 + i * 4}px ${card.accentColor}80, 0 0 ${30 + i * 5}px ${card.accentColor}40`,
-              opacity: isHovered ? 1 : 0.35,
+              opacity: isHovered ? 0.6 : 0.15,
               animation: `emberLeft${i % 4} ${2 + i * 0.2}s ease-out ${i * 0.12}s infinite`,
               transition: "opacity 0.5s ease",
             }}
           />
         ))}
         {/* Small spark particles */}
-        {[...Array(14)].map((_, i) => (
+        {[...Array(7)].map((_, i) => (
           <div
             key={`left-spark-${i}`}
             style={{
@@ -662,7 +654,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
               borderRadius: "50%",
               background: "#fff",
               boxShadow: `0 0 6px ${card.accentColor}, 0 0 14px ${card.accentColor}`,
-              opacity: isHovered ? 0.9 : 0.2,
+              opacity: isHovered ? 0.5 : 0.08,
               animation: `sparkLeft${i % 3} ${1 + i * 0.12}s linear ${i * 0.08}s infinite`,
               transition: "opacity 0.4s ease",
             }}
@@ -678,7 +670,9 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
           top: "-5%",
           bottom: "-5%",
           width: "200px",
-          zIndex: 5,
+          zIndex: -1,
+          willChange: "opacity",
+          transform: "translateZ(0)",
         }}
       >
         {/* Deep background glow */}
@@ -689,7 +683,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             top: "-25%",
             bottom: "-25%",
             width: "180px",
-            background: `radial-gradient(ellipse at 10% 50%, ${card.accentColor}${isHovered ? "70" : "30"}, transparent 65%)`,
+            background: `radial-gradient(ellipse at 10% 50%, ${card.accentColor}${isHovered ? "45" : "16"}, transparent 65%)`,
             filter: `blur(${isHovered ? "10px" : "22px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
           }}
@@ -703,7 +697,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             bottom: "5%",
             width: "24px",
             background: `linear-gradient(to bottom, transparent 2%, ${card.accentColor}bb 20%, ${card.accentColor} 45%, ${card.accentColor}ff 50%, ${card.accentColor} 55%, ${card.accentColor}bb 80%, transparent 98%)`,
-            opacity: isHovered ? 1 : 0.55,
+            opacity: isHovered ? 0.6 : 0.25,
             filter: `blur(${isHovered ? "1px" : "2px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireStripRight 1.8s ease-in-out 0.4s infinite",
@@ -718,7 +712,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             bottom: "8%",
             width: "40px",
             background: `linear-gradient(to bottom, transparent, ${card.accentColor}99, ${card.accentColor}ee, ${card.accentColor}99, transparent)`,
-            opacity: isHovered ? 0.9 : 0.4,
+            opacity: isHovered ? 0.55 : 0.2,
             filter: `blur(${isHovered ? "4px" : "8px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireFlickerInner 1.4s ease-in-out 0.3s infinite alternate",
@@ -733,7 +727,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             bottom: "3%",
             width: "60px",
             background: `linear-gradient(to bottom, transparent 5%, ${card.accentColor}66 30%, ${card.accentColor}88 50%, ${card.accentColor}66 70%, transparent 95%)`,
-            opacity: isHovered ? 0.7 : 0.25,
+            opacity: isHovered ? 0.4 : 0.12,
             filter: `blur(${isHovered ? "8px" : "14px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireFlickerInner 1.6s ease-in-out 0.2s infinite alternate",
@@ -747,14 +741,14 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             top: "-15%",
             bottom: "-15%",
             width: "140px",
-            background: `radial-gradient(ellipse at 30% 50%, ${card.accentColor}${isHovered ? "55" : "18"}, transparent 55%)`,
+            background: `radial-gradient(ellipse at 30% 50%, ${card.accentColor}${isHovered ? "35" : "10"}, transparent 55%)`,
             filter: `blur(${isHovered ? "12px" : "28px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "smokeDrift 3.2s ease-in-out 0.5s infinite",
           }}
         />
         {/* Large flowing embers */}
-        {[...Array(10)].map((_, i) => (
+        {[...Array(5)].map((_, i) => (
           <div
             key={`right-big-${i}`}
             style={{
@@ -765,14 +759,14 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
               borderRadius: "50%",
               background: `radial-gradient(circle, #fff 0%, ${card.accentColor} 40%, transparent 70%)`,
               boxShadow: `0 0 ${10 + i * 3}px ${card.accentColor}, 0 0 ${20 + i * 4}px ${card.accentColor}80, 0 0 ${30 + i * 5}px ${card.accentColor}40`,
-              opacity: isHovered ? 1 : 0.35,
+              opacity: isHovered ? 0.6 : 0.15,
               animation: `emberRight${i % 4} ${2 + i * 0.2}s ease-out ${i * 0.12 + 0.1}s infinite`,
               transition: "opacity 0.5s ease",
             }}
           />
         ))}
         {/* Small spark particles */}
-        {[...Array(14)].map((_, i) => (
+        {[...Array(7)].map((_, i) => (
           <div
             key={`right-spark-${i}`}
             style={{
@@ -783,7 +777,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
               borderRadius: "50%",
               background: "#fff",
               boxShadow: `0 0 6px ${card.accentColor}, 0 0 14px ${card.accentColor}`,
-              opacity: isHovered ? 0.9 : 0.2,
+              opacity: isHovered ? 0.5 : 0.08,
               animation: `sparkRight${i % 3} ${1 + i * 0.12}s linear ${i * 0.08 + 0.05}s infinite`,
               transition: "opacity 0.4s ease",
             }}
@@ -799,7 +793,9 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
           left: "5%",
           right: "5%",
           height: "100px",
-          zIndex: 5,
+          zIndex: -1,
+          willChange: "opacity",
+          transform: "translateZ(0)",
         }}
       >
         <div
@@ -810,7 +806,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             right: 0,
             height: "16px",
             background: `linear-gradient(to right, transparent, ${card.accentColor}dd, transparent)`,
-            opacity: isHovered ? 0.9 : 0.4,
+            opacity: isHovered ? 0.55 : 0.2,
             filter: `blur(${isHovered ? "1px" : "3px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireStripTop 2s ease-in-out infinite",
@@ -823,7 +819,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             left: "-20%",
             right: "-20%",
             height: "70px",
-            background: `radial-gradient(ellipse at center bottom, ${card.accentColor}${isHovered ? "60" : "22"}, transparent 60%)`,
+            background: `radial-gradient(ellipse at center bottom, ${card.accentColor}${isHovered ? "40" : "12"}, transparent 60%)`,
             filter: `blur(${isHovered ? "6px" : "16px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
           }}
@@ -838,7 +834,9 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
           left: "5%",
           right: "5%",
           height: "100px",
-          zIndex: 5,
+          zIndex: -1,
+          willChange: "opacity",
+          transform: "translateZ(0)",
         }}
       >
         <div
@@ -849,7 +847,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             right: 0,
             height: "16px",
             background: `linear-gradient(to right, transparent, ${card.accentColor}dd, transparent)`,
-            opacity: isHovered ? 0.9 : 0.4,
+            opacity: isHovered ? 0.55 : 0.2,
             filter: `blur(${isHovered ? "1px" : "3px"})`,
             transition: "all 0.5s cubic-bezier(0.23, 1, 0.32, 1)",
             animation: "fireStripBottom 2s ease-in-out 0.6s infinite",
@@ -862,7 +860,7 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
             left: "-20%",
             right: "-20%",
             height: "70px",
-            background: `radial-gradient(ellipse at center top, ${card.accentColor}${isHovered ? "60" : "22"}, transparent 60%)`,
+            background: `radial-gradient(ellipse at center top, ${card.accentColor}${isHovered ? "40" : "12"}, transparent 60%)`,
             filter: `blur(${isHovered ? "6px" : "16px"})`,
             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
           }}
@@ -870,6 +868,13 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
       </div>
       </div>}
       <style>{`
+        .prize-pool-pulse {
+          animation: prizePoolPulse 2.2s ease-in-out infinite;
+        }
+        @keyframes prizePoolPulse {
+          0%, 100% { box-shadow: 0 0 10px rgba(255,193,7,0.15); }
+          50% { box-shadow: 0 0 18px rgba(255,193,7,0.35); }
+        }
         @keyframes fireStripLeft {
           0%, 100% { transform: scaleY(1) translateX(0); opacity: 0.8; }
           25% { transform: scaleY(1.03) translateX(-1px); opacity: 1; }
@@ -971,8 +976,16 @@ const ParallaxCard = ({ card, index, basePath = "/workshop", width }) => {
           100% { transform: translate(50px, -110px); opacity: 0; }
         }
       `}</style>
-      <PrePaymentReminderModal {...modalProps} />
     </div>
   );
 };
-export default ParallaxCard;
+
+// A listing page mounts dozens of these, each carrying a heavy tree of
+// blurred/animated aura layers. Without memoizing, an unrelated state
+// change anywhere above (e.g. typing in the search box on /events, which
+// re-renders the whole list on every keystroke) re-renders every card's
+// full DOM tree even though its own props never changed — that repaint,
+// multiplied across every visible card, is what read as laggy. `card` is
+// the same object reference across re-filters (only the array wrapping it
+// changes), so a shallow prop compare skips all of that reliably.
+export default React.memo(ParallaxCard);

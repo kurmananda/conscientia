@@ -11,12 +11,13 @@ import useSound from "@/app/hooks/useSound";
 import { useAuth } from "@/app/context/AuthContext";
 import { useCart } from "@/app/context/CartContext";
 import useProfile from "@/app/hooks/useProfile";
-import usePaymentReminder from "@/app/hooks/usePaymentReminder";
-import PrePaymentReminderModal from "@/app/components/PrePaymentReminderModal";
 import useIsTouch from "@/app/hooks/useIsTouch";
-import { startTiqrCheckout } from "@/lib/checkout";
+import { showCartToast } from "@/lib/cartToast";
 import { parsePriceLabel } from "@/lib/parsePriceLabel";
 import useCapacity from "@/app/hooks/useCapacity";
+import EvergreenCountdown from "@/app/components/EvergreenCountdown";
+import TeamReminderModal from "@/app/components/TeamReminderModal";
+import { supabase } from "@/lib/supabaseClient";
 
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
@@ -372,11 +373,8 @@ export default function WorkshopDetailPage() {
   }, [id]);
 
   const { user } = useAuth();
-  const { addItem, hasItem } = useCart();
+  const { items, addItem, hasItem } = useCart();
   const { profile } = useProfile();
-  const { guard, modalProps } = usePaymentReminder();
-  const [registering, setRegistering] = useState(false);
-  const [registerError, setRegisterError] = useState("");
   const [paidWorkshopIds, setPaidWorkshopIds] = useState([]);
 
   useEffect(() => {
@@ -398,6 +396,33 @@ export default function WorkshopDetailPage() {
   }, [user?.id]);
 
   const isRegistered = card ? paidWorkshopIds.includes(card.id) : false;
+
+  const [teamIncomplete, setTeamIncomplete] = useState(false);
+  const [showTeamModal, setShowTeamModal] = useState(false);
+
+  useEffect(() => {
+    if (!isRegistered || !card || Number(card.groupSize) <= 1 || !user?.id) {
+      setTeamIncomplete(false);
+      return;
+    }
+    let active = true;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token;
+      if (!token) return;
+      const res = await fetch(`/api/team?eventId=${encodeURIComponent(card.id)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (active && json.success) {
+        setTeamIncomplete(!json.data?.team?.confirmed);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [isRegistered, card, user?.id]);
+
   const { remaining } = useCapacity();
   const isClosed = !isRegistered && remaining(card) <= 0;
 
@@ -421,43 +446,35 @@ export default function WorkshopDetailPage() {
   });
 
   const handleAddToCart = () => {
-    if (!card || inCart || isClosed) return;
+    if (!card || inCart || isClosed || isRegistered) return;
     playGlitch();
     addItem(toCartItem());
+    showCartToast("Added to cart — check it out there");
   };
 
-  const handleRegisterNow = () => {
+  // Registering no longer books/pays instantly — it just adds the workshop
+  // to the shared cart, same as the cart icon button. If merch or
+  // accommodation isn't in the cart yet, send the user straight to that
+  // page next instead of leaving it to a dismissible reminder.
+  const handleRegisterNow = async () => {
     playClick();
-    if (!card || isClosed) return;
+    if (!card || isClosed || inCart || isRegistered) return;
     if (!user) {
       router.push(`/login?redirect=${encodeURIComponent(`/workshop/${card.id}`)}`);
       return;
     }
-    if (!profile?.name || !profile?.phone || !profile?.college) {
+    if (!profile?.name || !profile?.phone || !profile?.college || !profile?.college_id || !profile?.aadhaar_number) {
       router.push("/profile");
       return;
     }
-    guard(() => runRegisterNow());
-  };
-
-  const runRegisterNow = async () => {
-    setRegisterError("");
-    setRegistering(true);
-    try {
-      await startTiqrCheckout([toCartItem()], {
-        name: profile.name,
-        email: user.email,
-        phone: profile.phone,
-        college: profile.college,
-        city: profile.city || "",
-        gender: profile.gender || "",
-        userId: user.id,
-      });
-      // startTiqrCheckout redirects the browser on success.
-    } catch (err) {
-      setRegisterError(err.message);
-      setRegistering(false);
-    }
+    // Navigating away mid-request aborts the in-flight cart upsert (surfaces
+    // as a "Failed to fetch" console error) — wait for it to land first.
+    await addItem(toCartItem());
+    showCartToast("Added to cart — check it out there");
+    const missingMerch = !items.some((i) => i.kind === "merch");
+    const missingAccommodation = !items.some((i) => i.kind === "accommodation");
+    if (missingMerch) router.push("/merch");
+    else if (missingAccommodation) router.push("/accommodation");
   };
 
   useEffect(() => {
@@ -486,7 +503,7 @@ export default function WorkshopDetailPage() {
   }
 
   return (
-    <div style={{ position: "relative", minHeight: "100vh", color: "#fff", overflowX: "hidden", maxWidth: "100vw" }}>
+    <div style={{ position: "relative", color: "#fff", overflowX: "hidden", maxWidth: "100vw" }} className="overflow-y-hidden">
       {/* Ambient background music — loops while on this page */}
 
 
@@ -612,6 +629,48 @@ export default function WorkshopDetailPage() {
                 }}>
                   {card.subtitle}
                 </p>
+                {card.prizePool && (
+                  <div
+                    className="prize-pool-banner"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "0.6rem",
+                      marginTop: "1.2rem",
+                      padding: "0.9rem 1.5rem",
+                      borderRadius: "14px",
+                    }}
+                  >
+                    <span style={{ fontSize: "1.8rem" }}>🏆</span>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-display), sans-serif',
+                        fontSize: "clamp(1.1rem, 2.4vw, 1.6rem)",
+                        fontWeight: 900,
+                        letterSpacing: "0.04em",
+                        color: "#ffd54f",
+                        textShadow: "0 0 20px rgba(255,193,7,0.6)",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Prize Pool: {card.prizePool}
+                    </span>
+                  </div>
+                )}
+                {card.prizePool && (
+                  <p
+                    style={{
+                      marginTop: "0.4rem",
+                      textAlign: "center",
+                      fontSize: "0.7rem",
+                      color: "rgba(255,255,255,0.35)",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    *subject to change based on participation
+                  </p>
+                )}
               </div>
               <div
                 style={{
@@ -702,60 +761,6 @@ export default function WorkshopDetailPage() {
               ))}
             </CinematicBox>
 
-            {/* What You'll Learn */}
-            <CinematicBox title="What You Will Learn" accentColor={card.accentColor} glowColor={card.glowColor} delay={0.3}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
-                {(card.highlights || []).map((item, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.8rem" }}>
-                    <div
-                      style={{
-                        width: "6px",
-                        height: "6px",
-                        borderRadius: "50%",
-                        background: card.accentColor,
-                        boxShadow: `0 0 8px ${card.accentColor}`,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <span style={{
-                      color: "rgba(255,255,255,0.6)",
-                      fontSize: "0.9rem",
-                      fontFamily: "var(--font-body), sans-serif",
-                      letterSpacing: "0.04em",
-                      fontStyle: "italic",
-                      transform: "skewX(-0.3deg)",
-                    }}>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </CinematicBox>
-
-            {/* Prerequisites */}
-            <CinematicBox title="Prerequisites" accentColor={card.accentColor} glowColor={card.glowColor} delay={0.4}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
-                {(card.requirements || []).map((item, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.8rem" }}>
-                    <div
-                      style={{
-                        width: "6px",
-                        height: "6px",
-                        borderRadius: "50%",
-                        background: "rgba(255,255,255,0.2)",
-                        flexShrink: 0,
-                      }}
-                    />
-                    <span style={{
-                      color: "rgba(255,255,255,0.6)",
-                      fontSize: "0.9rem",
-                      fontFamily: "var(--font-body), sans-serif",
-                      letterSpacing: "0.04em",
-                      fontStyle: "italic",
-                      transform: "skewX(-0.3deg)",
-                    }}>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </CinematicBox>
           </div>
 
           {/* Right Column - Sidebar */}
@@ -783,8 +788,17 @@ export default function WorkshopDetailPage() {
                     letterSpacing: "0.05em",
                   }}
                 >
+                  {card.strikePrice && (
+                    <span style={{ fontSize: "1.1rem", fontWeight: 500, color: "rgba(255,255,255,0.35)", textDecoration: "line-through", marginRight: "0.5rem" }}>
+                      {card.strikePrice}
+                    </span>
+                  )}
                   <InterferenceText>{card.price}</InterferenceText>
+                  <span style={{ fontSize: "0.8rem", fontWeight: 500, color: "rgba(255,255,255,0.4)", marginLeft: "0.4rem" }}>
+                    (registration fee)
+                  </span>
                 </div>
+                <EvergreenCountdown className="mt-2 text-[11px] font-bold text-amber-300/90" />
               </div>
               <a
                 href={card.brochureUrl || "#"}
@@ -799,8 +813,11 @@ export default function WorkshopDetailPage() {
                 Download Brochure
               </a>
               {isRegistered ? (
-                <div
+                <button
+                  type="button"
+                  onClick={() => teamIncomplete && setShowTeamModal(true)}
                   style={{
+                    width: "100%",
                     padding: "0.85rem",
                     borderRadius: "12px",
                     border: `1px solid ${card.accentColor}55`,
@@ -816,11 +833,14 @@ export default function WorkshopDetailPage() {
                     alignItems: "center",
                     justifyContent: "center",
                     gap: "0.5rem",
+                    cursor: teamIncomplete ? "pointer" : "default",
                   }}
                 >
                   <Check size={16} />
-                  <InterferenceText>Registered</InterferenceText>
-                </div>
+                  <InterferenceText>
+                    {teamIncomplete ? "Registered — Add Teammates" : "Registered"}
+                  </InterferenceText>
+                </button>
               ) : isClosed ? (
                 <div
                   style={{
@@ -843,7 +863,7 @@ export default function WorkshopDetailPage() {
                 <div style={{ display: "flex", gap: "0.6rem" }}>
                   <button
                     onClick={handleRegisterNow}
-                    disabled={registering}
+                    disabled={inCart}
                     style={{
                       flex: 1,
                       padding: "0.85rem",
@@ -856,14 +876,14 @@ export default function WorkshopDetailPage() {
                       fontWeight: 700,
                       letterSpacing: "0.15em",
                       textTransform: "uppercase",
-                      cursor: registering ? "default" : "pointer",
-                      opacity: registering ? 0.6 : 1,
+                      cursor: inCart ? "default" : "pointer",
+                      opacity: inCart ? 0.6 : 1,
                       transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
                       transformStyle: "preserve-3d",
                       boxShadow: `0 4px 25px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`,
                     }}
                     onMouseEnter={(e) => {
-                      if (registering) return;
+                      if (inCart) return;
                       playGlitch();
                       e.currentTarget.style.transform = "translateZ(30px) scale(1.08)";
                       e.currentTarget.style.boxShadow = `0 15px 50px ${card.glowColor}, 0 0 70px ${card.glowColor}50, inset 0 1px 0 rgba(255,255,255,0.3)`;
@@ -873,7 +893,7 @@ export default function WorkshopDetailPage() {
                       e.currentTarget.style.boxShadow = `0 4px 25px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`;
                     }}
                   >
-                    <InterferenceText>{registering ? "Starting…" : "Register Now"}</InterferenceText>
+                    <InterferenceText>{inCart ? "Added to Cart" : "Register Now"}</InterferenceText>
                   </button>
                   <button
                     onClick={handleAddToCart}
@@ -897,17 +917,6 @@ export default function WorkshopDetailPage() {
                   </button>
                 </div>
               )}
-              {registerError && (
-                <p style={{
-                  textAlign: "center",
-                  fontSize: "0.65rem",
-                  fontFamily: "var(--font-body), sans-serif",
-                  color: "#f87171",
-                  marginTop: "0.7rem",
-                }}>
-                  {registerError}
-                </p>
-              )}
               <p style={{
                 textAlign: "center",
                 fontSize: "0.6rem",
@@ -924,14 +933,17 @@ export default function WorkshopDetailPage() {
             <CinematicBox title="Workshop Details" accentColor={card.accentColor} glowColor={card.glowColor} delay={0.25}>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
                 {[
-                  { label: "Duration", value: `${card.Duration} Days` },
-                  { label: "Total Seats", value: String(card.Seats) },
-                  { label: "Eligibility", value: card.eligibility || "Open to all" },
-                  { label: "Venue", value: card.venue || "TBA" },
-                  { label: "Timing", value: card.timing || "TBA" },
-                  { label: "Format", value: card.format },
-                  { label: "Certificate", value: card.certificate },
-                ].map((item) => (
+                  { label: "Duration", value: card.Duration != null ? `${card.Duration} Days` : null },
+                  { label: "Total Seats", value: card.Seats != null ? String(card.Seats) : null },
+                  { label: "Eligibility", value: card.eligibility || null },
+                  { label: "Venue", value: card.venue || null },
+                  { label: "Date", value: card.eventDate || null },
+                  { label: "Time", value: card.timing || null },
+                  { label: "Format", value: card.format || null },
+                  { label: "Certificate", value: card.certificate || null },
+                ]
+                  .filter((item) => item.value)
+                  .map((item) => (
                   <div
                     key={item.label}
                     style={{
@@ -1010,7 +1022,7 @@ export default function WorkshopDetailPage() {
 
             {/* Tags */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-              {card.tags.map((tag) => (
+              {(card.tags || []).map((tag) => (
                 <span
                   key={tag}
                   style={{
@@ -1068,7 +1080,7 @@ export default function WorkshopDetailPage() {
           }
         }
       `}</style>
-      <PrePaymentReminderModal {...modalProps} />
+      <TeamReminderModal open={showTeamModal} onClose={() => setShowTeamModal(false)} />
     </div>
   );
 }

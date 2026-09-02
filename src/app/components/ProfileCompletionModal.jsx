@@ -8,14 +8,28 @@ import useProfile from "../hooks/useProfile";
 export default function ProfileCompletionModal() {
   const { user } = useAuth();
   const { profile, loading, save } = useProfile();
-  const [form, setForm] = useState({ name: "", phone: "", college: "", city: "", gender: "" });
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    college: "",
+    collegeId: "",
+    aadhaarNumber: "",
+    city: "",
+    gender: "",
+  });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const missing =
     !loading &&
     !!user &&
-    (!profile || !profile.name || !profile.phone || !profile.college || !profile.gender);
+    (!profile ||
+      !profile.name ||
+      !profile.phone ||
+      !profile.college ||
+      !profile.college_id ||
+      !profile.aadhaar_number ||
+      !profile.gender);
 
   useEffect(() => {
     if (profile) {
@@ -24,6 +38,8 @@ export default function ProfileCompletionModal() {
         name: profile.name || "",
         phone: profile.phone || "",
         college: profile.college || "",
+        collegeId: profile.college_id || "",
+        aadhaarNumber: profile.aadhaar_number || "",
         city: profile.city || "",
         gender: profile.gender || "",
       });
@@ -33,8 +49,19 @@ export default function ProfileCompletionModal() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!form.name.trim() || !form.phone.trim() || !form.college.trim() || !form.gender) {
-      setError("Name, phone number, college, and gender are required.");
+    if (
+      !form.name.trim() ||
+      !form.phone.trim() ||
+      !form.college.trim() ||
+      !form.collegeId.trim() ||
+      !form.aadhaarNumber.trim() ||
+      !form.gender
+    ) {
+      setError("Name, phone number, college, college ID, Aadhaar number, and gender are required.");
+      return;
+    }
+    if (!/^\d{12}$/.test(form.aadhaarNumber.trim())) {
+      setError("Aadhaar number must be exactly 12 digits.");
       return;
     }
     setSaving(true);
@@ -42,6 +69,8 @@ export default function ProfileCompletionModal() {
       name: form.name.trim(),
       phone: form.phone.trim(),
       college: form.college.trim(),
+      college_id: form.collegeId.trim(),
+      aadhaar_number: form.aadhaarNumber.trim(),
       city: form.city.trim(),
       gender: form.gender || null,
     });
@@ -98,6 +127,25 @@ export default function ProfileCompletionModal() {
                   required
                   value={form.college}
                   onChange={(e) => setForm({ ...form, college: e.target.value })}
+                  className="w-full rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none focus:border-cyan-500/60"
+                />
+              </Field>
+              <Field label="College ID *">
+                <input
+                  required
+                  value={form.collegeId}
+                  onChange={(e) => setForm({ ...form, collegeId: e.target.value })}
+                  className="w-full rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none focus:border-cyan-500/60"
+                />
+              </Field>
+              <Field label="Aadhaar Number *">
+                <input
+                  required
+                  inputMode="numeric"
+                  maxLength={12}
+                  placeholder="12-digit Aadhaar number"
+                  value={form.aadhaarNumber}
+                  onChange={(e) => setForm({ ...form, aadhaarNumber: e.target.value.replace(/\D/g, "") })}
                   className="w-full rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none focus:border-cyan-500/60"
                 />
               </Field>

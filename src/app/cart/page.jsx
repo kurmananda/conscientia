@@ -16,7 +16,7 @@ export default function CartPage() {
   const { items, removeItem, clear } = useCart();
   const { profile, save } = useProfile();
   const { guard, modalProps } = usePaymentReminder();
-  const [form, setForm] = useState({ name: '', phone: '', college: '', city: '', gender: '' });
+  const [form, setForm] = useState({ name: '', phone: '', college: '', collegeId: '', aadhaarNumber: '', city: '', gender: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -27,6 +27,8 @@ export default function CartPage() {
       name: profile.name || '',
       phone: profile.phone || '',
       college: profile.college || '',
+      collegeId: profile.college_id || '',
+      aadhaarNumber: profile.aadhaar_number || '',
       city: profile.city || '',
       gender: profile.gender || '',
     });
@@ -34,6 +36,14 @@ export default function CartPage() {
 
   const runCheckout = async () => {
     setError('');
+    if (!form.collegeId.trim() || !form.aadhaarNumber.trim()) {
+      setError('College ID and Aadhaar number are required.');
+      return;
+    }
+    if (!/^\d{12}$/.test(form.aadhaarNumber.trim())) {
+      setError('Aadhaar number must be exactly 12 digits.');
+      return;
+    }
     if (!form.gender) {
       setError('Please select a gender to continue.');
       return;
@@ -50,6 +60,8 @@ export default function CartPage() {
         name: form.name.trim(),
         phone: form.phone.trim(),
         college: form.college.trim(),
+        college_id: form.collegeId.trim(),
+        aadhaar_number: form.aadhaarNumber.trim(),
         city: form.city.trim(),
         gender: form.gender,
       };
@@ -58,6 +70,8 @@ export default function CartPage() {
         trimmed.name !== (profile.name || '') ||
         trimmed.phone !== (profile.phone || '') ||
         trimmed.college !== (profile.college || '') ||
+        trimmed.college_id !== (profile.college_id || '') ||
+        trimmed.aadhaar_number !== (profile.aadhaar_number || '') ||
         trimmed.city !== (profile.city || '') ||
         trimmed.gender !== (profile.gender || '');
       if (changed) {
@@ -133,6 +147,8 @@ export default function CartPage() {
                 const qty = item.qty || 1;
                 const unit = item.unitPrice;
                 const lineTotal = typeof unit === 'number' ? unit * qty : null;
+                const isLockedDelivery =
+                  item.key === 'delivery' && items.some((i) => i.kind === 'merch');
                 return (
                   <div
                     key={item.key}
@@ -159,11 +175,18 @@ export default function CartPage() {
                       {item.subtitle && (
                         <p className="truncate text-[11px] text-cyan-300/70">{item.subtitle}</p>
                       )}
+                      {isLockedDelivery && (
+                        <p className="mt-0.5 text-[11px] text-white/30">
+                          Remove all merch items to drop delivery
+                        </p>
+                      )}
                     </div>
                     <button
                       onClick={() => removeItem(item.key)}
-                      className="text-white/30 hover:text-red-400 text-sm px-2"
+                      disabled={isLockedDelivery}
+                      className="text-white/30 hover:text-red-400 text-sm px-2 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-white/30"
                       aria-label="Remove"
+                      title={isLockedDelivery ? 'Remove all merch items to drop delivery' : undefined}
                     >
                       ✕
                     </button>
@@ -219,6 +242,22 @@ export default function CartPage() {
                   placeholder="College / Institution"
                   value={form.college}
                   onChange={(e) => setForm({ ...form, college: e.target.value })}
+                  className="rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none focus:border-cyan-500/60"
+                />
+                <input
+                  required
+                  placeholder="College ID"
+                  value={form.collegeId}
+                  onChange={(e) => setForm({ ...form, collegeId: e.target.value })}
+                  className="rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none focus:border-cyan-500/60"
+                />
+                <input
+                  required
+                  inputMode="numeric"
+                  maxLength={12}
+                  placeholder="Aadhaar Number (12 digits)"
+                  value={form.aadhaarNumber}
+                  onChange={(e) => setForm({ ...form, aadhaarNumber: e.target.value.replace(/\D/g, '') })}
                   className="rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none focus:border-cyan-500/60"
                 />
                 <input

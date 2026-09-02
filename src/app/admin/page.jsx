@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronDown,
+  ChevronUp,
   Search,
   ShieldCheck,
   LogOut,
@@ -14,7 +15,6 @@ import {
   BedDouble,
   CalendarClock,
   CalendarCheck2,
-  CalendarX2,
   DoorOpen,
   Sparkles,
   Lock,
@@ -23,13 +23,32 @@ import {
   RefreshCw,
   Layers,
   Pencil,
+  QrCode,
 } from 'lucide-react';
 import { getCatalog } from '@/lib/catalogStore';
 import { getPromos, DEFAULT_PROMOS } from '@/lib/promoStore';
 import { groupBySection } from '../lib/groupBySection';
 import { FOOD_ADDONS, STAY_DATES } from '../accommodation/merchData';
+import QrScanner from '../components/QrScanner';
+import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '../context/AuthContext';
 
 const ADMIN_HEADER = 'x-admin-callsign';
+
+// Kept fresh by AdminDashboard's auth-state subscription (module-level, same
+// pattern as CATALOG below) so every admin fetch can attach the current
+// Supabase access token without threading it through every call site. The
+// server re-checks this token's is_admin status on every request — the
+// callsign header alone is not enough (see src/lib/adminAuth.js).
+let ADMIN_TOKEN = null;
+
+function adminHeaders(session, extra = {}) {
+  return {
+    [ADMIN_HEADER]: session.callsign,
+    ...(ADMIN_TOKEN ? { Authorization: `Bearer ${ADMIN_TOKEN}` } : {}),
+    ...extra,
+  };
+}
 
 // Populated once by AdminDashboard's catalog-fetch effect (module-level so
 // the module-scope helper functions below — findCatalogItem, paidBuckets —
@@ -139,6 +158,7 @@ function inCartSummary(cartItems) {
 }
 
 export default function AdminPage() {
+  const { user, loading: authLoading } = useAuth();
   const [session, setSession] = useState(null); // { name, role, callsign }
   const [codeword, setCodeword] = useState('');
   const [password, setPassword] = useState('');
@@ -155,9 +175,18 @@ export default function AdminPage() {
         setAuthError('Codeword/callsign and password are required.');
         return;
       }
+      const { data: authSessionData } = await supabase.auth.getSession();
+      const accessToken = authSessionData?.session?.access_token;
+      if (!accessToken) {
+        setAuthError('You must be signed in with an admin account to access this.');
+        return;
+      }
       const res = await fetch('/api/admin/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({ callsign: trimmed, password }),
       });
       const data = await res.json().catch(() => ({}));
@@ -201,49 +230,62 @@ export default function AdminPage() {
           >
             Admin Access
           </motion.h1>
-          <motion.form
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            onSubmit={handleLogin}
-            className="glass-card space-y-4 rounded-2xl border border-cyan-500/10 p-6 shadow-[0_0_40px_rgba(6,182,212,0.06)]"
-          >
-            <div>
-              <label className="mb-1.5 block text-[10px] uppercase tracking-[0.2em] text-white/40">
-                Codeword / Callsign
-              </label>
-              <input
-                type="text"
-                required
-                value={codeword}
-                onChange={(e) => setCodeword(e.target.value)}
-                className="w-full rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none transition-colors focus:border-cyan-500/60"
-                placeholder="yeah that one..,"
-              />
-            
-            </div>
-            <div>
-              <label className="mb-1.5 block text-[10px] uppercase tracking-[0.2em] text-white/40">
-                Password
-              </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none transition-colors focus:border-cyan-500/60"
-                placeholder="••••••••"
-              />
-            </div>
-            {authError && (
-              <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-                {authError}
+          {authLoading ? (
+            <p className="text-sm text-white/50">Checking your session…</p>
+          ) : !user ? (
+            <div className="glass-card space-y-3 rounded-2xl border border-cyan-500/10 p-6 shadow-[0_0_40px_rgba(6,182,212,0.06)]">
+              <p className="text-sm text-white/70">
+                You need to be signed in with an admin account before the codeword/password will work.
               </p>
-            )}
-            <button type="submit" disabled={authBusy} className="btn-primary w-full">
-              {authBusy ? 'Verifying…' : 'Enter'}
-            </button>
-          </motion.form>
+              <a href="/login" className="btn-primary block w-full text-center">
+                Sign in
+              </a>
+            </div>
+          ) : (
+            <motion.form
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              onSubmit={handleLogin}
+              className="glass-card space-y-4 rounded-2xl border border-cyan-500/10 p-6 shadow-[0_0_40px_rgba(6,182,212,0.06)]"
+            >
+              <div>
+                <label className="mb-1.5 block text-[10px] uppercase tracking-[0.2em] text-white/40">
+                  Codeword / Callsign
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={codeword}
+                  onChange={(e) => setCodeword(e.target.value)}
+                  className="w-full rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none transition-colors focus:border-cyan-500/60"
+                  placeholder="yeah that one..,"
+                />
+
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[10px] uppercase tracking-[0.2em] text-white/40">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none transition-colors focus:border-cyan-500/60"
+                  placeholder="••••••••"
+                />
+              </div>
+              {authError && (
+                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                  {authError}
+                </p>
+              )}
+              <button type="submit" disabled={authBusy} className="btn-primary w-full">
+                {authBusy ? 'Verifying…' : 'Enter'}
+              </button>
+            </motion.form>
+          )}
         </div>
       </div>
     );
@@ -254,6 +296,7 @@ export default function AdminPage() {
 
 const TABS = [
   { key: 'registrants', label: 'Registrants', icon: Users },
+  { key: 'checkin', label: 'Check In', icon: QrCode },
   { key: 'catalog', label: 'Catalog', icon: Layers },
   { key: 'tickets', label: 'Tickets', icon: Lock },
   { key: 'promo', label: 'Promo', icon: Sparkles },
@@ -283,9 +326,17 @@ const CATALOG_TEXT_FIELDS = [
   { key: 'section_color', label: 'Section Color', hint: '#33d6ff', color: true },
   { key: 'duration', label: 'Duration (days)' },
   { key: 'seats', label: 'Seats' },
+  { key: 'group_size', label: 'Group Size (1 = individual, no team required)' },
   { key: 'eligibility', label: 'Eligibility' },
   { key: 'venue', label: 'Venue' },
-  { key: 'timing', label: 'Timing' },
+  { key: 'event_date', label: 'Date', hint: 'e.g. 12 Mar 2026' },
+  { key: 'timing', label: 'Time', hint: 'e.g. 4:00 PM' },
+  { key: 'prize_pool', label: 'Prize Pool', hint: 'e.g. ₹50,000' },
+  {
+    key: 'strike_price',
+    label: 'Fake Original Price (marketing only — shown struck through next to the real price)',
+    hint: 'e.g. ₹1,499',
+  },
   { key: 'image', label: 'Image URL', hint: 'https://…' },
   { key: 'badge_icon', label: 'Badge URL', hint: 'https://… (or an emoji)' },
   { key: 'accent_color', label: 'Accent Color', color: true },
@@ -349,18 +400,33 @@ function AdminDashboard({ session, onLogout }) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [catalogReady, setCatalogReady] = useState(false);
 
+  // Refreshed on mount AND every time users reload (see loadUsers below) —
+  // otherwise a workshop/event added mid-session stays absent from
+  // WORKSHOP_IDS/EVENT_IDS, and a registrant who paid for it shows up with
+  // that item silently missing from their Workshops/Events buckets.
+  const loadCatalogSets = async () => {
+    const [workshops, events] = await Promise.all([getCatalog('workshop'), getCatalog('event')]);
+    CATALOG = [...workshops, ...events];
+    WORKSHOP_IDS = new Set(workshops.map((c) => String(c.id)));
+    EVENT_IDS = new Set(events.map((c) => String(c.id)));
+    setCatalogReady(true);
+  };
+
   useEffect(() => {
-    let active = true;
-    Promise.all([getCatalog('workshop'), getCatalog('event')]).then(([workshops, events]) => {
-      if (!active) return;
-      CATALOG = [...workshops, ...events];
-      WORKSHOP_IDS = new Set(workshops.map((c) => String(c.id)));
-      EVENT_IDS = new Set(events.map((c) => String(c.id)));
-      setCatalogReady(true);
+    loadCatalogSets();
+  }, []);
+
+  // Keeps ADMIN_TOKEN current for every admin fetch below — logging out of
+  // the underlying Supabase account (or the token expiring/refreshing)
+  // updates it immediately, since the server re-verifies it on every call.
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      ADMIN_TOKEN = data?.session?.access_token || null;
     });
-    return () => {
-      active = false;
-    };
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, authSession) => {
+      ADMIN_TOKEN = authSession?.access_token || null;
+    });
+    return () => sub?.subscription?.unsubscribe();
   }, []);
 
   const [catalogItems, setCatalogItems] = useState([]);
@@ -392,7 +458,7 @@ function AdminDashboard({ session, onLogout }) {
     setTicketsLoading(true);
     setTicketsError('');
     try {
-      const res = await fetch('/api/admin/tickets', { headers: { [ADMIN_HEADER]: session.callsign } });
+      const res = await fetch('/api/admin/tickets', { headers: adminHeaders(session) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
         setTicketsError(data.message || 'Failed to load tickets.');
@@ -421,7 +487,7 @@ function AdminDashboard({ session, onLogout }) {
     setCatalogError('');
     try {
       const res = await fetch('/api/admin/catalog', {
-        headers: { [ADMIN_HEADER]: session.callsign },
+        headers: adminHeaders(session),
         cache: 'no-store',
       });
       const data = await res.json().catch(() => ({}));
@@ -436,6 +502,39 @@ function AdminDashboard({ session, onLogout }) {
     }
   };
 
+  // Reorders one item within its own kind (workshop/event). sort_order is a
+  // plain `integer not null default 0` column, and most rows still sit at
+  // that default — a fractional-midpoint swap doesn't work here (ties at 0
+  // mean "the neighbor" and "the one beyond it" are often the same value,
+  // and a non-integer write is rejected by the column type anyway). Instead,
+  // splice the moved item into its new position and renumber the whole
+  // kind's list to clean multiples of 10 in that order — always correct
+  // regardless of whatever mess the existing values were in.
+  const moveCatalogOrder = async (item, dir) => {
+    const kindList = catalogItems.filter((c) => c.kind === item.kind && c.title);
+    const idx = kindList.findIndex((c) => c.id === item.id);
+    const targetIdx = dir === 'up' ? idx - 1 : idx + 1;
+    if (idx === -1 || targetIdx < 0 || targetIdx >= kindList.length) return;
+
+    const reordered = kindList.slice();
+    const [moved] = reordered.splice(idx, 1);
+    reordered.splice(targetIdx, 0, moved);
+
+    const results = await Promise.all(
+      reordered.map((c, i) =>
+        fetch('/api/admin/catalog', {
+          method: 'PATCH',
+          headers: adminHeaders(session, { 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ id: c.id, kind: c.kind, fields: { sort_order: i * 10 } }),
+        }).then((res) => res.json().catch(() => ({})))
+      )
+    );
+    if (results.some((r) => !r.success)) {
+      pushToast?.('Failed to reorder — some items may not have saved.', 'error');
+    }
+    loadCatalog();
+  };
+
   useEffect(() => {
     if (tab === 'catalog' && !catalogLoaded) loadCatalog();
   }, [tab, catalogLoaded]);
@@ -445,7 +544,7 @@ function AdminDashboard({ session, onLogout }) {
     setAdminsError('');
     try {
       const res = await fetch('/api/admin/list', {
-        headers: { [ADMIN_HEADER]: session.callsign },
+        headers: adminHeaders(session),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -468,7 +567,7 @@ function AdminDashboard({ session, onLogout }) {
     setLogsError('');
     try {
       const res = await fetch('/api/admin/logs', {
-        headers: { [ADMIN_HEADER]: session.callsign },
+        headers: adminHeaders(session),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -490,9 +589,10 @@ function AdminDashboard({ session, onLogout }) {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/admin/users', {
-        headers: { [ADMIN_HEADER]: session.callsign },
-      });
+      const [res] = await Promise.all([
+        fetch('/api/admin/users', { headers: adminHeaders(session) }),
+        loadCatalogSets(),
+      ]);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.message || 'Failed to load users.');
@@ -527,7 +627,7 @@ function AdminDashboard({ session, onLogout }) {
     try {
       await fetch('/api/admin/logout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', [ADMIN_HEADER]: session.callsign },
+        headers: adminHeaders(session, { 'Content-Type': 'application/json' }),
         body: JSON.stringify({ callsign: session.callsign }),
       });
     } catch {
@@ -704,6 +804,18 @@ function AdminDashboard({ session, onLogout }) {
         </div>
 
         <AnimatePresence mode="wait">
+          {tab === 'checkin' && (
+            <motion.div
+              key="checkin"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+            >
+              <CheckInPanel session={session} pushToast={pushToast} users={users} onRefresh={loadUsers} />
+            </motion.div>
+          )}
+
           {tab === 'tickets' && (
             <motion.div
               key="tickets"
@@ -810,20 +922,27 @@ function AdminDashboard({ session, onLogout }) {
                 !catalogError &&
                 catalogItems
                   .filter((item) => catalogKindFilter === 'all' || item.kind === catalogKindFilter)
-                  .map((item) => (
-                    <CatalogItemRow
-                      key={item.id}
-                      item={item}
-                      session={session}
-                      expanded={expandedCatalogId === item.id}
-                      onToggle={() =>
-                        setExpandedCatalogId((cur) => (cur === item.id ? null : item.id))
-                      }
-                      onCollapse={() => setExpandedCatalogId(null)}
-                      onSaved={loadCatalog}
-                      pushToast={pushToast}
-                    />
-                  ))}
+                  .map((item) => {
+                    const kindList = catalogItems.filter((c) => c.kind === item.kind && c.title);
+                    const posInKind = kindList.findIndex((c) => c.id === item.id);
+                    return (
+                      <CatalogItemRow
+                        key={item.id}
+                        item={item}
+                        session={session}
+                        expanded={expandedCatalogId === item.id}
+                        onToggle={() =>
+                          setExpandedCatalogId((cur) => (cur === item.id ? null : item.id))
+                        }
+                        onCollapse={() => setExpandedCatalogId(null)}
+                        onSaved={loadCatalog}
+                        pushToast={pushToast}
+                        onMove={item.title ? (dir) => moveCatalogOrder(item, dir) : null}
+                        canMoveUp={posInKind > 0}
+                        canMoveDown={posInKind !== -1 && posInKind < kindList.length - 1}
+                      />
+                    );
+                  })}
             </motion.div>
           )}
 
@@ -1120,14 +1239,220 @@ function LogRow({ log }) {
   );
 }
 
+function CheckInPanel({ session, pushToast, users, onRefresh }) {
+  const [scanning, setScanning] = useState(false);
+  const [result, setResult] = useState(null); // { loading } | { error } | { data, already }
+  const [manualCode, setManualCode] = useState('');
+
+  const handleScan = async (code) => {
+    setScanning(false);
+    setResult({ loading: true });
+    try {
+      const res = await fetch('/api/admin/checkin', {
+        method: 'POST',
+        headers: adminHeaders(session, { 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ code }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        setResult({ error: json.message || 'No attendee found for that code.' });
+        return;
+      }
+      setResult({ data: json.data, already: !!json.already_checked_in });
+      pushToast?.(
+        json.already_checked_in
+          ? `${json.data.name || json.data.unique_code} was already checked in.`
+          : `Checked in ${json.data.name || json.data.unique_code}.`
+      );
+      if (!json.already_checked_in) onRefresh?.();
+    } catch (err) {
+      setResult({ error: err.message || 'Something went wrong.' });
+    }
+  };
+
+  const checkedIn = (users || [])
+    .filter((u) => u.checked_in_at)
+    .sort((a, b) => new Date(b.checked_in_at) - new Date(a.checked_in_at));
+
+  return (
+    <div>
+      <p className="mb-4 text-[10px] uppercase tracking-[0.2em] text-cyan-400/80">
+        Scan an attendee&apos;s QR to stamp their check-in time — rescanning an already checked-in
+        attendee won&apos;t overwrite it.
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            setResult(null);
+            setScanning(true);
+          }}
+          className="inline-flex items-center gap-2 rounded-full bg-cyan-400 px-6 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-black hover:bg-white transition-colors"
+        >
+          <QrCode size={14} /> Scan QR
+        </button>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const code = manualCode.trim();
+            if (!code) return;
+            setManualCode('');
+            handleScan(code);
+          }}
+          className="flex items-center gap-2"
+        >
+          <input
+            type="text"
+            value={manualCode}
+            onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+            placeholder="Enter CNS-id manually"
+            className="w-48 rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-xs font-mono outline-none transition-colors focus:border-cyan-500/60"
+          />
+          <button
+            type="submit"
+            disabled={!manualCode.trim()}
+            className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300 transition-colors hover:border-cyan-400/70 hover:bg-cyan-500/20 disabled:opacity-40"
+          >
+            Check In
+          </button>
+        </form>
+      </div>
+
+      <AnimatePresence>
+        {scanning && <QrScanner onScan={handleScan} onClose={() => setScanning(false)} title="Scan Attendee QR" />}
+        {result && (
+          <CheckInResultModal
+            result={result}
+            onRescan={() => {
+              setResult(null);
+              setScanning(true);
+            }}
+            onClose={() => setResult(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <div className="mt-8">
+        <p className="mb-3 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-cyan-400/80">
+          <CalendarCheck2 size={12} /> Checked In ({checkedIn.length})
+        </p>
+        {checkedIn.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-white/10 bg-white/[0.02] px-4 py-6 text-center text-xs text-white/30">
+            No one has checked in yet.
+          </p>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-white/10">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-white/10 bg-white/[0.03] text-[10px] uppercase tracking-[0.15em] text-white/40">
+                  <th className="px-4 py-2.5 font-semibold">Name</th>
+                  <th className="px-4 py-2.5 font-semibold">CNS-id</th>
+                  <th className="px-4 py-2.5 font-semibold">Phone</th>
+                  <th className="px-4 py-2.5 font-semibold">Check-in Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {checkedIn.map((u) => (
+                  <tr key={u.user_id} className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.02]">
+                    <td className="px-4 py-2.5 font-semibold text-white/85">{u.name || 'Unnamed'}</td>
+                    <td className="px-4 py-2.5 font-mono text-cyan-300">{u.unique_code || '—'}</td>
+                    <td className="px-4 py-2.5 text-white/60">{u.phone || '—'}</td>
+                    <td className="px-4 py-2.5 text-white/60">{new Date(u.checked_in_at).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CheckInResultModal({ result, onRescan, onClose }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-6"
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 12 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+        className="w-full max-w-md rounded-2xl border border-white/10 bg-[#050b0f] p-6"
+      >
+        {result.loading && <p className="text-center text-sm text-white/50">Looking up attendee…</p>}
+
+        {result.error && <p className="mb-4 text-center text-sm text-red-300">{result.error}</p>}
+
+        {result.data && (
+          <>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-lg font-bold text-white">{result.data.name || 'Unnamed'}</p>
+              <span
+                className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.15em] ${
+                  result.already ? 'bg-amber-400/15 text-amber-300' : 'bg-cyan-400/15 text-cyan-300'
+                }`}
+              >
+                {result.already ? 'Already Checked In' : 'Checked In Now'}
+              </span>
+            </div>
+            <div className="mb-4 grid grid-cols-1 gap-1.5 text-xs text-white/60 sm:grid-cols-2">
+              <p>CNS-id: <span className="text-cyan-300">{result.data.unique_code}</span></p>
+              <p>Phone: {result.data.phone || '—'}</p>
+              <p>College: {result.data.college || '—'}</p>
+              <p>College ID: {result.data.college_id || '—'}</p>
+              <p>Aadhaar: {result.data.aadhaar_number || '—'}</p>
+              <p>City: {result.data.city || '—'}</p>
+              <p>Gender: {result.data.gender || '—'}</p>
+              <p>Accommodation: {result.data.accommodation_room || '—'}</p>
+              <p className="sm:col-span-2">
+                Check-in time:{' '}
+                {result.data.checked_in_at ? new Date(result.data.checked_in_at).toLocaleString() : '—'}
+              </p>
+              <p className="sm:col-span-2">Workshops: {result.data.workshops?.join(', ') || '—'}</p>
+              <p className="sm:col-span-2">Events: {result.data.events?.join(', ') || '—'}</p>
+              <p className="sm:col-span-2">Merch: {result.data.merch_selection || '—'}</p>
+            </div>
+          </>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            onClick={onRescan}
+            className="flex-1 rounded-full bg-cyan-400 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-black hover:bg-white transition-colors"
+          >
+            Rescan
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-full border border-white/15 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/70 hover:text-white transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtitle }) {
   const [form, setForm] = useState({
-    accommodation_checkin: user.accommodation_checkin || '',
-    accommodation_checkout: user.accommodation_checkout || '',
     accommodation_room: user.accommodation_room || '',
   });
   const status = accommodationStatus(user);
   const buckets = paidBuckets(user);
+  const eventEntries = paidIds(user)
+    .map(String)
+    .filter((id) => WORKSHOP_IDS.has(id) || EVENT_IDS.has(id))
+    .map((id) => {
+      const item = findCatalogItem(id);
+      return { id, title: item?.title || id, groupSize: Number(item?.groupSize) || 1 };
+    });
   const bookedOrPending = status.tone !== 'none';
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
@@ -1137,19 +1462,13 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
     setSaving(true);
     setSaveMsg('');
     try {
-      // accommodation_checkin/checkout are timestamptz columns — an
-      // untouched field defaults to '' in form state, and Postgres rejects
-      // '' for a timestamp ("invalid input syntax for type timestamp with
-      // time zone"). Send null instead for anything left blank.
       const fields = {
         ...form,
-        accommodation_checkin: form.accommodation_checkin || null,
-        accommodation_checkout: form.accommodation_checkout || null,
         accommodation_room: form.accommodation_room || null,
       };
       const res = await fetch('/api/admin/profile', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', [ADMIN_HEADER]: session.callsign },
+        headers: adminHeaders(session, { 'Content-Type': 'application/json' }),
         body: JSON.stringify({ user_id: user.user_id, fields }),
       });
       const data = await res.json().catch(() => ({}));
@@ -1164,10 +1483,6 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
     } finally {
       setSaving(false);
     }
-  };
-
-  const stampNow = (field) => {
-    setForm((f) => ({ ...f, [field]: new Date().toISOString() }));
   };
 
   return (
@@ -1236,6 +1551,28 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
                 </p>
               </div>
 
+              {eventEntries.length > 0 && (
+                <div className="mb-5">
+                  <p className="mb-2 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-cyan-400/80">
+                    <Users size={12} /> Participants
+                  </p>
+                  <div className="space-y-2">
+                    {eventEntries.map((e) => (
+                      <ParticipantsPanel
+                        key={e.id}
+                        eventId={e.id}
+                        title={e.title}
+                        groupSize={e.groupSize}
+                        ownerCode={user.unique_code}
+                        session={session}
+                        pushToast={pushToast}
+                        onSaved={onSaved}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={() => setShowCart((v) => !v)}
@@ -1289,55 +1626,17 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
                   )}
                 </div>
 
-                <div>
+                <div className="sm:col-span-2">
                   <label className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-[0.2em] text-white/40">
-                    <CalendarClock size={11} /> Check-in
+                    <CalendarClock size={11} /> Check-in Time
                   </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="datetime-local"
-                      value={form.accommodation_checkin ? form.accommodation_checkin.slice(0, 16) : ''}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          accommodation_checkin: e.target.value ? new Date(e.target.value).toISOString() : '',
-                        })
-                      }
-                      className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs outline-none transition-colors focus:border-cyan-500/60"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => stampNow('accommodation_checkin')}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 transition-colors hover:border-cyan-400/60 hover:bg-cyan-500/20"
-                    >
-                      <CalendarCheck2 size={12} /> Now
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-[0.2em] text-white/40">
-                    <CalendarClock size={11} /> Check-out
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="datetime-local"
-                      value={form.accommodation_checkout ? form.accommodation_checkout.slice(0, 16) : ''}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          accommodation_checkout: e.target.value ? new Date(e.target.value).toISOString() : '',
-                        })
-                      }
-                      className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs outline-none transition-colors focus:border-cyan-500/60"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => stampNow('accommodation_checkout')}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 text-[10px] font-bold uppercase tracking-wide text-amber-300 transition-colors hover:border-amber-400/60 hover:bg-amber-500/20"
-                    >
-                      <CalendarX2 size={12} /> Now
-                    </button>
-                  </div>
+                  <p className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-white/70">
+                    {user.checked_in_at ? (
+                      new Date(user.checked_in_at).toLocaleString()
+                    ) : (
+                      <span className="text-white/30">Not checked in yet — scan their QR in the Check In tab.</span>
+                    )}
+                  </p>
                 </div>
               </div>
 
@@ -1502,7 +1801,7 @@ function SkipToggle({ skipped, onChange }) {
 
 const EMPTY_CONTACT = { name: '', role: '', phone: '' };
 
-function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved, pushToast }) {
+function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved, pushToast, onMove, canMoveUp, canMoveDown }) {
   const scalarFields = [...CATALOG_TEXT_FIELDS, ...CATALOG_TEXTAREA_FIELDS, ...CATALOG_COLOR_FIELDS];
   const allFields = [...scalarFields, ...CATALOG_LIST_FIELDS];
 
@@ -1583,11 +1882,24 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
     try {
       const fields = {};
       for (const f of scalarFields) {
-        if (skip[f.key]) continue; // admin chose to leave this field unchanged
+        if (skip[f.key]) {
+          // For every other field, "skip" means leave whatever's in the DB
+          // alone. Seats is the odd one out: it's a registration cap, and
+          // skipping it is how an admin says "no cap" — so it must actively
+          // write null (remaining() in useCapacity.js treats a non-number
+          // Seats as Infinity/unlimited), not just leave an old number in
+          // place still silently capping signups.
+          if (f.key === 'seats') fields.seats = null;
+          continue;
+        }
         if (form[f.key] === initialFormRef.current[f.key]) continue; // untouched — don't resend
         let value = form[f.key];
         if (f.key === 'duration' || f.key === 'seats') {
           value = value === '' ? null : Number(value);
+        } else if (f.key === 'group_size') {
+          // Not-null column, defaults to 1 (individual) — unlike seats,
+          // an empty box here can't mean "uncapped", so it falls back to 1.
+          value = value === '' ? 1 : Math.max(1, Number(value) || 1);
         } else if (TEXTAREA_LIST_KEYS.has(f.key)) {
           value = value
             .split('\n')
@@ -1610,9 +1922,17 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
         }
       }
 
+      // Always resend the current skip selection as hidden_fields — this is
+      // what actually makes a skipped field disappear from the public
+      // events/workshop detail page (see catalogStore.js), so it needs to
+      // stay in sync with `skip` on every save, not just when something
+      // else also changed.
+      fields.hidden_fields = allFields.filter((f) => skip[f.key]).map((f) => f.key);
+      if (skip.contacts) fields.hidden_fields.push('contacts');
+
       const res = await fetch(`/api/admin/catalog`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', [ADMIN_HEADER]: session.callsign },
+        headers: adminHeaders(session, { 'Content-Type': 'application/json' }),
         body: JSON.stringify({ id: item.id, kind: item.kind, fields }),
       });
       const data = await res.json().catch(() => ({}));
@@ -1638,10 +1958,17 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
 
   return (
     <div className="glass-card overflow-hidden rounded-xl transition-colors hover:border-cyan-500/20">
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onToggle}
-        className="flex w-full items-center justify-between gap-3 p-4 text-left"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-left"
       >
         <div className="flex items-center gap-3">
           <span
@@ -1662,10 +1989,38 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
           </div>
         </div>
         <div className="flex items-center gap-2 text-white/40">
-          <Pencil size={13} />
+          {onMove && (
+            <span className="flex items-center gap-1.5">
+              <button
+                type="button"
+                title="Move up (show earlier)"
+                disabled={!canMoveUp}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMove('up');
+                }}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/[0.04] text-white/70 transition-colors hover:border-cyan-400/60 hover:bg-cyan-500/15 hover:text-cyan-300 disabled:opacity-20 disabled:hover:border-white/15 disabled:hover:bg-white/[0.04] disabled:hover:text-white/70"
+              >
+                <ChevronUp size={20} />
+              </button>
+              <button
+                type="button"
+                title="Move down (show later)"
+                disabled={!canMoveDown}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMove('down');
+                }}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/[0.04] text-white/70 transition-colors hover:border-cyan-400/60 hover:bg-cyan-500/15 hover:text-cyan-300 disabled:opacity-20 disabled:hover:border-white/15 disabled:hover:bg-white/[0.04] disabled:hover:text-white/70"
+              >
+                <ChevronDown size={20} />
+              </button>
+            </span>
+          )}
+          <Pencil size={13} className="ml-1" />
           <ChevronDown size={16} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
         </div>
-      </button>
+      </div>
 
       <AnimatePresence initial={false}>
         {expanded && (
@@ -1923,6 +2278,10 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
                 </div>
               </div>
 
+              {Number(item.group_size) > 1 && (
+                <TeamRegistrationsPanel eventId={item.id} groupSize={Number(item.group_size)} session={session} />
+              )}
+
               <div className="mt-5 flex items-center gap-3">
                 <button
                   type="button"
@@ -1942,6 +2301,309 @@ function CatalogItemRow({ item, session, expanded, onToggle, onCollapse, onSaved
   );
 }
 
+// Per-event participant chips shown inside a registrant's own row. Unlike
+// TeamRegistrationsPanel (catalog tab, one event → every team), this is one
+// user → every event they're paid for, and lets an admin reassign *any*
+// slot — including the leader/payer — to a different CNS-id, for both solo
+// (groupSize 1) and team events. Solo events have no event_teams row at
+// all, so they're rendered directly from `ownerCode` with no fetch.
+function ParticipantsPanel({ eventId, title, groupSize, ownerCode, session, pushToast, onSaved }) {
+  const [team, setTeam] = useState(null);
+  const [editingCode, setEditingCode] = useState(null);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (groupSize <= 1) return;
+    let active = true;
+    fetch(`/api/admin/team?eventId=${encodeURIComponent(eventId)}`, {
+      headers: adminHeaders(session),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (!active || !json.success) return;
+        const found = (json.data || []).find(
+          (t) => t.leader_unique_code === ownerCode || (t.member_codes || []).includes(ownerCode)
+        );
+        setTeam(found || null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [eventId, groupSize, ownerCode, session.callsign]);
+
+  const codes = team
+    ? [team.leader_unique_code, ...(team.member_codes || []).filter((c) => c !== team.leader_unique_code)].map(
+        (c) => ({ code: c, leader: c === team.leader_unique_code })
+      )
+    : [{ code: ownerCode, leader: true }];
+
+  const reassign = async (fromCode) => {
+    const toCode = draft.trim().toUpperCase();
+    if (!toCode) return;
+    const isLeader = codes.find((c) => c.code === fromCode)?.leader;
+    const warned = window.confirm(
+      `Reassign "${title}" from ${fromCode} to ${toCode}?${
+        isLeader ? ' This changes who the paying registrant is for this event.' : ''
+      } This cannot be undone automatically. Continue?`
+    );
+    if (!warned) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/reassign-registration', {
+        method: 'POST',
+        headers: adminHeaders(session, { 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ eventId, fromCode, toCode }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        pushToast?.(json.message || 'Failed to reassign.', 'error');
+        return;
+      }
+      pushToast?.(`Reassigned ${fromCode} → ${toCode} for "${title}".`);
+      setEditingCode(null);
+      setDraft('');
+      setTeam(json.data?.team || null);
+      onSaved?.();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-black/20 p-2.5">
+      <p className="mb-1.5 truncate text-[10px] font-semibold uppercase tracking-[0.15em] text-white/40">{title}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {codes.map(({ code, leader }) =>
+          editingCode === code ? (
+            <span key={code} className="flex items-center gap-1">
+              <input
+                autoFocus
+                type="text"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="New CNS-id"
+                className="w-28 rounded-full border border-white/15 bg-black/40 px-2 py-0.5 font-mono text-[10px] text-white outline-none focus:border-cyan-500/60"
+              />
+              <button
+                type="button"
+                disabled={saving || !draft.trim()}
+                onClick={() => reassign(code)}
+                className="text-[10px] font-black uppercase text-cyan-300 hover:underline disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingCode(null);
+                  setDraft('');
+                }}
+                className="text-[10px] text-white/40 hover:text-white/70"
+              >
+                ×
+              </button>
+            </span>
+          ) : (
+            <span
+              key={code}
+              className="flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 font-mono text-[10px] text-cyan-300"
+            >
+              {code}
+              {leader ? ' (paid)' : ''}
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingCode(code);
+                  setDraft('');
+                }}
+                className="ml-0.5 text-cyan-300/50 hover:text-white"
+                aria-label={`Reassign ${code}`}
+              >
+                <Pencil size={9} />
+              </button>
+            </span>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Read-only by default (view what each team's registrant supplied); "Edit"
+// unlocks chip-editing of exactly `groupSize` CNS-ids for that one team.
+function TeamRegistrationsPanel({ eventId, groupSize, session }) {
+  const [teams, setTeams] = useState(null);
+  const [error, setError] = useState('');
+
+  const load = () => {
+    fetch(`/api/admin/team?eventId=${encodeURIComponent(eventId)}`, {
+      headers: adminHeaders(session),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) setTeams(json.data);
+        else setError(json.message || 'Failed to load teams.');
+      })
+      .catch((err) => setError(err.message));
+  };
+
+  useEffect(load, [eventId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="mt-5 border-t border-white/10 pt-4">
+      <p className="mb-3 text-[10px] uppercase tracking-[0.2em] text-cyan-400/80">
+        Team Registrations — {groupSize} CNS-ids each
+      </p>
+      {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
+      {teams === null ? (
+        <p className="text-xs text-white/40">Loading…</p>
+      ) : teams.length === 0 ? (
+        <p className="text-xs text-white/40">No teams registered for this event yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {teams.map((team) => (
+            <TeamRow key={team.id} team={team} groupSize={groupSize} session={session} onSaved={load} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TeamRow({ team, groupSize, session, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [codes, setCodes] = useState(team.member_codes || []);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const startEdit = () => {
+    setCodes(team.member_codes || []);
+    setMsg('');
+    setEditing(true);
+  };
+
+  const addCode = () => {
+    const v = draft.trim().toUpperCase();
+    if (v && !codes.includes(v)) setCodes([...codes, v]);
+    setDraft('');
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setMsg('');
+    try {
+      const res = await fetch('/api/admin/team', {
+        method: 'PATCH',
+        headers: adminHeaders(session, { 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ id: team.id, memberCodes: codes }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setMsg(json.message || 'Failed to save.');
+        return;
+      }
+      setEditing(false);
+      onSaved?.();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+      <div className="mb-1.5 flex items-center justify-between">
+        <p className="font-mono text-[10px] text-white/40">Leader: {team.leader_unique_code}</p>
+        {!editing && (
+          <button
+            type="button"
+            onClick={startEdit}
+            className="text-[10px] font-black uppercase tracking-[0.15em] text-cyan-300 hover:underline"
+          >
+            Edit
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {codes.map((c) => (
+              <span
+                key={c}
+                className="flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 font-mono text-[10px] text-cyan-300"
+              >
+                {c}
+                {c !== team.leader_unique_code && (
+                  <button type="button" onClick={() => setCodes(codes.filter((x) => x !== c))} className="text-cyan-300/60 hover:text-white">
+                    ×
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addCode();
+                }
+              }}
+              placeholder="CNS-XXXXXX"
+              disabled={codes.length >= groupSize}
+              className="flex-1 rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white outline-none focus:border-cyan-500/60 disabled:opacity-40"
+            />
+            <button
+              type="button"
+              onClick={addCode}
+              disabled={codes.length >= groupSize}
+              className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 text-xs text-cyan-300 disabled:opacity-40"
+            >
+              Add
+            </button>
+          </div>
+          <p className="text-[10px] text-white/30">
+            {codes.length} / {groupSize} — must equal exactly {groupSize} to save.
+          </p>
+          {msg && <p className="text-[10px] text-red-400">{msg}</p>}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving || codes.length !== groupSize}
+              className="rounded-full bg-cyan-400 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-black disabled:opacity-40"
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="rounded-full border border-white/15 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-white/60"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {(team.member_codes || []).map((c) => (
+            <span
+              key={c}
+              className="rounded-full border border-white/15 bg-white/[0.03] px-2.5 py-0.5 font-mono text-[10px] text-white/60"
+            >
+              {c}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PromoEditor({ id, promo, session, pushToast, onSaved }) {
   const [form, setForm] = useState({ ...DEFAULT_PROMOS[id], ...promo });
   const [saving, setSaving] = useState(false);
@@ -1954,7 +2616,7 @@ function PromoEditor({ id, promo, session, pushToast, onSaved }) {
     try {
       const res = await fetch('/api/admin/promo', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', [ADMIN_HEADER]: session.callsign },
+        headers: adminHeaders(session, { 'Content-Type': 'application/json' }),
         body: JSON.stringify({ id, fields: form }),
       });
       const data = await res.json().catch(() => ({}));

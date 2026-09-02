@@ -11,6 +11,7 @@ import { useCart } from '../context/CartContext';
 import useProfile from '../hooks/useProfile';
 import { MERCH_ITEMS, ticketFor } from './merchData';
 import { getCostMap } from '@/lib/ticketStore';
+import { showCartToast } from '@/lib/cartToast';
 
 function QtyStepper({ qty, onChange, label }) {
   const [flash, setFlash] = useState(false);
@@ -188,7 +189,7 @@ function MerchDialog({ item, profile, deliveryFee, onClose, onConfirm }) {
                 }}
                 className={wantsDelivery === true ? 'btn-primary text-[10px]' : 'btn-secondary text-[10px]'}
               >
-                <Truck size={14} /> Yes, deliver (+₹{deliveryFee})
+                <Truck size={14} /> Yes, deliver (extra charges apply)
               </button>
               <button
                 type="button"
@@ -339,7 +340,7 @@ export default function MerchSection() {
 
   const handleSelect = (item) => {
     if (!user) {
-      router.push('/login?redirect=/accommodation');
+      router.push('/login?redirect=/merch');
       return;
     }
     setActiveItem(item);
@@ -384,6 +385,7 @@ export default function MerchSection() {
       }
     }
 
+    showCartToast('Added to cart — check it out there');
     setActiveItem(null);
   };
 

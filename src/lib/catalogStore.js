@@ -12,9 +12,13 @@ const COLUMN_TO_FIELD = {
   foil_gradient: 'foilGradient',
   about_extra: 'aboutExtra',
   brochure_url: 'brochureUrl',
+  prize_pool: 'prizePool',
+  event_date: 'eventDate',
+  group_size: 'groupSize',
+  strike_price: 'strikePrice',
 };
 
-const IGNORED_COLUMNS = new Set(['kind', 'sort_order', 'updated_at', 'updated_by']);
+const IGNORED_COLUMNS = new Set(['kind', 'sort_order', 'updated_at', 'updated_by', 'hidden_fields']);
 
 // Text columns that are nullable in the DB but must never reach the UI as
 // null — every color/gradient string gets concatenated or .replace()'d
@@ -23,7 +27,7 @@ const TEXT_COLUMNS_DEFAULT_EMPTY = new Set([
   'title', 'subtitle', 'type', 'section', 'section_color',
   'eligibility', 'venue', 'timing', 'image', 'badge_icon',
   'accent_color', 'glow_color', 'foil_gradient', 'description',
-  'format', 'certificate', 'brochure_url',
+  'format', 'certificate', 'brochure_url', 'prize_pool', 'event_date', 'strike_price',
 ]);
 
 // Every workshop/event's real identity — price, ticket id, and the fact
@@ -33,9 +37,14 @@ const TEXT_COLUMNS_DEFAULT_EMPTY = new Set([
 // getCatalogItem below simply exclude it from what the public site can see.
 
 function rowToCard(row) {
+  // Fields the admin has toggled "skip" on are meant to be invisible on the
+  // public site, not just left alone in the DB — see the admin catalog
+  // editor's skip toggle and migration 0019.
+  const hidden = new Set(Array.isArray(row.hidden_fields) ? row.hidden_fields : []);
   const card = {};
   for (const [column, value] of Object.entries(row)) {
     if (IGNORED_COLUMNS.has(column)) continue;
+    if (hidden.has(column)) continue;
     const resolved = value == null && TEXT_COLUMNS_DEFAULT_EMPTY.has(column) ? '' : value;
     card[COLUMN_TO_FIELD[column] || column] = resolved;
   }

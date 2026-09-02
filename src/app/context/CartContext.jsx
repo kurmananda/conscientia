@@ -97,19 +97,45 @@ export function CartProvider({ children }) {
         writeLocalCart([]);
       }
 
-      const { data, error } = await supabase
-        .from('cart_items')
-        .select('item_data')
-        .eq('user_id', user.id);
+      const [{ data, error }, { data: registration }] = await Promise.all([
+        supabase.from('cart_items').select('item_data').eq('user_id', user.id),
+        supabase
+          .from('registrations')
+          .select('workshop_ids, payment_status')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+      ]);
 
       if (!error) {
         const rawItems = (data || []).map((row) => row.item_data);
         const normalized = normalizeItems(rawItems);
-        setItems(normalized);
+
+        // Anything already paid for shouldn't still be sitting in the
+        // cart — payment-success clears the matching items right after
+        // checkout, but this catches everything else that can leave a
+        // stale row behind (a team member added mid-checkout, an admin
+        // reassigning a registration, a cart synced from another device).
+        const paidIds =
+          registration?.payment_status === 'paid' && Array.isArray(registration.workshop_ids)
+            ? registration.workshop_ids
+            : [];
+        const isPaidItem = (item) =>
+          paidIds.includes(item.id) || paidIds.some((id) => item.key === id || item.key?.startsWith(`${id}:`));
+
+        const kept = normalized.filter((item) => !isPaidItem(item));
+        const removedKeys = normalized.filter((item) => isPaidItem(item)).map((item) => item.key);
+
+        setItems(kept);
+        if (removedKeys.length > 0) {
+          supabase.from('cart_items').delete().eq('user_id', user.id).in('item_key', removedKeys);
+        }
         // Persist the healed shape back so this doesn't need to re-run
         // every load, and so downstream reads (e.g. admin views) see it too.
-        const staleRows = normalized
-          .filter((item, i) => JSON.stringify(item) !== JSON.stringify(rawItems[i]))
+        const staleRows = kept
+          .filter((item) => {
+            const raw = rawItems.find((r) => r?.key === item.key);
+            return JSON.stringify(item) !== JSON.stringify(raw);
+          })
           .map((item) => ({ user_id: user.id, item_key: item.key, item_data: item }));
         if (staleRows.length > 0) {
           supabase.from('cart_items').upsert(staleRows, { onConflict: 'user_id,item_key' });
@@ -211,18 +237,34 @@ export function CartProvider({ children }) {
     [user]
   );
 
+  // Delivery is a shared add-on across all merch items, not its own
+  // purchasable thing — it can't be cancelled on its own while merch items
+  // remain in the cart, and it auto-drops once the last merch item does.
   const removeItem = useCallback(
     async (key) => {
+      const current = user ? items : readLocalCart();
+      const merchCount = current.filter((i) => i.kind === 'merch').length;
+
+      if (key === 'delivery' && merchCount > 0) return;
+
+      const removingMerch = current.find((i) => i.key === key)?.kind === 'merch';
+      const keysToRemove = new Set([key]);
+      if (removingMerch && merchCount - 1 === 0) keysToRemove.add('delivery');
+
       if (user) {
-        setItems((prev) => prev.filter((i) => i.key !== key));
-        await supabase.from('cart_items').delete().eq('user_id', user.id).eq('item_key', key);
+        setItems((prev) => prev.filter((i) => !keysToRemove.has(i.key)));
+        await supabase
+          .from('cart_items')
+          .delete()
+          .eq('user_id', user.id)
+          .in('item_key', Array.from(keysToRemove));
         return;
       }
-      const next = readLocalCart().filter((i) => i.key !== key);
+      const next = readLocalCart().filter((i) => !keysToRemove.has(i.key));
       writeLocalCart(next);
       setItems(next);
     },
-    [user]
+    [user, items]
   );
 
   const clear = useCallback(async () => {

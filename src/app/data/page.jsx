@@ -31,6 +31,7 @@ export default function DataPage() {
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null);
   const [participants, setParticipants] = useState(null);
+  const [teams, setTeams] = useState([]);
   const [participantsError, setParticipantsError] = useState("");
   const [search, setSearch] = useState("");
 
@@ -67,6 +68,7 @@ export default function DataPage() {
   const openItem = async (item) => {
     setSelected(item);
     setParticipants(null);
+    setTeams([]);
     setParticipantsError("");
     setSearch("");
     const res = await authedFetch(`/api/data/registrants?item_id=${encodeURIComponent(item.id)}`);
@@ -76,6 +78,7 @@ export default function DataPage() {
       return;
     }
     setParticipants(json.data.participants || []);
+    setTeams(json.data.teams || []);
   };
 
   const filteredParticipants = useMemo(() => {
@@ -225,6 +228,40 @@ export default function DataPage() {
                       </div>
                     </div>
                   </div>
+
+                  {teams.length > 0 && (
+                    <div className="glass-card" style={{ borderRadius: "16px", padding: "1rem 1.2rem", marginBottom: "1.2rem" }}>
+                      <p style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(51,214,255,0.8)", fontWeight: 700, marginBottom: "0.7rem" }}>
+                        Teams ({teams.length})
+                      </p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                        {teams.map((team) => (
+                          <div key={team.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.4rem" }}>
+                            <span style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.4)", marginRight: "0.3rem" }}>
+                              {team.confirmed ? "Confirmed" : "Pending"}:
+                            </span>
+                            {[team.leader_unique_code, ...(team.member_codes || []).filter((c) => c !== team.leader_unique_code)].map((code) => (
+                              <span
+                                key={code}
+                                style={{
+                                  fontFamily: "monospace",
+                                  fontSize: "0.7rem",
+                                  padding: "0.2rem 0.6rem",
+                                  borderRadius: "999px",
+                                  border: "1px solid rgba(51,214,255,0.3)",
+                                  background: "rgba(51,214,255,0.08)",
+                                  color: "#33d6ff",
+                                }}
+                              >
+                                {code}
+                                {code === team.leader_unique_code ? " (leader)" : ""}
+                              </span>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div style={{ position: "relative", marginBottom: "1.2rem", maxWidth: "360px" }}>
                     <Search size={14} style={{ position: "absolute", left: "0.9rem", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)" }} />

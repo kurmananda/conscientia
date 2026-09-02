@@ -11,12 +11,13 @@ import useSound from "@/app/hooks/useSound";
 import { useAuth } from "@/app/context/AuthContext";
 import { useCart } from "@/app/context/CartContext";
 import useProfile from "@/app/hooks/useProfile";
-import usePaymentReminder from "@/app/hooks/usePaymentReminder";
-import PrePaymentReminderModal from "@/app/components/PrePaymentReminderModal";
 import useIsTouch from "@/app/hooks/useIsTouch";
 import useCapacity from "@/app/hooks/useCapacity";
-import { startTiqrCheckout } from "@/lib/checkout";
+import { showCartToast } from "@/lib/cartToast";
 import { parsePriceLabel } from "@/lib/parsePriceLabel";
+import EvergreenCountdown from "@/app/components/EvergreenCountdown";
+import TeamReminderModal from "@/app/components/TeamReminderModal";
+import { supabase } from "@/lib/supabaseClient";
 
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
@@ -323,10 +324,10 @@ function CinematicBox({
               />
               <h2
                 style={{
-                  fontFamily: "'Rubik Glitch', sans-serif",
-                  fontSize: "1rem",
+                  fontFamily: "var(--font-anton), sans-serif",
+                  fontSize: "1.15rem",
                   fontWeight: 400,
-                  letterSpacing: "0.12em",
+                  letterSpacing: "0.1em",
                   textTransform: "uppercase",
                   margin: 0,
                   textShadow: `0 0 30px ${glowColor}`,
@@ -372,11 +373,8 @@ export default function EventDetailPage() {
   }, [id]);
 
   const { user } = useAuth();
-  const { addItem, hasItem } = useCart();
+  const { items, addItem, hasItem } = useCart();
   const { profile } = useProfile();
-  const { guard, modalProps } = usePaymentReminder();
-  const [registering, setRegistering] = useState(false);
-  const [registerError, setRegisterError] = useState("");
   const [paidWorkshopIds, setPaidWorkshopIds] = useState([]);
 
   useEffect(() => {
@@ -401,6 +399,32 @@ export default function EventDetailPage() {
   const { remaining } = useCapacity();
   const isClosed = !isRegistered && remaining(card) <= 0;
 
+  const [teamIncomplete, setTeamIncomplete] = useState(false);
+  const [showTeamModal, setShowTeamModal] = useState(false);
+
+  useEffect(() => {
+    if (!isRegistered || !card || Number(card.groupSize) <= 1 || !user?.id) {
+      setTeamIncomplete(false);
+      return;
+    }
+    let active = true;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token;
+      if (!token) return;
+      const res = await fetch(`/api/team?eventId=${encodeURIComponent(card.id)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (active && json.success) {
+        setTeamIncomplete(!json.data?.team?.confirmed);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [isRegistered, card, user?.id]);
+
   const playGlitch = useSound("/sounds/glitch.wav", 0.1, 0.15);
   const playClick = useSound("/sounds/click.wav", 0.125, 0.08);
 
@@ -421,43 +445,35 @@ export default function EventDetailPage() {
   });
 
   const handleAddToCart = () => {
-    if (!card || inCart || isClosed) return;
+    if (!card || inCart || isClosed || isRegistered) return;
     playGlitch();
     addItem(toCartItem());
+    showCartToast("Added to cart — check it out there");
   };
 
-  const handleRegisterNow = () => {
+  // Registering no longer books/pays instantly — it just adds the event to
+  // the shared cart, same as the cart icon button. If merch or
+  // accommodation isn't in the cart yet, send the user straight to that
+  // page next instead of leaving it to a dismissible reminder.
+  const handleRegisterNow = async () => {
     playClick();
-    if (!card || isClosed) return;
+    if (!card || isClosed || inCart || isRegistered) return;
     if (!user) {
       router.push(`/login?redirect=${encodeURIComponent(`/events/${card.id}`)}`);
       return;
     }
-    if (!profile?.name || !profile?.phone || !profile?.college) {
+    if (!profile?.name || !profile?.phone || !profile?.college || !profile?.college_id || !profile?.aadhaar_number) {
       router.push("/profile");
       return;
     }
-    guard(() => runRegisterNow());
-  };
-
-  const runRegisterNow = async () => {
-    setRegisterError("");
-    setRegistering(true);
-    try {
-      await startTiqrCheckout([toCartItem()], {
-        name: profile.name,
-        email: user.email,
-        phone: profile.phone,
-        college: profile.college,
-        city: profile.city || "",
-        gender: profile.gender || "",
-        userId: user.id,
-      });
-      // startTiqrCheckout redirects the browser on success.
-    } catch (err) {
-      setRegisterError(err.message);
-      setRegistering(false);
-    }
+    // Navigating away mid-request aborts the in-flight cart upsert (surfaces
+    // as a "Failed to fetch" console error) — wait for it to land first.
+    await addItem(toCartItem());
+    showCartToast("Added to cart — check it out there");
+    const missingMerch = !items.some((i) => i.kind === "merch");
+    const missingAccommodation = !items.some((i) => i.kind === "accommodation");
+    if (missingMerch) router.push("/merch");
+    else if (missingAccommodation) router.push("/accommodation");
   };
 
   useEffect(() => {
@@ -605,16 +621,14 @@ export default function EventDetailPage() {
                 </span>
                 <h1
                   style={{
-                    fontFamily: 'Black Mustang, sans-serif',
-                    fontSize: "clamp(1.8rem, 4.5vw, 3.2rem)",
+                    fontFamily: 'var(--font-rubikmono), sans-serif',
+                    fontSize: "clamp(1.6rem, 4vw, 2.8rem)",
                     fontWeight: 400,
-                    letterSpacing: "0.25em",
+                    letterSpacing: "0.02em",
                     textTransform: "uppercase",
                     margin: 0,
                     textShadow: `0 0 40px ${card.glowColor}, 0 0 80px ${card.glowColor}44`,
-                    lineHeight: 1.2,
-                    fontStyle: "italic",
-                    transform: "skewX(-1deg)",
+                    lineHeight: 1.25,
                   }}
                 >
                   <InterferenceText>
@@ -623,16 +637,56 @@ export default function EventDetailPage() {
                 </h1>
                 <p style={{
                   marginTop: "0.8rem",
-                  fontSize: "0.9rem",
-                  fontFamily: "var(--font-body), sans-serif",
-                  color: "rgba(255,255,255,0.5)",
-                  letterSpacing: "0.04em",
+                  fontSize: "1rem",
+                  fontFamily: "var(--font-noto), sans-serif",
+                  color: "rgba(255,255,255,0.55)",
+                  letterSpacing: "0.02em",
                   lineHeight: 1.6,
-                  fontStyle: "italic",
-                  transform: "skewX(-0.5deg)",
                 }}>
                   {card.subtitle}
                 </p>
+                {card.prizePool && (
+                  <div
+                    className="prize-pool-banner"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "0.6rem",
+                      marginTop: "1.2rem",
+                      padding: "0.9rem 1.5rem",
+                      borderRadius: "14px",
+                    }}
+                  >
+                    <span style={{ fontSize: "1.8rem" }}>🏆</span>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-display), sans-serif',
+                        fontSize: "clamp(1.1rem, 2.4vw, 1.6rem)",
+                        fontWeight: 900,
+                        letterSpacing: "0.04em",
+                        color: "#ffd54f",
+                        textShadow: "0 0 20px rgba(255,193,7,0.6)",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Prize Pool: {card.prizePool}
+                    </span>
+                  </div>
+                )}
+                {card.prizePool && (
+                  <p
+                    style={{
+                      marginTop: "0.4rem",
+                      textAlign: "center",
+                      fontSize: "0.7rem",
+                      color: "rgba(255,255,255,0.35)",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    *subject to change based on participation
+                  </p>
+                )}
               </div>
               <div
                 style={{
@@ -697,85 +751,26 @@ export default function EventDetailPage() {
             {/* About */}
             <CinematicBox title="About This Event" accentColor={card.accentColor} glowColor={card.glowColor} delay={0.2}>
               <p style={{
-                lineHeight: 1.9,
-                color: "rgba(255,255,255,0.6)",
-                fontSize: "0.9rem",
-                fontFamily: "var(--font-body), sans-serif",
-                letterSpacing: "0.04em",
-                fontStyle: "italic",
-                transform: "skewX(-0.3deg)",
+                lineHeight: 1.85,
+                color: "rgba(255,255,255,0.65)",
+                fontSize: "1rem",
+                fontFamily: "var(--font-noto), sans-serif",
+                letterSpacing: "0.01em",
               }}>
                 {card.description}
               </p>
               {(card.aboutExtra || []).map((para, i) => (
                 <p key={i} style={{
-                  lineHeight: 1.9,
-                  color: "rgba(255,255,255,0.6)",
-                  fontSize: "0.9rem",
-                  fontFamily: "var(--font-body), sans-serif",
-                  letterSpacing: "0.04em",
+                  lineHeight: 1.85,
+                  color: "rgba(255,255,255,0.65)",
+                  fontSize: "1rem",
+                  fontFamily: "var(--font-noto), sans-serif",
+                  letterSpacing: "0.01em",
                   marginTop: "1rem",
-                  fontStyle: "italic",
-                  transform: "skewX(-0.3deg)",
                 }}>
                   {para}
                 </p>
               ))}
-            </CinematicBox>
-
-            {/* Highlights */}
-            <CinematicBox title="What You'll Experience" accentColor={card.accentColor} glowColor={card.glowColor} delay={0.3}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
-                {(card.highlights || []).map((item, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.8rem" }}>
-                    <div
-                      style={{
-                        width: "6px",
-                        height: "6px",
-                        borderRadius: "50%",
-                        background: card.accentColor,
-                        boxShadow: `0 0 8px ${card.accentColor}`,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <span style={{
-                      color: "rgba(255,255,255,0.6)",
-                      fontSize: "0.9rem",
-                      fontFamily: "var(--font-body), sans-serif",
-                      letterSpacing: "0.04em",
-                      fontStyle: "italic",
-                      transform: "skewX(-0.3deg)",
-                    }}>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </CinematicBox>
-
-            {/* Requirements */}
-            <CinematicBox title="Requirements" accentColor={card.accentColor} glowColor={card.glowColor} delay={0.4}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
-                {(card.requirements || []).map((item, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.8rem" }}>
-                    <div
-                      style={{
-                        width: "6px",
-                        height: "6px",
-                        borderRadius: "50%",
-                        background: "rgba(255,255,255,0.2)",
-                        flexShrink: 0,
-                      }}
-                    />
-                    <span style={{
-                      color: "rgba(255,255,255,0.6)",
-                      fontSize: "0.9rem",
-                      fontFamily: "var(--font-body), sans-serif",
-                      letterSpacing: "0.04em",
-                      fontStyle: "italic",
-                      transform: "skewX(-0.3deg)",
-                    }}>{item}</span>
-                  </div>
-                ))}
-              </div>
             </CinematicBox>
           </div>
 
@@ -786,7 +781,7 @@ export default function EventDetailPage() {
               <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
                 <span style={{
                   fontSize: "0.65rem",
-                  fontFamily: 'var(--font-body), sans-serif',
+                  fontFamily: 'var(--font-noto), sans-serif',
                   color: "rgba(255,255,255,0.4)",
                   letterSpacing: "0.2em",
                   textTransform: "uppercase",
@@ -804,8 +799,17 @@ export default function EventDetailPage() {
                     letterSpacing: "0.05em",
                   }}
                 >
+                  {card.strikePrice && (
+                    <span style={{ fontSize: "1.1rem", fontWeight: 500, color: "rgba(255,255,255,0.35)", textDecoration: "line-through", marginRight: "0.5rem" }}>
+                      {card.strikePrice}
+                    </span>
+                  )}
                   <InterferenceText>{card.price}</InterferenceText>
+                  <span style={{ fontSize: "0.8rem", fontWeight: 500, color: "rgba(255,255,255,0.4)", marginLeft: "0.4rem" }}>
+                    (registration fee)
+                  </span>
                 </div>
+                <EvergreenCountdown className="mt-2 text-[11px] font-bold text-amber-300/90" />
               </div>
               <a
                 href={card.brochureUrl || "#"}
@@ -820,8 +824,11 @@ export default function EventDetailPage() {
                 Download Brochure
               </a>
               {isRegistered ? (
-                <div
+                <button
+                  type="button"
+                  onClick={() => teamIncomplete && setShowTeamModal(true)}
                   style={{
+                    width: "100%",
                     padding: "0.85rem",
                     borderRadius: "12px",
                     border: `1px solid ${card.accentColor}55`,
@@ -837,11 +844,14 @@ export default function EventDetailPage() {
                     alignItems: "center",
                     justifyContent: "center",
                     gap: "0.5rem",
+                    cursor: teamIncomplete ? "pointer" : "default",
                   }}
                 >
                   <Check size={16} />
-                  <InterferenceText>Registered</InterferenceText>
-                </div>
+                  <InterferenceText>
+                    {teamIncomplete ? "Registered — Add Teammates" : "Registered"}
+                  </InterferenceText>
+                </button>
               ) : isClosed ? (
                 <div
                   style={{
@@ -864,7 +874,7 @@ export default function EventDetailPage() {
                 <div style={{ display: "flex", gap: "0.6rem" }}>
                   <button
                     onClick={handleRegisterNow}
-                    disabled={registering}
+                    disabled={inCart}
                     style={{
                       flex: 1,
                       padding: "0.85rem",
@@ -877,14 +887,14 @@ export default function EventDetailPage() {
                       fontWeight: 700,
                       letterSpacing: "0.15em",
                       textTransform: "uppercase",
-                      cursor: registering ? "default" : "pointer",
-                      opacity: registering ? 0.6 : 1,
+                      cursor: inCart ? "default" : "pointer",
+                      opacity: inCart ? 0.6 : 1,
                       transition: "all 0.4s cubic-bezier(0.23, 1, 0.32, 1)",
                       transformStyle: "preserve-3d",
                       boxShadow: `0 4px 25px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`,
                     }}
                     onMouseEnter={(e) => {
-                      if (registering) return;
+                      if (inCart) return;
                       playGlitch();
                       e.currentTarget.style.transform = "translateZ(30px) scale(1.08)";
                       e.currentTarget.style.boxShadow = `0 15px 50px ${card.glowColor}, 0 0 70px ${card.glowColor}50, inset 0 1px 0 rgba(255,255,255,0.3)`;
@@ -894,7 +904,7 @@ export default function EventDetailPage() {
                       e.currentTarget.style.boxShadow = `0 4px 25px ${card.glowColor}, inset 0 1px 0 rgba(255,255,255,0.2)`;
                     }}
                   >
-                    <InterferenceText>{registering ? "Starting…" : "Register Now"}</InterferenceText>
+                    <InterferenceText>{inCart ? "Added to Cart" : "Register Now"}</InterferenceText>
                   </button>
                   <button
                     onClick={handleAddToCart}
@@ -918,21 +928,10 @@ export default function EventDetailPage() {
                   </button>
                 </div>
               )}
-              {registerError && (
-                <p style={{
-                  textAlign: "center",
-                  fontSize: "0.65rem",
-                  fontFamily: "var(--font-body), sans-serif",
-                  color: "#f87171",
-                  marginTop: "0.7rem",
-                }}>
-                  {registerError}
-                </p>
-              )}
               <p style={{
                 textAlign: "center",
                 fontSize: "0.6rem",
-                fontFamily: "var(--font-body), sans-serif",
+                fontFamily: "var(--font-noto), sans-serif",
                 color: "rgba(255,255,255,0.3)",
                 marginTop: "0.8rem",
                 letterSpacing: "0.05em",
@@ -945,14 +944,22 @@ export default function EventDetailPage() {
             <CinematicBox title="Event Details" accentColor={card.accentColor} glowColor={card.glowColor} delay={0.25}>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
                 {[
-                  { label: "Duration", value: `${card.Duration} Days` },
-                  { label: "Total Seats", value: String(card.Seats) },
-                  { label: "Eligibility", value: card.eligibility || "Open to all" },
-                  { label: "Venue", value: card.venue || "TBA" },
-                  { label: "Timing", value: card.timing || "TBA" },
-                  { label: "Format", value: card.format },
-                  { label: "Certificate", value: card.certificate },
-                ].map((item) => (
+                  { label: "Duration", value: card.Duration != null ? `${card.Duration} Days` : null },
+                  { label: "Total Seats", value: card.Seats != null ? String(card.Seats) : null },
+                  { label: "Eligibility", value: card.eligibility || null },
+                  { label: "Venue", value: card.venue || null },
+                  { label: "Date", value: card.eventDate || null },
+                  { label: "Time", value: card.timing || null },
+                  { label: "Format", value: card.format || null },
+                  { label: "Certificate", value: card.certificate || null },
+                ]
+                  // A field with no value — whether it was never filled in, or
+                  // an admin explicitly skipped/hid it — shouldn't render a
+                  // row at all. This used to fall back to placeholder text
+                  // ("TBA", "Open to all"), which meant a skipped field's row
+                  // kept showing up with a canned value instead of vanishing.
+                  .filter((item) => item.value)
+                  .map((item) => (
                   <div
                     key={item.label}
                     style={{
@@ -965,14 +972,14 @@ export default function EventDetailPage() {
                   >
                     <span style={{
                       fontSize: "0.7rem",
-                      fontFamily: 'var(--font-body), sans-serif',
+                      fontFamily: 'var(--font-noto), sans-serif',
                       color: "rgba(255,255,255,0.4)",
                       letterSpacing: "0.1em",
                       textTransform: "uppercase",
                     }}><InterferenceText>{item.label}</InterferenceText></span>
                     <span style={{
                       fontSize: "0.8rem",
-                      fontFamily: "var(--font-body), sans-serif",
+                      fontFamily: "var(--font-noto), sans-serif",
                       fontWeight: 600,
                       color: "rgba(255,255,255,0.8)",
                       letterSpacing: "0.03em",
@@ -1040,7 +1047,7 @@ export default function EventDetailPage() {
                     background: `${card.accentColor}12`,
                     color: `${card.accentColor}bb`,
                     border: `1px solid ${card.accentColor}28`,
-                    fontFamily: 'var(--font-body), sans-serif',
+                    fontFamily: 'var(--font-noto), sans-serif',
                     fontSize: "0.55rem",
                     fontWeight: 700,
                     letterSpacing: "0.08em",
@@ -1089,7 +1096,7 @@ export default function EventDetailPage() {
           }
         }
       `}</style>
-      <PrePaymentReminderModal {...modalProps} />
+      <TeamReminderModal open={showTeamModal} onClose={() => setShowTeamModal(false)} />
     </div>
   );
 }

@@ -46,15 +46,31 @@ export const MERCH_ITEMS = [
 
 // Fest dates accommodation/food are booked per-day against.
 export const STAY_DATES = [
+  { id: '2026-10-29', label: 'Oct 29' },
   { id: '2026-10-30', label: 'Oct 30' },
   { id: '2026-10-31', label: 'Oct 31' },
   { id: '2026-11-01', label: 'Nov 1' },
 ];
 
 export const FOOD_ADDONS = [
-  { id: 'breakfast', label: 'Breakfast', description: 'Continental breakfast, served daily.' },
-  { id: 'lunch', label: 'Lunch', description: 'Full-course lunch with veg/non-veg options.' },
-  { id: 'dinner', label: 'Dinner', description: 'Evening dinner with veg/non-veg options.' },
+  {
+    id: 'breakfast',
+    label: 'Breakfast',
+    description: 'Continental breakfast, served daily.',
+    dates: ['2026-10-30', '2026-10-31', '2026-11-01'],
+  },
+  {
+    id: 'lunch',
+    label: 'Lunch',
+    description: 'Full-course lunch, served daily.',
+    dates: ['2026-10-30', '2026-10-31', '2026-11-01'],
+  },
+  {
+    id: 'dinner',
+    label: 'Dinner',
+    description: 'Evening dinner, served daily.',
+    dates: ['2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01'],
+  },
 ];
 
 export async function ticketFor(kind) {
