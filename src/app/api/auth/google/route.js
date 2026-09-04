@@ -79,11 +79,20 @@ export async function POST(req) {
         .maybeSingle();
 
       if (!existingProfile) {
+        // Google already gave us the user's real name — copy it in now so
+        // they aren't asked to retype something they just told Google,
+        // rather than leaving `name` null until ProfileCompletionModal.
+        const googleName =
+          (typeof payload.name === 'string' && payload.name.trim()) ||
+          [payload.given_name, payload.family_name].filter(Boolean).join(' ').trim() ||
+          null;
+
         let attemptsLeft = 3;
         while (attemptsLeft > 0) {
           const { error: profileError } = await admin.from('profiles').insert({
             user_id: userId,
             unique_code: generateUniqueCode(),
+            ...(googleName ? { name: googleName } : {}),
           });
           if (!profileError) break;
           if (!/duplicate key/i.test(profileError.message || '')) {

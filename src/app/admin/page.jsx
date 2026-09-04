@@ -25,7 +25,6 @@ import {
   Pencil,
   QrCode,
 } from 'lucide-react';
-import { getCatalog } from '@/lib/catalogStore';
 import { getPromos, DEFAULT_PROMOS } from '@/lib/promoStore';
 import { groupBySection } from '../lib/groupBySection';
 import { FOOD_ADDONS, STAY_DATES } from '../accommodation/merchData';
@@ -404,30 +403,48 @@ function AdminDashboard({ session, onLogout }) {
   // otherwise a workshop/event added mid-session stays absent from
   // WORKSHOP_IDS/EVENT_IDS, and a registrant who paid for it shows up with
   // that item silently missing from their Workshops/Events buckets.
+  //
+  // Uses /api/admin/catalog (every ticket row, filled in or not) rather than
+  // catalogStore.getCatalog — that helper is the public-site view and drops
+  // any ticket whose catalog_items content isn't filled in yet. A registrant
+  // who paid for such an item would otherwise never get a WORKSHOP_IDS/
+  // EVENT_IDS match, so their Participants section (and Workshops/Events
+  // buckets) would silently never render, even for an admin.
   const loadCatalogSets = async () => {
-    const [workshops, events] = await Promise.all([getCatalog('workshop'), getCatalog('event')]);
-    CATALOG = [...workshops, ...events];
+    const res = await fetch('/api/admin/catalog', { headers: adminHeaders(session), cache: 'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) return;
+    const items = data.data || [];
+    const workshops = items.filter((c) => c.kind === 'workshop');
+    const events = items.filter((c) => c.kind === 'event');
+    CATALOG = items.map((c) => ({ ...c, title: c.title || c.id }));
     WORKSHOP_IDS = new Set(workshops.map((c) => String(c.id)));
     EVENT_IDS = new Set(events.map((c) => String(c.id)));
     setCatalogReady(true);
   };
 
-  useEffect(() => {
-    loadCatalogSets();
-  }, []);
+  // Every admin fetch (catalog, users, ...) needs ADMIN_TOKEN already set,
+  // but populating it is itself async (supabase.auth.getSession()) — firing
+  // those fetches from their own independent mount effects raced this one
+  // and regularly lost, sending the very first load out with no
+  // Authorization header and a guaranteed 401. tokenReady gates every
+  // data-loading effect below until the token is actually in hand.
+  const [tokenReady, setTokenReady] = useState(false);
 
-  // Keeps ADMIN_TOKEN current for every admin fetch below — logging out of
-  // the underlying Supabase account (or the token expiring/refreshing)
-  // updates it immediately, since the server re-verifies it on every call.
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       ADMIN_TOKEN = data?.session?.access_token || null;
+      setTokenReady(true);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, authSession) => {
       ADMIN_TOKEN = authSession?.access_token || null;
     });
     return () => sub?.subscription?.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (tokenReady) loadCatalogSets();
+  }, [tokenReady]);
 
   const [catalogItems, setCatalogItems] = useState([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
@@ -605,8 +622,8 @@ function AdminDashboard({ session, onLogout }) {
   };
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    if (tokenReady) loadUsers();
+  }, [tokenReady]);
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -647,7 +664,7 @@ function AdminDashboard({ session, onLogout }) {
     let list = users;
     if (q) {
       list = list.filter((u) =>
-        [u.name, u.unique_code, u.phone].some((v) => (v || '').toLowerCase().includes(q))
+        [u.name, u.unique_code, u.phone, u.email].some((v) => (v || '').toLowerCase().includes(q))
       );
     }
     if (activeFilters.length > 0) {
@@ -1495,7 +1512,7 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{user.name || 'Unnamed'}</p>
           <p className="truncate text-xs text-white/40">
-            {user.unique_code || '—'} · {user.phone || '—'}
+            {user.unique_code || '—'} · {user.phone || user.email || '—'}
             {subtitle ? ` · ${subtitle}` : ''}
           </p>
         </div>
@@ -1519,6 +1536,7 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
           >
             <div className="px-4 py-4">
               <div className="mb-5 grid grid-cols-1 gap-2.5 rounded-lg border border-white/5 bg-white/[0.02] p-3 text-xs text-white/60 sm:grid-cols-2">
+                <p className="sm:col-span-2">Email: {user.email || '—'}</p>
                 <p>College: {user.college || '—'}</p>
                 <p>City: {user.city || '—'}</p>
                 <p>Gender: {user.gender || '—'}</p>
