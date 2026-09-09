@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import useProfile from '../hooks/useProfile';
 import { startFoodfestCheckout } from '@/lib/foodfestCheckout';
+import FetchIntro from '../components/FetchIntro';
 
 const FLOATING_EMOJI = ['🍕', '🌮', '🍔', '🍟', '🍩', '🧋'];
 const ITEM_EMOJI = ['🍜', '🥘', '🍢', '🌯', '🧆', '🥟', '🍡', '🥪'];
@@ -33,9 +35,10 @@ export default function FoodfestPage() {
   const [checkoutError, setCheckoutError] = useState('');
   const [myOrders, setMyOrders] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   const { items, addItem, updateQty, removeItem } = useCart();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { profile } = useProfile();
 
   useEffect(() => {
@@ -160,6 +163,25 @@ export default function FoodfestPage() {
     setCheckoutError('');
   };
 
+  if (authLoading) {
+    return <FetchIntro loading label="Loading Food Fest" accentColor="#ff6b35" />;
+  }
+
+  if (!user) {
+    return (
+      <div className="relative min-h-[calc(100dvh-12rem)] bg-[#0a0604] text-white overflow-hidden flex items-center justify-center px-6">
+        <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_90%_60%_at_50%_-10%,rgba(255,107,53,0.18),transparent_55%)]" />
+        <div className="relative z-10 glass-card rounded-2xl p-8 text-center max-w-md">
+          <p className="text-2xl mb-2">🍜</p>
+          <p className="text-white/60 mb-4">Sign in to access the Food Fest.</p>
+          <Link href="/login?redirect=/foodfest" className="btn-primary">
+            Sign In / Create Account
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen bg-[#0a0604] text-white overflow-x-hidden pb-32">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_90%_60%_at_50%_-10%,rgba(255,107,53,0.18),transparent_55%)]" />
@@ -197,7 +219,15 @@ export default function FoodfestPage() {
         <h1 className="text-4xl md:text-6xl font-bold uppercase tracking-tighter mb-2 bg-gradient-to-br from-white via-orange-100 to-orange-300 bg-clip-text text-transparent drop-shadow-[0_4px_20px_rgba(255,107,53,0.25)]">
           Food Fest
         </h1>
-        <p className="text-white/50 mb-8 max-w-md">Browse stalls, pick your favourites, pay online, skip the line.</p>
+        <p className="text-white/50 mb-6 max-w-md">Browse stalls, pick your favourites, pay online, skip the line.</p>
+
+        <button
+          type="button"
+          onClick={() => setShowMenu(true)}
+          className="mb-8 inline-flex items-center gap-2 rounded-full border border-orange-400/40 bg-orange-400/10 px-6 py-3 text-sm font-bold uppercase tracking-[0.2em] text-orange-300 transition-colors hover:bg-orange-400/20"
+        >
+          📋 Whole Menu
+        </button>
 
         {activeOrders.length > 0 && (
           <div className="mb-10 space-y-3">
@@ -491,6 +521,36 @@ export default function FoodfestPage() {
                   </div>
                 </>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showMenu && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 p-4"
+            onClick={() => setShowMenu(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative max-h-[90vh] max-w-3xl overflow-auto rounded-2xl border border-white/10 bg-[#0a0604]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowMenu(false)}
+                className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-lg text-white hover:bg-black/80"
+                aria-label="Close menu"
+              >
+                ×
+              </button>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/menu.png" alt="Whole Menu" className="block max-w-full" />
             </motion.div>
           </motion.div>
         )}

@@ -16,6 +16,7 @@ import NetworkStatusToast from "./components/NetworkStatusToast";
 import CartToast from "./components/CartToast";
 import FetchTracker from "./components/FetchTracker";
 import { AuthProvider } from "./context/AuthContext";
+import { ProfileProvider } from "./context/ProfileContext";
 import { CartProvider } from "./context/CartContext";
 import { MusicProvider } from "./context/MusicContext";
 import "./globals.css";
@@ -105,19 +106,21 @@ export default function RootLayout({ children }) {
       </head>
       <body className="min-h-dvh bg-black text-white antialiased">
         <AuthProvider>
-          <CartProvider>
-            <MusicProvider>
-              <CursorTrialWrapper />
-              <ProfileCompletionModal />
-              <NetworkStatusToast />
-              <CartToast />
-              <FetchTracker />
-              <Navbar />
-              <div className="h-[10vh] shrink-0 bg-transparent" aria-hidden />
-              <main className="relative min-h-0">{children}</main>
-              <Footer />
-            </MusicProvider>
-          </CartProvider>
+          <ProfileProvider>
+            <CartProvider>
+              <MusicProvider>
+                <CursorTrialWrapper />
+                <ProfileCompletionModal />
+                <NetworkStatusToast />
+                <CartToast />
+                <FetchTracker />
+                <Navbar />
+                <div className="h-[10vh] shrink-0 bg-transparent" aria-hidden />
+                <main className="relative min-h-0">{children}</main>
+                <Footer />
+              </MusicProvider>
+            </CartProvider>
+          </ProfileProvider>
         </AuthProvider>
       </body>
     </html>

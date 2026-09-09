@@ -17,16 +17,50 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data?.session?.user ?? null);
+    let active = true;
+
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!active) return;
+      if (data?.session) {
+        setUser(data.session.user);
+        setLoading(false);
+        return;
+      }
+      // getSession() came back empty — could be a real "no session", or it
+      // could be gotrue-js's auth-token lock timing out under the
+      // concurrent load of every page's own getSession()/data calls and
+      // resolving empty as a fallback rather than throwing. Confirm with
+      // getUser(), which re-checks the stored token directly, before
+      // treating this as an actual logged-out state.
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (!active) return;
+        setUser(userData?.user ?? null);
+      } finally {
+        if (active) setLoading(false);
+      }
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active) return;
+      if (session) {
+        setUser(session.user);
+        setLoading(false);
+        return;
+      }
+      // A null session on any event other than an explicit SIGNED_OUT is
+      // more likely a transient lock/refresh hiccup than a real logout —
+      // e.g. gotrue's own re-checks on tab focus, or lock contention from
+      // the several pages/contexts that call getSession() independently.
+      // Only SIGNED_OUT is trusted to actually clear the signed-in user.
+      if (event === 'SIGNED_OUT') setUser(null);
       setLoading(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => sub?.subscription?.unsubscribe();
+    return () => {
+      active = false;
+      sub?.subscription?.unsubscribe();
+    };
   }, []);
 
   // Single "log in, or create an account if none exists" call — no
