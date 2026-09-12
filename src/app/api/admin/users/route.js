@@ -155,7 +155,11 @@ export async function GET(req) {
         college: '',
         city: '',
         gender: '',
-        unique_code: null,
+        // Guests (no account) get a CNS id too, generated and grouped by
+        // phone number so the same person's bookings always share one —
+        // see scripts/assign-guest-cns-ids.mjs and the auto-assign in
+        // save-registration/webhook for new bookings going forward.
+        unique_code: reg.details?.unique_code || null,
         accommodation_room: null,
         accommodation_checkin: null,
         accommodation_checkout: null,
