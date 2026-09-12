@@ -65,16 +65,17 @@ export async function GET(req) {
       );
     }
 
-    const normalizePhone = (p) => String(p || '').replace(/\D/g, '').slice(-10);
-
+    // Phone number is NOT used to correlate a registration to a profile —
+    // it's not a safe identity boundary (typed at checkout, easy to get
+    // wrong or reuse another person's), and matching on it could show one
+    // person's booking under someone else's account. Correlation is
+    // strictly by CNS id / user_id / email: a real account (user_id) or a
+    // guest booking's own email, each of which has exactly one owner.
     const registrationsByUser = new Map();
-    const registrationsByPhone = new Map();
     for (const reg of registrations || []) {
       const key = reg.user_id || reg.email;
       // registrations is already ordered newest-first, keep the first hit per user.
       if (key && !registrationsByUser.has(key)) registrationsByUser.set(key, reg);
-      const phone = normalizePhone(reg.details?.phone);
-      if (phone.length === 10 && !registrationsByPhone.has(phone)) registrationsByPhone.set(phone, reg);
     }
 
     const cartByUser = new Map();
@@ -101,17 +102,9 @@ export async function GET(req) {
         // the registration's own stored email, only if it's missing.
         const profileEmail = (profile.email || '').trim().toLowerCase();
         const authEmail = (authUser?.email || profileEmail || '').trim().toLowerCase();
-        const profilePhone = normalizePhone(profile.phone);
         const registration =
           registrationsByUser.get(profile.user_id) ||
           (authEmail ? registrationsByUser.get(authEmail) : null) ||
-          // Last resort: match by phone number. This catches a real
-          // registrant whose profile exists but whose booking (an excel
-          // import, or a checkout done under a different email) was only
-          // ever tied to their phone number, not this account's user_id or
-          // login email — a real profile is a much better source of truth
-          // than showing them as an anonymous "guest".
-          (profilePhone.length === 10 ? registrationsByPhone.get(profilePhone) : null) ||
           null;
         return {
           ...profile,
@@ -155,10 +148,8 @@ export async function GET(req) {
         college: '',
         city: '',
         gender: '',
-        // Guests (no account) get a CNS id too, generated and grouped by
-        // phone number so the same person's bookings always share one —
-        // see scripts/assign-guest-cns-ids.mjs and the auto-assign in
-        // save-registration/webhook for new bookings going forward.
+        // Guests (no account) get a CNS id too, one per email — never
+        // shared across a phone number match (see src/lib/guestCns.js).
         unique_code: reg.details?.unique_code || null,
         accommodation_room: null,
         accommodation_checkin: null,

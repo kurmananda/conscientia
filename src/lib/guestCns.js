@@ -1,8 +1,13 @@
 // Every real account gets a CNS id (profiles.unique_code) the moment they
 // complete their profile. A guest checkout (no account) never got one —
-// admin just showed a blank. This assigns one the same way, and reuses the
-// same code for the same phone number, so one person's bookings under
-// different guest emails still share a single CNS id.
+// admin just showed a blank. This assigns one the same way.
+//
+// Correlation is strictly by CNS id + email, one owner each — NEVER by
+// phone number. Phone is typed at checkout, easy to mistype or reuse
+// someone else's, and is not a safe identity boundary: matching or sharing
+// a CNS id across a phone-number match could show one person's booking (or
+// let them see it) under a different person's identity. Every email gets
+// its own CNS id, full stop.
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I ambiguity
 
 function generateCode() {
@@ -11,42 +16,19 @@ function generateCode() {
   return `CNS-${code}`;
 }
 
-export function normalizePhone(p) {
-  return String(p || '').replace(/\D/g, '').slice(-10);
-}
-
 /**
- * Returns a CNS id for a guest (no user_id) booking, or null if this isn't
- * a guest at all (has a user_id — real accounts use their own profile code)
- * or the phone number isn't usable (not exactly 10 digits once normalized).
+ * Returns a fresh CNS id for a guest (no user_id) booking, or null if this
+ * isn't a guest at all (has a user_id — real accounts use their own
+ * profile's CNS id instead).
  *
  * @param {object} supabase - server Supabase client
- * @param {{ phone: string, email: string, userId?: string|null }} params
+ * @param {{ userId?: string|null }} params
  */
-export async function assignGuestCnsId(supabase, { phone, email, userId }) {
+export async function assignGuestCnsId(supabase, { userId }) {
   if (userId) return null; // real accounts use their own profile's CNS id
-  const normalized = normalizePhone(phone);
-  if (normalized.length !== 10) return null;
 
-  // A profile with this phone means this is actually a real account whose
-  // booking just hasn't been linked yet (handled elsewhere) — don't hand
-  // out a separate guest code for them.
-  const { data: matchingProfiles } = await supabase.from('profiles').select('phone, unique_code');
-  const hasRealProfile = (matchingProfiles || []).some((p) => normalizePhone(p.phone) === normalized);
-  if (hasRealProfile) return null;
-
-  // Reuse an existing guest code for this phone if one was already assigned
-  // to a different booking under the same number.
-  const { data: existingRegs } = await supabase
-    .from('registrations')
-    .select('email, details')
-    .neq('email', email);
-  const existing = (existingRegs || []).find(
-    (r) => normalizePhone(r.details?.phone) === normalized && r.details?.unique_code
-  );
-  if (existing) return existing.details.unique_code;
-
-  const takenCodes = new Set((matchingProfiles || []).map((p) => p.unique_code).filter(Boolean));
+  const { data: profiles } = await supabase.from('profiles').select('unique_code');
+  const takenCodes = new Set((profiles || []).map((p) => p.unique_code).filter(Boolean));
   let code = generateCode();
   while (takenCodes.has(code)) code = generateCode();
   return code;

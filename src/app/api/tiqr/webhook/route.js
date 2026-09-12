@@ -143,7 +143,7 @@ async function processBookingNotification(supabase, notification) {
   if (existingDetails.unique_code) {
     details.unique_code = existingDetails.unique_code;
   } else if (!finalUserId) {
-    details.unique_code = await assignGuestCnsId(supabase, { phone: details.phone, email, userId: finalUserId });
+    details.unique_code = await assignGuestCnsId(supabase, { userId: finalUserId });
   }
 
   const { error } = await supabase.from('registrations').upsert(

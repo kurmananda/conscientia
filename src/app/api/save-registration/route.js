@@ -160,11 +160,7 @@ export async function POST(req) {
     }
 
     if (!registrationDetails.unique_code && !existingUser?.details?.unique_code) {
-      registrationDetails.unique_code = await assignGuestCnsId(supabase, {
-        phone: registrationDetails.phone,
-        email: email.toLowerCase(),
-        userId: finalUserId,
-      });
+      registrationDetails.unique_code = await assignGuestCnsId(supabase, { userId: finalUserId });
     } else if (existingUser?.details?.unique_code) {
       registrationDetails.unique_code = existingUser.details.unique_code;
     }
