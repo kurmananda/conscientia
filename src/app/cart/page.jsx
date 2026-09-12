@@ -285,6 +285,10 @@ export default function CartPage() {
                 </p>
               )}
 
+              <p className="text-center text-[11px] leading-relaxed text-white/35">
+                For group events/workshops, teammates can be added after payment — from your profile page.
+              </p>
+
               <button
                 type="submit"
                 disabled={busy}

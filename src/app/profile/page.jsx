@@ -14,6 +14,8 @@ import FetchIntro from '../components/FetchIntro';
 import QrScanner from '../components/QrScanner';
 import { getCatalog } from '@/lib/catalogStore';
 import { supabase } from '@/lib/supabaseClient';
+import { FOOD_ADDONS } from '../accommodation/merchData';
+import MealDaySelectionModal from '../components/MealDaySelectionModal';
 
 async function authedFetch(url, options = {}) {
   const { data } = await supabase.auth.getSession();
@@ -40,6 +42,20 @@ export default function ProfilePage() {
   const [registration, setRegistration] = useState(null);
   const [fetching, setFetching] = useState(false);
   const [catalog, setCatalog] = useState([]);
+  const [showMealDayModal, setShowMealDayModal] = useState(false);
+
+  useEffect(() => {
+    const itemsPaid = Array.isArray(registration?.details?.items_paid)
+      ? registration.details.items_paid
+      : [];
+    const pending = itemsPaid.filter(
+      (i) =>
+        ['breakfast', 'lunch', 'dinner', 'accommodation'].includes(i.internal_id) &&
+        i.needs_day_selection &&
+        i.booking_uid
+    );
+    if (pending.length > 0) setShowMealDayModal(true);
+  }, [registration]);
 
   useEffect(() => {
     let active = true;
@@ -173,10 +189,30 @@ export default function ProfilePage() {
     );
   }
 
-  const bookedIds = Array.isArray(registration?.workshop_ids) ? registration.workshop_ids : [];
+  const isPaid = registration?.payment_status === 'paid';
+  const bookedIds = isPaid && Array.isArray(registration?.workshop_ids) ? registration.workshop_ids : [];
   const bookedItems = bookedIds
     .map((raw) => findCatalogItem(String(raw).trim()))
     .filter(Boolean);
+  const paidIdSet = new Set(bookedIds.map((id) => String(id).trim()));
+  const hasPaidAccommodation = paidIdSet.has('accommodation');
+
+  const itemsPaid = Array.isArray(registration?.details?.items_paid)
+    ? registration.details.items_paid
+    : [];
+  const foodItemsPaid = itemsPaid.filter((i) => ['breakfast', 'lunch', 'dinner'].includes(i.internal_id));
+  const paidFoodAddons = FOOD_ADDONS.filter((f) => paidIdSet.has(f.id));
+  const pendingMealDaySelections = foodItemsPaid.filter((i) => i.needs_day_selection && i.booking_uid);
+  const accommodationItemsPaid = itemsPaid.filter((i) => i.internal_id === 'accommodation');
+  const pendingAccommodationDaySelections = accommodationItemsPaid.filter(
+    (i) => i.needs_day_selection && i.booking_uid
+  );
+  const pendingDaySelections = [...pendingMealDaySelections, ...pendingAccommodationDaySelections];
+  const merchItemsPaid = itemsPaid.filter(
+    (i) =>
+      !['breakfast', 'lunch', 'dinner', 'accommodation'].includes(i.internal_id) &&
+      (i.internal_id?.startsWith('merch') || i.title?.toLowerCase().includes('merch'))
+  );
 
   const handleScan = async (code) => {
     setShowScanner(false);
@@ -364,19 +400,75 @@ export default function ProfilePage() {
       </div>
 
       <Section title="Stay & Merch">
+        <div className="glass-card mb-4 rounded-2xl p-6">
+          <p className="mb-3 text-xs uppercase tracking-[0.2em] text-white/40">Accommodation</p>
+          {hasPaidAccommodation ? (
+            <div className="text-sm text-emerald-400">
+              <p>✅ Booked — payment confirmed{profile?.accommodation_room ? `, room ${profile.accommodation_room}` : ''}.</p>
+              {accommodationItemsPaid.map((item) => (
+                <p key={item.booking_uid || item.booking_id} className="mt-1 text-xs text-white/50">
+                  {item.qty} night{item.qty > 1 ? 's' : ''} · ₹{item.amount}
+                  {item.dates?.length ? ` · ${item.dates.join(', ')}` : ' · nights not confirmed yet'}
+                </p>
+              ))}
+              {pendingAccommodationDaySelections.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowMealDayModal(true)}
+                  className="mt-1 text-xs font-semibold text-cyan-300 underline underline-offset-2"
+                >
+                  Tell us which nights
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-white/50">Not booked. You can add accommodation from the Accommodation page.</p>
+          )}
+          <p className="mt-3 text-xs uppercase tracking-[0.2em] text-white/40">Meals</p>
+          {paidFoodAddons.length > 0 ? (
+            <div className="space-y-1 text-sm text-emerald-400">
+              {foodItemsPaid.map((item) => {
+                const label = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' }[item.internal_id] || item.internal_id;
+                return (
+                  <p key={item.booking_uid || item.booking_id}>
+                    ✅ {label} × {item.qty}
+                    {item.dates?.length ? ` — ${item.dates.join(', ')}` : ' — days not confirmed yet'}
+                  </p>
+                );
+              })}
+              {pendingDaySelections.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowMealDayModal(true)}
+                  className="mt-1 text-xs font-semibold text-cyan-300 underline underline-offset-2"
+                >
+                  Tell us which days
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-white/50">No meal add-ons booked yet.</p>
+          )}
+          {merchItemsPaid.length > 0 && (
+            <>
+              <p className="mt-3 text-xs uppercase tracking-[0.2em] text-white/40">Merch & Other Purchases</p>
+              <div className="space-y-1 text-sm text-emerald-400">
+                {merchItemsPaid.map((item) => (
+                  <p key={item.booking_uid || item.booking_id}>
+                    ✅ {item.title || item.internal_id} × {item.qty} — ₹{item.amount}
+                  </p>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         <p className="-mt-2 mb-4 text-xs text-white/40">
-          These fields are set by event admins only during check-in/check-out and cannot be edited from your profile.
+          The fields below are set by event admins only during check-in/check-out and cannot be edited from your profile.
         </p>
         <div className="glass-card grid gap-4 rounded-2xl p-6 sm:grid-cols-3">
           <StayMerchField
-            label="Accommodation"
-            value={
-              profile?.accommodation_room
-                ? profile.accommodation_room
-                : profile?.accommodation_booked
-                ? 'Booked'
-                : null
-            }
+            label="Room"
+            value={profile?.accommodation_room || null}
             adminManaged
           />
           <StayMerchField
@@ -475,6 +567,19 @@ export default function ProfilePage() {
           />
         )}
       </AnimatePresence>
+
+      {showMealDayModal && pendingDaySelections.length > 0 && (
+        <MealDaySelectionModal
+          email={user.email}
+          items={pendingDaySelections}
+          onDone={async () => {
+            setShowMealDayModal(false);
+            const res = await authedFetch(`/api/get-registrations?user_id=${user.id}`);
+            const json = await res.json().catch(() => ({}));
+            if (json?.success) setRegistration(json.data);
+          }}
+        />
+      )}
     </ProfileShell>
   );
 }

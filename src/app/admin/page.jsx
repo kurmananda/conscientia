@@ -61,6 +61,19 @@ function findCatalogItem(id) {
   return CATALOG.find((c) => c.id === String(id));
 }
 
+// Some imported bookings only ever had a raw TiQR export string as their
+// title (e.g. numbered workshop tickets whose real name isn't known on our
+// side) — clean that up into something presentable instead of the messy
+// original export text.
+function cleanItemTitle(item) {
+  const raw = item.title || item.internal_id || '';
+  const workshopIdMatch = raw.match(/Workshops-\s*Conscientia 2026\s*\(id-(\d+)\)/i);
+  if (workshopIdMatch) return `Workshop #${workshopIdMatch[1]}`;
+  const eventMatch = raw.match(/^events?\s*-\s*conscientia 2026\s*-?\s*(.*)$/i);
+  if (eventMatch && eventMatch[1]) return eventMatch[1].trim();
+  return raw;
+}
+
 const FOOD_LABELS = Object.fromEntries(FOOD_ADDONS.map((f) => [f.id, f.label]));
 
 // Splits a user's paid ids into separate workshop/event/food buckets with
@@ -1567,7 +1580,28 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
                 <p className="sm:col-span-2">
                   Merch selection: {user.merch_selection || '—'} <span className="text-white/30">(read-only, set by user)</span>
                 </p>
+                <p>Total paid: ₹{user.registration?.amount ?? 0}</p>
               </div>
+
+              {Array.isArray(user.registration?.details?.items_paid) &&
+                user.registration.details.items_paid.length > 0 && (
+                  <div className="mb-5 rounded-lg border border-white/5 bg-white/[0.02] p-3 text-xs text-white/60">
+                    <p className="mb-2 text-[10px] uppercase tracking-[0.2em] text-cyan-400/80">
+                      Paid Items (detailed)
+                    </p>
+                    <div className="space-y-1">
+                      {user.registration.details.items_paid.map((item, i) => (
+                        <p key={item.booking_uid || item.booking_id || i}>
+                          {cleanItemTitle(item)} × {item.qty} — ₹{item.amount}
+                          {item.dates?.length ? ` · ${item.dates.join(', ')}` : ''}
+                          {item.needs_day_selection ? (
+                            <span className="ml-1 text-amber-300">(days unconfirmed)</span>
+                          ) : null}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
               {eventEntries.length > 0 && (
                 <div className="mb-5">
@@ -1659,15 +1693,23 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
               </div>
 
               <div className="mt-5 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="btn-primary text-[10px] disabled:opacity-60"
-                >
-                  {saving ? 'Saving…' : 'Save Changes'}
-                </button>
-                {saveMsg && <span className="text-xs text-white/40">{saveMsg}</span>}
+                {user.is_guest ? (
+                  <span className="text-xs text-white/30">
+                    Guest checkout — no profile to edit (paid via TiQR without an account).
+                  </span>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="btn-primary text-[10px] disabled:opacity-60"
+                    >
+                      {saving ? 'Saving…' : 'Save Changes'}
+                    </button>
+                    {saveMsg && <span className="text-xs text-white/40">{saveMsg}</span>}
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

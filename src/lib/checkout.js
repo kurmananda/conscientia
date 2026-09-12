@@ -112,6 +112,11 @@ export async function startTiqrCheckout(cartItems, details) {
       internal_id: item.id,
       workshop_ids: item.id,
       catalog_kind: item.kind,
+      qty: item.qty || 1,
+      // Food add-ons/accommodation carry which festival days they're for —
+      // forward it through TiQR's meta_data so the webhook can read it back
+      // out of the confirmed booking (item.details is otherwise dropped).
+      item_dates: item.details?.dates ? JSON.stringify(item.details.dates) : '',
     }),
   }));
 

@@ -12,6 +12,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import CursorTrialWrapper from "./components/CursorTrialWrapper";
 import ProfileCompletionModal from "./components/ProfileCompletionModal";
+import TeamNudgeWidget from "./components/TeamNudgeWidget";
 import NetworkStatusToast from "./components/NetworkStatusToast";
 import CartToast from "./components/CartToast";
 import FetchTracker from "./components/FetchTracker";
@@ -111,6 +112,7 @@ export default function RootLayout({ children }) {
               <MusicProvider>
                 <CursorTrialWrapper />
                 <ProfileCompletionModal />
+                <TeamNudgeWidget />
                 <NetworkStatusToast />
                 <CartToast />
                 <FetchTracker />

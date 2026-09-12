@@ -98,7 +98,41 @@ export async function GET(req) {
         };
       });
 
-    return NextResponse.json({ success: true, data: users });
+    const usedRegistrationKeys = new Set(
+      users.map((u) => u.registration && (u.registration.user_id || u.registration.email)).filter(Boolean)
+    );
+
+    // A paid registration with no matching profile means the person paid
+    // via a direct TiQR link/export and never signed into the site — real
+    // money, real booking, just no account. Surface them as guest rows so
+    // admins can actually see every paid booking, not only ones tied to a
+    // finished profile.
+    const guestUsers = (registrations || [])
+      .filter((reg) => {
+        const key = reg.user_id || reg.email;
+        return key && !usedRegistrationKeys.has(key) && reg.payment_status === 'paid';
+      })
+      .map((reg) => ({
+        user_id: reg.user_id || `guest:${reg.email}`,
+        name: reg.details?.name || '',
+        phone: reg.details?.phone || '',
+        college: '',
+        city: '',
+        gender: '',
+        unique_code: null,
+        accommodation_room: null,
+        accommodation_checkin: null,
+        accommodation_checkout: null,
+        merch_selection: null,
+        email: reg.email || null,
+        auth_created_at: null,
+        last_sign_in_at: null,
+        registration: reg,
+        cart_items: cartByUser.get(reg.user_id) || [],
+        is_guest: true,
+      }));
+
+    return NextResponse.json({ success: true, data: [...users, ...guestUsers] });
   } catch (err) {
     console.error('[admin/users]', err);
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });

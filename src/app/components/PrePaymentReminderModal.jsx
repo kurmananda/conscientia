@@ -49,6 +49,10 @@ export default function PrePaymentReminderModal({ open, missingMerch, missingAcc
               )}
             </ul>
 
+            <p className="mb-6 rounded-lg border border-cyan-500/20 bg-cyan-500/[0.06] px-3 py-2 text-[11px] leading-relaxed text-white/50">
+              Note: for group events/workshops, teammates can be added after payment — from your profile page.
+            </p>
+
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-3 sm:flex-row">
                 {missingMerch && (
