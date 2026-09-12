@@ -8,6 +8,7 @@
 export const CHECKOUT_STORAGE_KEYS = [
   'registration_email',
   'selected_workshops',
+  'selected_workshops_meta',
   'registration_details',
   'tiqr_booking_uid',
 ];
@@ -163,6 +164,23 @@ export async function startTiqrCheckout(cartItems, details) {
   window.localStorage.setItem(
     'selected_workshops',
     JSON.stringify(cartItems.map((i) => i.id))
+  );
+  // `selected_workshops` above is just bare ids — not enough for
+  // /payment-success to record per-item amount/qty/dates (accommodation and
+  // food add-ons need to know which days were booked). Carry the full cart
+  // line through instead of losing it here.
+  window.localStorage.setItem(
+    'selected_workshops_meta',
+    JSON.stringify(
+      cartItems.map((i) => ({
+        id: i.id,
+        kind: i.kind,
+        title: i.title || '',
+        qty: i.qty || 1,
+        unitPrice: i.unitPrice ?? null,
+        dates: i.details?.dates || [],
+      }))
+    )
   );
   window.localStorage.setItem('registration_details', JSON.stringify(details));
   window.localStorage.setItem('tiqr_booking_uid', finalUid || '');

@@ -52,7 +52,7 @@ export function ProfileProvider({ children }) {
       if (!profile) {
         const { data, error } = await supabase
           .from('profiles')
-          .insert({ user_id: user.id, unique_code: generateUniqueCode(), ...fields })
+          .insert({ user_id: user.id, unique_code: generateUniqueCode(), email: user.email || null, ...fields })
           .select()
           .maybeSingle();
         if (error) return { error: error.message };

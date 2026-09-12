@@ -63,6 +63,7 @@ function PaymentSuccessContent() {
 
         const email = window.localStorage.getItem('registration_email') || verifyData.email || '';
         const workshopIds = JSON.parse(window.localStorage.getItem('selected_workshops') || '[]');
+        const itemsMeta = JSON.parse(window.localStorage.getItem('selected_workshops_meta') || '[]');
         const details = JSON.parse(window.localStorage.getItem('registration_details') || '{}');
         // Single-use — clear immediately once read so this data can't leak
         // into a later session/checkout on the same browser.
@@ -74,6 +75,7 @@ function PaymentSuccessContent() {
           body: JSON.stringify({
             email,
             workshop_ids: workshopIds,
+            items: itemsMeta,
             details,
             payment_id: uid,
             order_id: verifyData.booking_id || '',

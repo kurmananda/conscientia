@@ -105,6 +105,59 @@ export async function POST(req) {
 
     const finalWorkshopIds = [...new Set([...existingIds, ...incomingIds])];
 
+    // Per-item breakdown (qty/price/dates) from the cart — /payment-success
+    // forwards this since `workshop_ids` alone is just bare ids and loses
+    // which festival days accommodation/food add-ons were booked for.
+    const incomingItems = Array.isArray(body.items) ? body.items : [];
+    const existingItemsPaid = Array.isArray(existingUser?.details?.items_paid)
+      ? existingUser.details.items_paid
+      : [];
+    // Dedup against a retry/reload of the same confirmed payment — there's
+    // no per-item booking id at this call site, so key on payment_id+item id.
+    const seenBookingKeys = new Set(existingItemsPaid.map((i) => i.booking_uid).filter(Boolean));
+    const newItems = incomingItems.filter((item) => !seenBookingKeys.has(`${payment_id}:${item.id}`));
+
+    // Distribute the verified total across items lacking their own price
+    // (older/partial payloads) rather than dropping it.
+    const itemsWithKnownPrice = newItems.filter((i) => i.unitPrice != null);
+    const itemsWithoutPrice = newItems.filter((i) => i.unitPrice == null);
+    const knownTotal = itemsWithKnownPrice.reduce((sum, i) => sum + Number(i.unitPrice) * (Number(i.qty) || 1), 0);
+    const remainder = Math.max(0, Number(amount) - knownTotal);
+    const perUnknownShare = itemsWithoutPrice.length ? remainder / itemsWithoutPrice.length : 0;
+
+    const DAY_TRACKED_IDS = new Set(['breakfast', 'lunch', 'dinner', 'accommodation']);
+    const newItemsPaid = newItems.map((item) => {
+      const qty = Number(item.qty) || 1;
+      const itemAmount = item.unitPrice != null ? Number(item.unitPrice) * qty : perUnknownShare;
+      const dates = Array.isArray(item.dates) ? item.dates : [];
+      return {
+        internal_id: item.id,
+        title: item.title || item.id,
+        booking_uid: `${payment_id}:${item.id}`,
+        qty,
+        amount: itemAmount,
+        dates,
+        needs_day_selection: DAY_TRACKED_IDS.has(item.id) && dates.length === 0 && qty > 0,
+        recorded_at: new Date().toISOString(),
+      };
+    });
+
+    const addedAmount = newItemsPaid.reduce((sum, i) => sum + i.amount, 0);
+    // Amount is SUMMED, never overwritten — a bulk checkout with several
+    // items paid together must not clobber whatever was already recorded
+    // for this email (e.g. from an earlier separate purchase). If no
+    // per-item breakdown was sent at all (older client bundle), fall back
+    // to adding the verified total directly; if a breakdown WAS sent but
+    // every item in it was already recorded (a reload/retry), add nothing.
+    const finalAmount =
+      (Number(existingUser?.amount) || 0) + (incomingItems.length > 0 ? addedAmount : Number(amount) || 0);
+
+    if (newItemsPaid.length > 0) {
+      registrationDetails.items_paid = [...existingItemsPaid, ...newItemsPaid];
+    } else if (existingItemsPaid.length > 0 && !registrationDetails.items_paid) {
+      registrationDetails.items_paid = existingItemsPaid;
+    }
+
     const row = {
       email: email.toLowerCase(),
       user_id: finalUserId,
@@ -112,7 +165,7 @@ export async function POST(req) {
       details: registrationDetails,
       payment_id,
       order_id,
-      amount,
+      amount: finalAmount,
       status: 'confirmed',
       payment_status: 'paid',
       updated_at: new Date().toISOString(),

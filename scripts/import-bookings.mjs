@@ -170,6 +170,7 @@ async function main() {
         internal_id: item.id,
         title: item.title,
         booking_id: item.bookingId,
+        booking_uid: item.bookingId,
         booking_time: item.bookingTime,
         qty: item.qty,
         amount: item.amount,

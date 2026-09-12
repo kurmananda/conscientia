@@ -1474,6 +1474,13 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
   const [form, setForm] = useState({
     accommodation_room: user.accommodation_room || '',
   });
+  const [guestForm, setGuestForm] = useState({
+    name: user.name || '',
+    phone: user.phone || '',
+    college: user.college || '',
+    city: user.city || '',
+    gender: user.gender || '',
+  });
   const status = accommodationStatus(user);
   const buckets = paidBuckets(user);
   const eventEntries = paidIds(user)
@@ -1509,6 +1516,29 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
       }
       setSaveMsg('Saved.');
       pushToast?.(`Saved changes to "${user.name || user.unique_code || user.user_id}".`);
+      onSaved?.();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleGuestSave = async () => {
+    setSaving(true);
+    setSaveMsg('');
+    try {
+      const res = await fetch('/api/admin/guest-profile', {
+        method: 'PATCH',
+        headers: adminHeaders(session, { 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ email: user.email, fields: guestForm }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSaveMsg(data.message || 'Save failed.');
+        pushToast?.(`Failed to save "${user.name || user.email}": ${data.message || 'unknown error'}`, 'error');
+        return;
+      }
+      setSaveMsg('Saved.');
+      pushToast?.(`Saved changes to "${guestForm.name || user.email}".`);
       onSaved?.();
     } finally {
       setSaving(false);
@@ -1655,6 +1685,54 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
                 )}
               </AnimatePresence>
 
+              {user.is_guest && (
+                <div className="mb-5">
+                  <p className="mb-2 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-cyan-400/80">
+                    <Users size={12} /> Guest Details (no site account — fill in from another source if known)
+                  </p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <input
+                      type="text"
+                      value={guestForm.name}
+                      onChange={(e) => setGuestForm({ ...guestForm, name: e.target.value })}
+                      placeholder="Name"
+                      className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs outline-none transition-colors focus:border-cyan-500/60"
+                    />
+                    <input
+                      type="text"
+                      value={guestForm.phone}
+                      onChange={(e) => setGuestForm({ ...guestForm, phone: e.target.value })}
+                      placeholder="Phone"
+                      className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs outline-none transition-colors focus:border-cyan-500/60"
+                    />
+                    <input
+                      type="text"
+                      value={guestForm.college}
+                      onChange={(e) => setGuestForm({ ...guestForm, college: e.target.value })}
+                      placeholder="College"
+                      className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs outline-none transition-colors focus:border-cyan-500/60"
+                    />
+                    <input
+                      type="text"
+                      value={guestForm.city}
+                      onChange={(e) => setGuestForm({ ...guestForm, city: e.target.value })}
+                      placeholder="City"
+                      className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs outline-none transition-colors focus:border-cyan-500/60"
+                    />
+                    <select
+                      value={guestForm.gender}
+                      onChange={(e) => setGuestForm({ ...guestForm, gender: e.target.value })}
+                      className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs outline-none transition-colors focus:border-cyan-500/60"
+                    >
+                      <option value="">Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <p className="mb-2 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-cyan-400/80">
                 <BedDouble size={12} /> Accommodation
               </p>
@@ -1663,7 +1741,11 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
                   <label className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-[0.2em] text-white/40">
                     <DoorOpen size={11} /> Room / Building
                   </label>
-                  {bookedOrPending ? (
+                  {user.is_guest ? (
+                    <p className="rounded-lg border border-dashed border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-white/30">
+                      No profile row for guest checkouts — room assignment isn&apos;t editable here yet.
+                    </p>
+                  ) : bookedOrPending ? (
                     <input
                       type="text"
                       value={form.accommodation_room}
@@ -1693,23 +1775,15 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
               </div>
 
               <div className="mt-5 flex items-center gap-3">
-                {user.is_guest ? (
-                  <span className="text-xs text-white/30">
-                    Guest checkout — no profile to edit (paid via TiQR without an account).
-                  </span>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="btn-primary text-[10px] disabled:opacity-60"
-                    >
-                      {saving ? 'Saving…' : 'Save Changes'}
-                    </button>
-                    {saveMsg && <span className="text-xs text-white/40">{saveMsg}</span>}
-                  </>
-                )}
+                <button
+                  type="button"
+                  onClick={user.is_guest ? handleGuestSave : handleSave}
+                  disabled={saving}
+                  className="btn-primary text-[10px] disabled:opacity-60"
+                >
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
+                {saveMsg && <span className="text-xs text-white/40">{saveMsg}</span>}
               </div>
             </div>
           </motion.div>
