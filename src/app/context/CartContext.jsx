@@ -39,6 +39,7 @@ const CartContext = createContext({
   updateQty: () => {},
   clear: () => {},
   hasItem: () => false,
+  isRegistered: () => false,
 });
 
 function readLocalCart() {
@@ -59,7 +60,34 @@ function writeLocalCart(items) {
 export function CartProvider({ children }) {
   const { user } = useAuth();
   const [items, setItems] = useState([]);
+  const [registeredIds, setRegisteredIds] = useState(new Set());
   const syncedForUser = useRef(null);
+
+  // Already-paid items shouldn't be addable to cart again — a re-add
+  // attempt (e.g. clicking "Add to Cart" again on a workshop already
+  // booked) should show as registered instead of silently queueing a
+  // duplicate purchase.
+  useEffect(() => {
+    if (!user) {
+      setRegisteredIds(new Set());
+      return;
+    }
+    let active = true;
+    fetch(`/api/get-registrations?user_id=${encodeURIComponent(user.id)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (!active) return;
+        const paid = json?.data?.payment_status === 'paid';
+        const ids = paid && Array.isArray(json?.data?.workshop_ids) ? json.data.workshop_ids : [];
+        setRegisteredIds(new Set(ids.map(String)));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const isRegistered = useCallback((id) => registeredIds.has(String(id)), [registeredIds]);
 
   // Guest cart: mirror localStorage into state, reacting to other tabs.
   useEffect(() => {
@@ -146,6 +174,9 @@ export function CartProvider({ children }) {
 
   const addItem = useCallback(
     async (item) => {
+      if (registeredIds.has(String(item.id))) {
+        return { alreadyRegistered: true };
+      }
       const itemWithQty = { qty: 1, ...item };
       if (user) {
         let merged = null;
@@ -178,7 +209,7 @@ export function CartProvider({ children }) {
       writeLocalCart(next);
       setItems(next);
     },
-    [user]
+    [user, registeredIds]
   );
 
   // Full upsert-or-replace for cases addItem/updateQty don't cover — e.g.
@@ -187,6 +218,9 @@ export function CartProvider({ children }) {
   // quantities. Always overwrites the existing item_data if the key exists.
   const setItem = useCallback(
     async (item) => {
+      if (registeredIds.has(String(item.id))) {
+        return { alreadyRegistered: true };
+      }
       const full = { qty: 1, ...item };
       if (user) {
         setItems((prev) => {
@@ -204,7 +238,7 @@ export function CartProvider({ children }) {
       writeLocalCart(next);
       setItems(next);
     },
-    [user]
+    [user, registeredIds]
   );
 
   const updateQty = useCallback(
@@ -286,8 +320,8 @@ export function CartProvider({ children }) {
   // on any CartProvider render at all, not just ones where the cart
   // actually changed. Memoizing the value object fixes that.
   const value = useMemo(
-    () => ({ items, addItem, setItem, removeItem, updateQty, clear, hasItem }),
-    [items, addItem, setItem, removeItem, updateQty, clear, hasItem]
+    () => ({ items, addItem, setItem, removeItem, updateQty, clear, hasItem, isRegistered }),
+    [items, addItem, setItem, removeItem, updateQty, clear, hasItem, isRegistered]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

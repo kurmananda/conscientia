@@ -142,18 +142,18 @@ export async function startTiqrCheckout(cartItems, details) {
 
   const redirectUrl = pickTiqrPaymentUrl(data, [callback_url]);
 
-  const finalUid =
-    bookings.length > 1 ? data.uid : data.booking?.uid || data.uid || '';
+  // TiQR's bulk endpoint returns the exact same shape as a single booking
+  // — { booking, payment } — not the { uid, bookings: [...] } shape this
+  // used to assume. That mismatch meant `finalUid` came back empty for
+  // every bulk (2+ item) checkout, so /payment-success could never verify
+  // the payment and the user never got redirected back properly.
+  const finalUid = data.booking?.uid || data.uid || '';
 
   // Free (₹0) tickets come back from TiQR already `status: 'confirmed'`
   // with an empty `payment` object — there is no checkout page to send the
   // user to. Only treat a missing link as a real failure otherwise.
   const isAlreadyConfirmed =
-    bookings.length > 1
-      ? Array.isArray(data.bookings) &&
-        data.bookings.length > 0 &&
-        data.bookings.every((b) => String(b?.status || '').toLowerCase() === 'confirmed')
-      : String(data.booking?.status || data.status || '').toLowerCase() === 'confirmed';
+    String(data.booking?.status || data.status || '').toLowerCase() === 'confirmed';
 
   if (!redirectUrl && !isAlreadyConfirmed) {
     console.error('[TiQR] no checkout link found in response', data);

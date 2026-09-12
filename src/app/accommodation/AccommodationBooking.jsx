@@ -93,7 +93,8 @@ function ActionButton({ cartDates, selectedDates, onAdd, onUpdate, onRemove, pri
 function FoodAddon({ addon, price }) {
   const { user } = useAuth();
   const router = useRouter();
-  const { items, setItem, removeItem, hasItem } = useCart();
+  const { items, setItem, removeItem, hasItem, isRegistered } = useCart();
+  const alreadyRegistered = isRegistered(addon.id);
 
   const cartItem = items.find((i) => i.key === addon.id);
   const cartDates = cartItem?.details?.dates || (cartItem ? STAY_DATES.map((d) => d.id).slice(0, cartItem.qty || 0) : []);
@@ -146,20 +147,28 @@ function FoodAddon({ addon, price }) {
         <p className="text-xs text-slate-400">{addon.description}</p>
         <p className="mt-1 text-xs font-semibold text-cyan-300">₹{price} / day</p>
       </div>
-      <DatePicker
-        selected={selected}
-        onToggle={toggleDate}
-        dates={STAY_DATES.filter((d) => addon.dates.includes(d.id))}
-      />
-      <ActionButton
-        cartDates={cartDates}
-        selectedDates={selected}
-        onAdd={commit}
-        onUpdate={commit}
-        onRemove={remove}
-        priceEach={price}
-        label={`${selected.length} day${selected.length > 1 ? 's' : ''}`}
-      />
+      {alreadyRegistered ? (
+        <button type="button" disabled className="btn-secondary text-[10px] opacity-70">
+          <Check size={14} /> Already Registered
+        </button>
+      ) : (
+        <>
+          <DatePicker
+            selected={selected}
+            onToggle={toggleDate}
+            dates={STAY_DATES.filter((d) => addon.dates.includes(d.id))}
+          />
+          <ActionButton
+            cartDates={cartDates}
+            selectedDates={selected}
+            onAdd={commit}
+            onUpdate={commit}
+            onRemove={remove}
+            priceEach={price}
+            label={`${selected.length} day${selected.length > 1 ? 's' : ''}`}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -167,7 +176,8 @@ function FoodAddon({ addon, price }) {
 export default function AccommodationBooking() {
   const { user } = useAuth();
   const router = useRouter();
-  const { items, setItem, removeItem, hasItem } = useCart();
+  const { items, setItem, removeItem, hasItem, isRegistered } = useCart();
+  const alreadyRegistered = isRegistered('accommodation');
   const [prices, setPrices] = useState({});
 
   useEffect(() => {
@@ -245,22 +255,30 @@ export default function AccommodationBooking() {
           </div>
         </div>
 
-        <DatePicker selected={selected} onToggle={toggleDate} />
+        {alreadyRegistered ? (
+          <button type="button" disabled className="btn-secondary w-fit text-[10px] opacity-70">
+            <Check size={14} /> Already Registered
+          </button>
+        ) : (
+          <>
+            <DatePicker selected={selected} onToggle={toggleDate} />
 
-        <div className="flex flex-wrap items-center gap-3">
-          <ActionButton
-            cartDates={cartDates}
-            selectedDates={selected}
-            onAdd={commit}
-            onUpdate={commit}
-            onRemove={remove}
-            priceEach={accommodationPrice}
-            label={`${selected.length} night${selected.length > 1 ? 's' : ''}`}
-          />
-          {selected.length > 0 && (
-            <span className="text-xs text-white/40">Total: ₹{total}</span>
-          )}
-        </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <ActionButton
+                cartDates={cartDates}
+                selectedDates={selected}
+                onAdd={commit}
+                onUpdate={commit}
+                onRemove={remove}
+                priceEach={accommodationPrice}
+                label={`${selected.length} night${selected.length > 1 ? 's' : ''}`}
+              />
+              {selected.length > 0 && (
+                <span className="text-xs text-white/40">Total: ₹{total}</span>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {inCart && (
