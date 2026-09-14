@@ -803,7 +803,10 @@ function StayMerchField({ label, value, span, adminManaged }) {
 function TeamPanel({ item, profile }) {
   const [status, setStatus] = useState(null); // { groupSize, role, team, yourCode }
   const [loading, setLoading] = useState(true);
+  // Confirmed teammate CNS-ids, added one at a time — not the fixed-length
+  // all-boxes-at-once array this used to be.
   const [codes, setCodes] = useState([]);
+  const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -816,7 +819,8 @@ function TeamPanel({ item, profile }) {
         if (!active) return;
         if (json.success) {
           setStatus(json.data);
-          setCodes(Array.from({ length: Math.max(0, (json.data.groupSize || 1) - 1) }, () => ''));
+          setCodes([]);
+          setDraft('');
         }
       })
       .finally(() => active && setLoading(false));
@@ -825,11 +829,30 @@ function TeamPanel({ item, profile }) {
     };
   }, [item.id]);
 
-  const handleConfirm = async (e) => {
+  const neededCodes = Math.max(0, (status?.groupSize || 1) - 1);
+
+  const handleAddTeammate = (e) => {
     e.preventDefault();
     setError('');
-    if (codes.some((c) => !c.trim())) {
-      setError('Fill in every teammate CNS-id.');
+    const trimmed = draft.trim().toUpperCase();
+    if (!trimmed) return;
+    if (codes.includes(trimmed) || trimmed === (status?.yourCode || profile?.unique_code)) {
+      setError('That CNS-id is already on the team.');
+      return;
+    }
+    setCodes((prev) => [...prev, trimmed]);
+    setDraft('');
+  };
+
+  const removeCode = (code) => {
+    setError('');
+    setCodes((prev) => prev.filter((c) => c !== code));
+  };
+
+  const handleConfirm = async () => {
+    setError('');
+    if (codes.length !== neededCodes) {
+      setError(`Add all ${neededCodes} teammate${neededCodes > 1 ? 's' : ''} first.`);
       return;
     }
     setSubmitting(true);
@@ -869,41 +892,75 @@ function TeamPanel({ item, profile }) {
   }
 
   if (role === 'leader' && !team?.confirmed) {
+    const filledCount = codes.length + 1; // + yourself
+    const allAdded = codes.length === neededCodes;
     return (
-      <form
-        onSubmit={handleConfirm}
-        className="space-y-2 rounded-xl border border-amber-400/25 bg-amber-400/[0.04] p-3"
-      >
-        <p className="text-xs font-semibold text-amber-300">
-          Complete your team — {groupSize} participants required
-        </p>
-        <p className="text-[11px] text-white/40">You: {yourCode || profile?.unique_code}</p>
-        {codes.map((c, i) => (
-          <input
-            key={i}
-            type="text"
-            value={c}
-            onChange={(e) => {
-              const next = [...codes];
-              next[i] = e.target.value.toUpperCase();
-              setCodes(next);
-            }}
-            placeholder={`Teammate ${i + 2} CNS-id (e.g. CNS-AB12CD)`}
-            className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500/60"
-          />
-        ))}
+      <div className="space-y-2 rounded-xl border border-amber-400/25 bg-amber-400/[0.04] p-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-amber-300">Complete your team</p>
+          <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 font-mono text-[10px] text-amber-300">
+            {filledCount}/{groupSize}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 font-mono text-[10px] text-cyan-300">
+            {yourCode || profile?.unique_code} (you)
+          </span>
+          {codes.map((c) => (
+            <span
+              key={c}
+              className="inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 font-mono text-[10px] text-cyan-300"
+            >
+              {c}
+              <button
+                type="button"
+                onClick={() => removeCode(c)}
+                className="text-cyan-300/60 hover:text-white"
+                aria-label={`Remove ${c}`}
+              >
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+        </div>
+
+        {!allAdded && (
+          <form onSubmit={handleAddTeammate} className="flex gap-2">
+            <input
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value.toUpperCase())}
+              placeholder={`Teammate ${filledCount + 1} CNS-id (e.g. CNS-AB12CD)`}
+              className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500/60"
+            />
+            <button
+              type="submit"
+              className="shrink-0 rounded-full border border-cyan-500/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300 hover:bg-cyan-500/10"
+            >
+              Add
+            </button>
+          </form>
+        )}
+
         {error && <p className="text-[11px] text-red-400">{error}</p>}
-        <p className="text-[10px] text-white/30">
-          This cannot be changed once confirmed — double-check the CNS-ids before submitting.
-        </p>
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-full bg-cyan-400 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-black transition-colors hover:bg-white disabled:opacity-60"
-        >
-          {submitting ? 'Confirming…' : 'Confirm Team'}
-        </button>
-      </form>
+
+        {allAdded && (
+          <>
+            <p className="text-[10px] text-white/30">
+              This cannot be changed once confirmed — double-check the CNS-ids before submitting.
+            </p>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={submitting}
+              className="rounded-full bg-cyan-400 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-black transition-colors hover:bg-white disabled:opacity-60"
+            >
+              {submitting ? 'Confirming…' : 'Confirm Team'}
+            </button>
+          </>
+        )}
+      </div>
     );
   }
 
