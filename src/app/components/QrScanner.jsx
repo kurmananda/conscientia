@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import jsQR from 'jsqr';
 import { X, ScanLine } from 'lucide-react';
+import useBodyScrollLock from '../hooks/useBodyScrollLock';
 
 /**
  * Full-screen camera modal that decodes a QR code from the live feed and
@@ -11,6 +12,7 @@ import { X, ScanLine } from 'lucide-react';
  * the scanner, look the code up, etc) — this component only scans.
  */
 export default function QrScanner({ onScan, onClose, title = 'Scan QR Code' }) {
+  useBodyScrollLock(true);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);

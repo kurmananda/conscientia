@@ -2,18 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Users, CheckCircle2 } from "lucide-react";
+import { Search, Users, FileSpreadsheet, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import LoadingState from "../components/LoadingState";
-
-function paymentTone(status) {
-  const s = (status || "").toLowerCase();
-  if (s === "paid" || s === "success") return { bg: "rgba(16,185,129,0.15)", border: "rgba(16,185,129,0.4)", text: "#34d399" };
-  if (s === "pending") return { bg: "rgba(245,158,11,0.15)", border: "rgba(245,158,11,0.4)", text: "#fbbf24" };
-  if (s === "failed") return { bg: "rgba(239,68,68,0.15)", border: "rgba(239,68,68,0.4)", text: "#f87171" };
-  return { bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.15)", text: "rgba(255,255,255,0.5)" };
-}
+import { downloadAsExcel } from "@/lib/exportExcel";
 
 function initials(name) {
   if (!name) return "?";
@@ -25,6 +18,19 @@ function initials(name) {
     .join("");
 }
 
+function DetailField({ label, value, mono }) {
+  return (
+    <div>
+      <p style={{ fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)" }}>
+        {label}
+      </p>
+      <p style={{ color: "rgba(255,255,255,0.85)", fontFamily: mono ? "monospace" : undefined }}>
+        {value || "—"}
+      </p>
+    </div>
+  );
+}
+
 export default function DataPage() {
   const { user, loading: authLoading } = useAuth();
   const [assigned, setAssigned] = useState(null); // null = loading, [] = none
@@ -34,6 +40,8 @@ export default function DataPage() {
   const [teams, setTeams] = useState([]);
   const [participantsError, setParticipantsError] = useState("");
   const [search, setSearch] = useState("");
+  const [itemSearch, setItemSearch] = useState("");
+  const [expandedRow, setExpandedRow] = useState(null);
 
   async function authedFetch(url) {
     const { data } = await supabase.auth.getSession();
@@ -71,6 +79,7 @@ export default function DataPage() {
     setTeams([]);
     setParticipantsError("");
     setSearch("");
+    setExpandedRow(null);
     const res = await authedFetch(`/api/data/registrants?item_id=${encodeURIComponent(item.id)}`);
     const json = await res.json().catch(() => ({}));
     if (!json.success) {
@@ -86,16 +95,58 @@ export default function DataPage() {
     const q = search.trim().toLowerCase();
     if (!q) return participants;
     return participants.filter((p) =>
-      [p.name, p.email, p.phone, p.unique_code, p.college, p.city]
+      [p.name, p.email, p.phone, p.unique_code, p.college, p.city, p.aadhaar_number]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q))
     );
   }, [participants, search]);
 
-  const paidCount = useMemo(
-    () => (participants || []).filter((p) => (p.payment_status || "").toLowerCase() === "paid").length,
-    [participants]
-  );
+  const exportParticipants = () => {
+    const rows = filteredParticipants.map((p) => ({
+      Name: p.name || "",
+      "CNS-id": p.unique_code || "",
+      Email: p.email || "",
+      Phone: p.phone || "",
+      "Aadhaar Number": p.aadhaar_number || "",
+      College: p.college || "",
+      City: p.city || "",
+    }));
+    const label = (selected?.title || selected?.id || "registrants").replace(/[^a-z0-9]+/gi, "_");
+    downloadAsExcel(rows, `${label}.xlsx`, "Registrants");
+  };
+
+  const filteredAssigned = useMemo(() => {
+    if (!assigned) return [];
+    const q = itemSearch.trim().toLowerCase();
+    if (!q) return assigned;
+    return assigned.filter((item) => (item.title || item.id || "").toLowerCase().includes(q));
+  }, [assigned, itemSearch]);
+
+  // Groups the (already search-filtered) participant list by team roster —
+  // each team's members shown together in registration order, leader first —
+  // with everyone not on a team collected into a trailing "Individual" group.
+  const groupedParticipants = useMemo(() => {
+    if (!teams || teams.length === 0) {
+      return filteredParticipants.length ? [{ label: null, rows: filteredParticipants }] : [];
+    }
+    const byCode = new Map(filteredParticipants.map((p) => [p.unique_code, p]));
+    const used = new Set();
+    const groups = [];
+    for (const team of teams) {
+      const codes = [
+        team.leader_unique_code,
+        ...(team.member_codes || []).filter((c) => c !== team.leader_unique_code),
+      ].filter(Boolean);
+      const rows = codes.map((c) => byCode.get(c)).filter(Boolean);
+      codes.forEach((c) => used.add(c));
+      if (rows.length > 0) {
+        groups.push({ label: `Team — ${team.confirmed ? "Confirmed" : "Pending"}`, rows });
+      }
+    }
+    const individual = filteredParticipants.filter((p) => !used.has(p.unique_code));
+    if (individual.length > 0) groups.push({ label: groups.length ? "Individual" : null, rows: individual });
+    return groups;
+  }, [filteredParticipants, teams]);
 
   return (
     <div
@@ -156,7 +207,31 @@ export default function DataPage() {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: "2rem" }} className="max-lg:grid-cols-1">
             <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-              {assigned.map((item) => (
+              <div style={{ position: "relative", marginBottom: "0.4rem" }}>
+                <Search size={13} style={{ position: "absolute", left: "0.8rem", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)" }} />
+                <input
+                  type="text"
+                  value={itemSearch}
+                  onChange={(e) => setItemSearch(e.target.value)}
+                  placeholder="Search event or workshop…"
+                  style={{
+                    width: "100%",
+                    padding: "0.55rem 0.8rem 0.55rem 2.1rem",
+                    borderRadius: "10px",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: "rgba(255,255,255,0.03)",
+                    color: "white",
+                    fontSize: "0.78rem",
+                    outline: "none",
+                  }}
+                />
+              </div>
+              {filteredAssigned.length === 0 && (
+                <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.35)", padding: "0.4rem 0.2rem" }}>
+                  No workshop/event matches your search.
+                </p>
+              )}
+              {filteredAssigned.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => openItem(item)}
@@ -218,15 +293,6 @@ export default function DataPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="glass-card" style={{ padding: "0.8rem 1.2rem", borderRadius: "14px", display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                      <CheckCircle2 size={16} color="#34d399" />
-                      <div>
-                        <p style={{ fontSize: "1.1rem", fontWeight: 800, lineHeight: 1 }}>{paidCount}</p>
-                        <p style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                          Paid
-                        </p>
-                      </div>
-                    </div>
                   </div>
 
                   {teams.length > 0 && (
@@ -263,68 +329,105 @@ export default function DataPage() {
                     </div>
                   )}
 
-                  <div style={{ position: "relative", marginBottom: "1.2rem", maxWidth: "360px" }}>
-                    <Search size={14} style={{ position: "absolute", left: "0.9rem", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)" }} />
-                    <input
-                      type="text"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search by name, email, phone, CNS-id, college…"
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.8rem", marginBottom: "1.2rem" }}>
+                    <div style={{ position: "relative", maxWidth: "360px", flex: "1 1 260px" }}>
+                      <Search size={14} style={{ position: "absolute", left: "0.9rem", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)" }} />
+                      <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search by name, email, phone, CNS-id, college…"
+                        style={{
+                          width: "100%",
+                          padding: "0.65rem 0.9rem 0.65rem 2.3rem",
+                          borderRadius: "10px",
+                          border: "1px solid rgba(255,255,255,0.15)",
+                          background: "rgba(255,255,255,0.03)",
+                          color: "white",
+                          fontSize: "0.8rem",
+                          outline: "none",
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={exportParticipants}
+                      disabled={filteredParticipants.length === 0}
+                      className="glass-card"
                       style={{
-                        width: "100%",
-                        padding: "0.65rem 0.9rem 0.65rem 2.3rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        padding: "0.65rem 1rem",
                         borderRadius: "10px",
-                        border: "1px solid rgba(255,255,255,0.15)",
-                        background: "rgba(255,255,255,0.03)",
-                        color: "white",
-                        fontSize: "0.8rem",
-                        outline: "none",
+                        border: "1px solid rgba(51,214,255,0.35)",
+                        background: "rgba(51,214,255,0.08)",
+                        color: "#33d6ff",
+                        fontSize: "0.78rem",
+                        fontWeight: 700,
+                        cursor: filteredParticipants.length === 0 ? "not-allowed" : "pointer",
+                        opacity: filteredParticipants.length === 0 ? 0.5 : 1,
                       }}
-                    />
+                    >
+                      <FileSpreadsheet size={14} />
+                      Download as Excel
+                    </button>
                   </div>
 
                   <p style={{ color: "rgba(255,255,255,0.4)", marginBottom: "0.8rem", fontSize: "0.8rem" }}>
                     Showing {filteredParticipants.length} of {participants.length}
                   </p>
 
-                  <div className="glass-card" style={{ borderRadius: "16px", overflow: "hidden" }}>
-                    <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
-                        <thead>
-                          <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", textAlign: "left", background: "rgba(255,255,255,0.02)" }}>
-                            {["", "Name", "CNS-id", "Email", "Phone", "College", "City", "Amount", "Payment"].map((h) => (
-                              <th
-                                key={h}
-                                style={{
-                                  padding: "0.7rem 0.8rem",
-                                  color: "rgba(255,255,255,0.4)",
-                                  textTransform: "uppercase",
-                                  letterSpacing: "0.08em",
-                                  fontSize: "0.65rem",
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                {h}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredParticipants.map((p, i) => {
-                            const tone = paymentTone(p.payment_status);
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}>
+                    {groupedParticipants.map((group, gi) => (
+                      <div key={gi}>
+                        {group.label && (
+                          <p
+                            style={{
+                              padding: "0.3rem 0.2rem",
+                              marginBottom: "0.5rem",
+                              fontSize: "0.65rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.1em",
+                              fontWeight: 700,
+                              color: "rgba(51,214,255,0.8)",
+                            }}
+                          >
+                            {group.label}
+                          </p>
+                        )}
+                        <div className="glass-card" style={{ borderRadius: "16px", overflow: "hidden" }}>
+                          {group.rows.map((p, i) => {
+                            const rowKey = p.unique_code || `${gi}-${i}`;
+                            const isOpen = expandedRow === rowKey;
                             return (
-                              <tr
-                                key={i}
+                              <div
+                                key={rowKey}
                                 style={{
-                                  borderBottom: "1px solid rgba(255,255,255,0.05)",
-                                  background: i % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent",
+                                  borderBottom: i === group.rows.length - 1 ? "none" : "1px solid rgba(255,255,255,0.06)",
                                 }}
                               >
-                                <td style={{ padding: "0.55rem 0.8rem" }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedRow(isOpen ? null : rowKey)}
+                                  style={{
+                                    width: "100%",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "0.7rem",
+                                    padding: "0.7rem 0.9rem",
+                                    background: isOpen ? "rgba(51,214,255,0.06)" : "transparent",
+                                    border: "none",
+                                    color: "white",
+                                    textAlign: "left",
+                                    cursor: "pointer",
+                                  }}
+                                >
                                   <div
                                     style={{
-                                      width: "26px",
-                                      height: "26px",
+                                      width: "28px",
+                                      height: "28px",
+                                      flexShrink: 0,
                                       borderRadius: "50%",
                                       background: "linear-gradient(135deg, rgba(51,214,255,0.3), rgba(168,85,247,0.3))",
                                       display: "flex",
@@ -336,45 +439,50 @@ export default function DataPage() {
                                   >
                                     {initials(p.name)}
                                   </div>
-                                </td>
-                                <td style={{ padding: "0.55rem 0.8rem", fontWeight: 600 }}>{p.name || "—"}</td>
-                                <td style={{ padding: "0.55rem 0.8rem", fontFamily: "monospace", color: "#33d6ff" }}>{p.unique_code || "—"}</td>
-                                <td style={{ padding: "0.55rem 0.8rem" }}>{p.email || "—"}</td>
-                                <td style={{ padding: "0.55rem 0.8rem" }}>{p.phone || "—"}</td>
-                                <td style={{ padding: "0.55rem 0.8rem" }}>{p.college || "—"}</td>
-                                <td style={{ padding: "0.55rem 0.8rem" }}>{p.city || "—"}</td>
-                                <td style={{ padding: "0.55rem 0.8rem" }}>{p.amount ? `₹${p.amount}` : "—"}</td>
-                                <td style={{ padding: "0.55rem 0.8rem" }}>
-                                  <span
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <p style={{ fontWeight: 600, fontSize: "0.85rem" }}>{p.name || "—"}</p>
+                                    <p style={{ fontSize: "0.72rem", fontFamily: "monospace", color: "#33d6ff" }}>
+                                      {p.unique_code || "—"}
+                                    </p>
+                                  </div>
+                                  <ChevronDown
+                                    size={15}
                                     style={{
-                                      display: "inline-block",
-                                      padding: "0.2rem 0.6rem",
-                                      borderRadius: "999px",
-                                      fontSize: "0.65rem",
-                                      fontWeight: 700,
-                                      textTransform: "uppercase",
-                                      letterSpacing: "0.05em",
-                                      background: tone.bg,
-                                      border: `1px solid ${tone.border}`,
-                                      color: tone.text,
+                                      flexShrink: 0,
+                                      color: "rgba(255,255,255,0.4)",
+                                      transform: isOpen ? "rotate(180deg)" : "none",
+                                      transition: "transform 0.2s ease",
+                                    }}
+                                  />
+                                </button>
+                                {isOpen && (
+                                  <div
+                                    style={{
+                                      padding: "0.2rem 0.9rem 0.9rem 3.5rem",
+                                      display: "grid",
+                                      gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+                                      gap: "0.5rem 1rem",
+                                      fontSize: "0.78rem",
                                     }}
                                   >
-                                    {p.payment_status || "—"}
-                                  </span>
-                                </td>
-                              </tr>
+                                    <DetailField label="Email" value={p.email} />
+                                    <DetailField label="Phone" value={p.phone} />
+                                    <DetailField label="Aadhaar" value={p.aadhaar_number} mono />
+                                    <DetailField label="College" value={p.college} />
+                                    <DetailField label="City" value={p.city} />
+                                  </div>
+                                )}
+                              </div>
                             );
                           })}
-                          {filteredParticipants.length === 0 && (
-                            <tr>
-                              <td colSpan={9} style={{ padding: "1.5rem", color: "rgba(255,255,255,0.4)", textAlign: "center" }}>
-                                {participants.length === 0 ? "No one has registered yet." : "No participants match your search."}
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+                        </div>
+                      </div>
+                    ))}
+                    {filteredParticipants.length === 0 && (
+                      <p className="glass-card" style={{ borderRadius: "16px", padding: "1.5rem", color: "rgba(255,255,255,0.4)", textAlign: "center" }}>
+                        {participants.length === 0 ? "No one has registered yet." : "No participants match your search."}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

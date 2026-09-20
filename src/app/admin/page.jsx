@@ -24,13 +24,16 @@ import {
   Layers,
   Pencil,
   QrCode,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { getPromos, DEFAULT_PROMOS } from '@/lib/promoStore';
 import { groupBySection } from '../lib/groupBySection';
 import { FOOD_ADDONS, STAY_DATES } from '../accommodation/merchData';
 import QrScanner from '../components/QrScanner';
+import useBodyScrollLock from '../hooks/useBodyScrollLock';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { downloadAsExcel } from '@/lib/exportExcel';
 
 const ADMIN_HEADER = 'x-admin-callsign';
 
@@ -79,20 +82,54 @@ const FOOD_LABELS = Object.fromEntries(FOOD_ADDONS.map((f) => [f.id, f.label]));
 // Splits a user's paid ids into separate workshop/event/food buckets with
 // readable titles, for showing as distinct fields instead of one lumped
 // "Tickets:" string.
+// Ids that are known-and-intentionally excluded from the Workshops/Events
+// buckets (they're surfaced elsewhere — food row, accommodation status,
+// merch_selection, or aren't real catalog products at all).
+const NON_CATALOG_PAID_IDS = new Set(['accommodation', 'delivery']);
+function isKnownNonCatalogId(id) {
+  return (
+    NON_CATALOG_PAID_IDS.has(id) ||
+    FOOD_ADDON_IDS.has(id) ||
+    id.startsWith('merch-') ||
+    id.startsWith('legacy_')
+  );
+}
+
+// Any paid id has to fall in the workshop/event catalog, a known non-catalog
+// bucket (food/accommodation/merch/legacy), or it's an orphan — a real
+// payment whose catalog_items row got deleted/renamed after people already
+// paid for it (e.g. 'mun_pc'). Silently dropping those would hide real paid
+// bookings from admins reconciling payments, so they're surfaced in their
+// own bucket instead, titled from the detailed paid-items list when possible.
 function paidBuckets(user) {
   const ids = paidIds(user).map(String);
   const workshops = ids.filter((id) => WORKSHOP_IDS.has(id)).map((id) => findCatalogItem(id)?.title || id);
   const events = ids.filter((id) => EVENT_IDS.has(id)).map((id) => findCatalogItem(id)?.title || id);
   const food = ids.filter((id) => FOOD_ADDON_IDS.has(id)).map((id) => FOOD_LABELS[id] || id);
-  return { workshops, events, food };
+  const itemsPaid = Array.isArray(user.registration?.details?.items_paid) ? user.registration.details.items_paid : [];
+  const other = ids
+    .filter((id) => !WORKSHOP_IDS.has(id) && !EVENT_IDS.has(id) && !isKnownNonCatalogId(id))
+    .map((id) => {
+      const paidItem = itemsPaid.find((it) => it.internal_id === id);
+      return paidItem ? `${cleanItemTitle(paidItem)} (${id})` : id;
+    });
+  return { workshops, events, food, other };
 }
 
 const STAY_DATE_LABELS = Object.fromEntries(STAY_DATES.map((d) => [d.id, d.label]));
 
+// Registrants list is dense enough that the full "2026-10-29" (or even
+// "Oct 29") clutters every row — everyone already knows the month, so just
+// the day-of-month number is enough to tell dates apart.
+function shortDay(dateId) {
+  const m = String(dateId).match(/-(\d{1,2})$/);
+  return m ? String(Number(m[1])) : dateId;
+}
+
 function dateSuffix(cartRow) {
   const dates = cartRow?.item_data?.details?.dates;
   if (!Array.isArray(dates) || dates.length === 0) return '';
-  const labels = dates.map((d) => STAY_DATE_LABELS[d] || d).join('/');
+  const labels = dates.map((d) => shortDay(d)).join('/');
   return ` (${labels})`;
 }
 
@@ -141,6 +178,26 @@ function hasAccommodation(user) {
 
 function hasFood(user) {
   return paidIds(user).some((id) => FOOD_ADDON_IDS.has(String(id)));
+}
+
+// Earliest stay date across a user's paid food/accommodation items (ids are
+// ISO dates, e.g. "2026-10-29", so plain string sort is chronological). Items
+// still needing day selection have no dates yet and sort last.
+function stayDates(user) {
+  const items = user.registration?.details?.items_paid;
+  if (!Array.isArray(items)) return [];
+  return items
+    .filter((i) => FOOD_ADDON_IDS.has(i.internal_id) || i.internal_id === 'accommodation')
+    .flatMap((i) => (Array.isArray(i.dates) ? i.dates : []));
+}
+
+// Earliest stay date across a user's paid food/accommodation items (ids are
+// ISO dates, e.g. "2026-10-29", so plain string sort is chronological). Items
+// still needing day selection have no dates yet and sort last.
+function earliestStayDate(user) {
+  const dates = stayDates(user);
+  if (dates.length === 0) return null;
+  return dates.slice().sort()[0];
 }
 
 function foodBreakdown(users) {
@@ -396,10 +453,23 @@ function AdminDashboard({ session, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [eventSearch, setEventSearch] = useState('');
   const [expanded, setExpanded] = useState(null);
   const [tab, setTab] = useState('registrants'); // 'registrants' | 'logs' | 'admins'
   const [activeFilters, setActiveFilters] = useState([]); // ['event','workshop','food','accommodation']
   const [foodSort, setFoodSort] = useState(false);
+  // Cycles through 'default' -> each STAY_DATES id -> back to 'default'.
+  // A specific date pulls registrants staying/eating on that date to the
+  // top (still earliest-date-first among themselves), rather than the old
+  // plain boolean "sort by earliest date" toggle.
+  const [dateSort, setDateSort] = useState('default');
+  const cycleDateSort = () => {
+    setDateSort((cur) => {
+      if (cur === 'default') return STAY_DATES[0]?.id || 'default';
+      const idx = STAY_DATES.findIndex((d) => d.id === cur);
+      return idx === -1 || idx === STAY_DATES.length - 1 ? 'default' : STAY_DATES[idx + 1].id;
+    });
+  };
   const [logs, setLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsError, setLogsError] = useState('');
@@ -680,6 +750,14 @@ function AdminDashboard({ session, onLogout }) {
         [u.name, u.unique_code, u.phone, u.email].some((v) => (v || '').toLowerCase().includes(q))
       );
     }
+    const eq = eventSearch.trim().toLowerCase();
+    if (eq) {
+      list = list.filter((u) =>
+        paidIds(u)
+          .map(String)
+          .some((id) => (findCatalogItem(id)?.title || '').toLowerCase().includes(eq))
+      );
+    }
     if (activeFilters.length > 0) {
       list = list.filter((u) => {
         return activeFilters.every((f) => {
@@ -699,8 +777,24 @@ function AdminDashboard({ session, onLogout }) {
         })
         .map(({ u }) => u);
     }
+    if (dateSort !== 'default') {
+      list = list
+        .map((u, i) => ({ u, i }))
+        .sort((a, b) => {
+          const ah = stayDates(a.u).includes(dateSort) ? 0 : 1;
+          const bh = stayDates(b.u).includes(dateSort) ? 0 : 1;
+          if (ah !== bh) return ah - bh;
+          const ad = earliestStayDate(a.u);
+          const bd = earliestStayDate(b.u);
+          if (ad && bd) return ad === bd ? a.i - b.i : ad < bd ? -1 : 1;
+          if (ad && !bd) return -1;
+          if (!ad && bd) return 1;
+          return a.i - b.i;
+        })
+        .map(({ u }) => u);
+    }
     return list;
-  }, [users, search, activeFilters, foodSort]);
+  }, [users, search, eventSearch, activeFilters, foodSort, dateSort]);
 
   const filterCounts = useMemo(() => {
     const counts = {};
@@ -718,6 +812,34 @@ function AdminDashboard({ session, onLogout }) {
       accommodation: users.filter(hasAccommodation).length,
     };
   }, [users]);
+
+  const exportRegistrants = () => {
+    // groupMode's "grouped" is filtered's rows re-sliced into one row per
+    // (user, item) pair — export whichever the admin is currently looking
+    // at, so the file matches what's on screen after search + filters.
+    const sourceUsers = groupMode && grouped ? grouped.flatMap((g) => g.cards.map((c) => c.user)) : filtered;
+    const rows = sourceUsers.map((u) => {
+      const buckets = paidBuckets(u);
+      return {
+        Name: u.name || '',
+        'CNS-id': u.unique_code || '',
+        Email: u.email || '',
+        Phone: u.phone || '',
+        'Aadhaar Number': u.aadhaar_number || '',
+        College: u.college || '',
+        City: u.city || '',
+        Gender: u.gender || '',
+        'Payment Status': u.registration?.payment_status || '',
+        'Amount Paid': u.registration?.amount ?? 0,
+        Workshops: buckets.workshops.join('; '),
+        Events: buckets.events.join('; '),
+        Food: buckets.food.join('; '),
+        'Other Paid (no catalog match)': buckets.other.join('; '),
+        Accommodation: accommodationStatus(u).label,
+      };
+    });
+    downloadAsExcel(rows, 'registrants.xlsx', 'Registrants');
+  };
 
   const eventFilterActive = activeFilters.includes('event');
   const workshopFilterActive = activeFilters.includes('workshop');
@@ -1109,6 +1231,16 @@ function AdminDashboard({ session, onLogout }) {
                     className="w-full rounded-lg border border-white/15 bg-black/40 py-2.5 pl-9 pr-4 text-sm outline-none transition-colors focus:border-cyan-500/60"
                   />
                 </div>
+                <div className="relative max-w-md flex-1 min-w-[220px]">
+                  <ListChecks size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                  <input
+                    type="text"
+                    value={eventSearch}
+                    onChange={(e) => setEventSearch(e.target.value)}
+                    placeholder="Search by event or workshop…"
+                    className="w-full rounded-lg border border-white/15 bg-black/40 py-2.5 pl-9 pr-4 text-sm outline-none transition-colors focus:border-cyan-500/60"
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() => setFoodSort((v) => !v)}
@@ -1120,6 +1252,30 @@ function AdminDashboard({ session, onLogout }) {
                 >
                   <ArrowUpDown size={13} />
                   {foodSort ? 'Sort: Food First' : 'Sort: Default'}
+                </button>
+                <button
+                  type="button"
+                  onClick={cycleDateSort}
+                  title="Cycle: default -> each stay date, bringing that date's registrants to the top"
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${
+                    dateSort !== 'default'
+                      ? 'border-cyan-300 bg-cyan-400 text-black shadow-[0_0_18px_rgba(34,211,238,0.55)] ring-2 ring-cyan-300/70'
+                      : 'border-white/10 bg-white/[0.02] text-white/50 hover:border-white/25 hover:text-white/80'
+                  }`}
+                >
+                  <CalendarCheck2 size={13} />
+                  {dateSort === 'default'
+                    ? 'Sort: Default'
+                    : `Sort: Date ${STAY_DATES.findIndex((d) => d.id === dateSort) + 1} (${shortDay(dateSort)})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={exportRegistrants}
+                  title="Download the currently searched/filtered registrants as an Excel file"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/40 bg-cyan-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300 transition-colors hover:border-cyan-300 hover:bg-cyan-400/20"
+                >
+                  <FileSpreadsheet size={13} />
+                  Download as Excel
                 </button>
               </div>
 
@@ -1401,19 +1557,20 @@ function CheckInPanel({ session, pushToast, users, onRefresh }) {
 }
 
 function CheckInResultModal({ result, onRescan, onClose }) {
+  useBodyScrollLock(true);
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-6"
+      className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/70 p-6 pt-24 backdrop-blur-md sm:pt-24 lg:pt-28"
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0, y: 12 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-        className="w-full max-w-md rounded-2xl border border-white/10 bg-[#050b0f] p-6"
+        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#050b0f] p-6"
       >
         {result.loading && <p className="text-center text-sm text-white/50">Looking up attendee…</p>}
 
@@ -1583,6 +1740,7 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
                 <p>College: {user.college || '—'}</p>
                 <p>City: {user.city || '—'}</p>
                 <p>Gender: {user.gender || '—'}</p>
+                <p>Aadhaar: {user.aadhaar_number || '—'}</p>
                 <p>Payment status: {user.registration?.payment_status || '—'}</p>
                 <p>
                   Accommodation:{' '}
@@ -1607,6 +1765,11 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
                 <p className="sm:col-span-2">
                   Food: {buckets.food.join(', ') || '—'}
                 </p>
+                {buckets.other.length > 0 && (
+                  <p className="sm:col-span-2 text-amber-300">
+                    Other paid (no catalog match): {buckets.other.join(', ')}
+                  </p>
+                )}
                 <p className="sm:col-span-2">
                   Merch selection: {user.merch_selection || '—'} <span className="text-white/30">(read-only, set by user)</span>
                 </p>
@@ -1623,7 +1786,7 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
                       {user.registration.details.items_paid.map((item, i) => (
                         <p key={item.booking_uid || item.booking_id || i}>
                           {cleanItemTitle(item)} × {item.qty} — ₹{item.amount}
-                          {item.dates?.length ? ` · ${item.dates.join(', ')}` : ''}
+                          {item.dates?.length ? ` · ${item.dates.map(shortDay).join(', ')}` : ''}
                           {item.needs_day_selection ? (
                             <span className="ml-1 text-amber-300">(days unconfirmed)</span>
                           ) : null}
@@ -1636,7 +1799,7 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
               {eventEntries.length > 0 && (
                 <div className="mb-5">
                   <p className="mb-2 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-cyan-400/80">
-                    <Users size={12} /> Participants
+                    <Users size={12} /> Events / Teams
                   </p>
                   <div className="space-y-2">
                     {eventEntries.map((e) => (
@@ -2506,7 +2669,10 @@ function ParticipantsPanel({ eventId, title, groupSize, ownerCode, session, push
 
   return (
     <div className="rounded-lg border border-white/10 bg-black/20 p-2.5">
-      <p className="mb-1.5 truncate text-[10px] font-semibold uppercase tracking-[0.15em] text-white/40">{title}</p>
+      <p className="mb-1.5 truncate text-[10px] font-semibold uppercase tracking-[0.15em] text-white/40">
+        {title}
+        {groupSize > 1 ? <span className="text-cyan-400/70"> (team)</span> : null}
+      </p>
       <div className="flex flex-wrap gap-1.5">
         {codes.map(({ code, leader }) =>
           editingCode === code ? (
@@ -2544,7 +2710,7 @@ function ParticipantsPanel({ eventId, title, groupSize, ownerCode, session, push
               className="flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 font-mono text-[10px] text-cyan-300"
             >
               {code}
-              {leader ? ' (paid)' : ''}
+              {leader ? ' (leader)' : ''}
               <button
                 type="button"
                 onClick={() => {

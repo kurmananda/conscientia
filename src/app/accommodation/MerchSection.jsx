@@ -12,6 +12,7 @@ import useProfile from '../hooks/useProfile';
 import { MERCH_ITEMS, ticketFor } from './merchData';
 import { getCostMap } from '@/lib/ticketStore';
 import { showCartToast } from '@/lib/cartToast';
+import useBodyScrollLock from '../hooks/useBodyScrollLock';
 
 function QtyStepper({ qty, onChange, label }) {
   const [flash, setFlash] = useState(false);
@@ -52,6 +53,7 @@ function QtyStepper({ qty, onChange, label }) {
 }
 
 function MerchDialog({ item, profile, deliveryFee, onClose, onConfirm }) {
+  useBodyScrollLock(true);
   const [qty, setQty] = useState(1);
   const [size, setSize] = useState(item.sizes[0]);
   const [wantsDelivery, setWantsDelivery] = useState(null); // null | true | false
@@ -106,7 +108,7 @@ function MerchDialog({ item, profile, deliveryFee, onClose, onConfirm }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[150] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm sm:p-6"
+        className="fixed inset-0 z-[150] flex items-start justify-center overflow-y-auto bg-black/75 p-4 pt-24 backdrop-blur-sm sm:p-6 sm:pt-24 lg:pt-28"
         onClick={onClose}
       >
         <motion.div

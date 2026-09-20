@@ -73,11 +73,11 @@ export async function GET(req) {
         city: p?.city || null,
         address: p?.address || null,
         gender: p?.gender || null,
+        aadhaar_number: p?.aadhaar_number || null,
         unique_code: p?.unique_code || null,
         email: reg.email,
         payment_status: reg.payment_status,
         status: reg.status,
-        amount: reg.amount,
         registered_at: reg.created_at,
       };
     });

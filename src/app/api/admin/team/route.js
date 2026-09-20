@@ -11,7 +11,9 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 /** GET ?eventId= — every team roster registered for this event, view-only
- * data for the admin Catalog tab's group-event row. */
+ * data for the admin Catalog tab's group-event row. GET with no eventId —
+ * every team roster across every event, for looking up a registrant's team
+ * membership regardless of which event it's for (the Registrants tab). */
 export async function GET(req) {
   const supabase = createServerSupabase();
   const admin = await requireAdmin(req, supabase);
@@ -21,15 +23,10 @@ export async function GET(req) {
 
   const url = new URL(req.url);
   const eventId = (url.searchParams.get('eventId') || '').trim();
-  if (!eventId) {
-    return NextResponse.json({ success: false, message: 'eventId is required.' }, { status: 400 });
-  }
 
-  const { data, error } = await supabase
-    .from('event_teams')
-    .select('*')
-    .eq('event_id', eventId)
-    .order('created_at', { ascending: true });
+  let query = supabase.from('event_teams').select('*').order('created_at', { ascending: true });
+  if (eventId) query = query.eq('event_id', eventId);
+  const { data, error } = await query;
 
   if (error) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

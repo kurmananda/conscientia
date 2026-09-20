@@ -358,6 +358,14 @@ export default function WorkshopDetailPage() {
   const [cardLoading, setCardLoading] = useState(true);
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
 
+  // Client-side navigation between two workshop detail pages keeps this
+  // same component mounted with only `id` changing, so the browser's scroll
+  // position carries over from wherever the reader was previously — force
+  // it back to the top for every workshop id instead.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [id]);
+
   useEffect(() => {
     let active = true;
     setCardLoading(true);

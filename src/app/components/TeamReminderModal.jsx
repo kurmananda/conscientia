@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
+import useBodyScrollLock from "../hooks/useBodyScrollLock";
 
 // Nudges an already-registered user toward /profile to finish adding their
 // teammates' CNS-ids — shown when they click their "Registered" state on a
 // group event/workshop whose team roster isn't confirmed yet.
 export default function TeamReminderModal({ open, onClose }) {
+  useBodyScrollLock(open);
   return (
     <AnimatePresence>
       {open && (
@@ -14,7 +16,7 @@ export default function TeamReminderModal({ open, onClose }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm sm:p-6"
+          className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-black/75 p-4 pt-24 backdrop-blur-sm sm:p-6 sm:pt-24 lg:pt-28"
           onClick={onClose}
         >
           <motion.div
@@ -23,7 +25,7 @@ export default function TeamReminderModal({ open, onClose }) {
             exit={{ opacity: 0, y: 12, scale: 0.97 }}
             transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0a0c10] p-5 sm:p-7"
+            className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#0a0c10] p-5 sm:p-7"
           >
             <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-cyan-400/90 mb-2">
               Almost There

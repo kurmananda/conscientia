@@ -33,6 +33,18 @@ export async function GET(req) {
     }
 
     const url = new URL(req.url);
+
+    // ?checkCode= — used while a leader is adding teammates one at a time,
+    // to confirm a CNS-id actually has an account before it's accepted into
+    // the local draft roster (final POST re-validates all codes anyway, but
+    // catching a typo immediately is much less frustrating than only at
+    // confirm time).
+    const checkCode = (url.searchParams.get('checkCode') || '').trim().toUpperCase();
+    if (checkCode) {
+      const { missing } = await resolveMemberProfiles(supabase, [checkCode]);
+      return NextResponse.json({ success: true, data: { exists: missing.length === 0 } });
+    }
+
     const eventId = (url.searchParams.get('eventId') || '').trim();
     if (!eventId) {
       return NextResponse.json({ success: false, message: 'eventId is required.' }, { status: 400 });

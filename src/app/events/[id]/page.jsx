@@ -358,6 +358,15 @@ export default function EventDetailPage() {
   const [cardLoading, setCardLoading] = useState(true);
   const ambientGlowRef = useRef(null);
 
+  // Client-side navigation between two event detail pages (e.g. clicking a
+  // "related event" card) keeps this same component mounted with only `id`
+  // changing, so the browser's scroll position carries over from wherever
+  // the reader was on the previous event — force it back to the top for
+  // every event id instead.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [id]);
+
   useEffect(() => {
     let active = true;
     setCardLoading(true);

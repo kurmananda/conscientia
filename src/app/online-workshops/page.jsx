@@ -22,6 +22,7 @@ import {
 import { createClient } from '@supabase/supabase-js';
 import { getTicketMap } from '@/lib/ticketStore';
 import FetchIntro from '../components/FetchIntro';
+import useBodyScrollLock from '../hooks/useBodyScrollLock';
 import { details } from 'framer-motion/client';
 
 
@@ -562,6 +563,7 @@ export default function WorkshopRegistration() {
   }, [selectedItems, registeredItems, activeCombo]);
 
   const [isSummerComboPopupOpen, setIsSummerComboPopupOpen] = useState(false);
+  useBodyScrollLock(isSummerComboPopupOpen || isMerchDialogOpen || isMerchSizeGuideOpen);
 
   // --- SELECTION HANDLERS ---
   const toggleSelection = (id) => {
@@ -1469,13 +1471,13 @@ export default function WorkshopRegistration() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[125] flex items-center justify-center p-6"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[125] flex items-start justify-center overflow-y-auto p-6 pt-24 sm:pt-24 lg:pt-28"
           >
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="w-full max-w-md rounded-3xl bg-[#0f0f10] border border-white/10 p-8"
+              className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-[#0f0f10] border border-white/10 p-8"
             >
               <h3 className="text-2xl font-black uppercase italic tracking-tighter">
                 Upgrade to Combo?

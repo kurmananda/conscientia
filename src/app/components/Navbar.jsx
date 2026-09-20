@@ -9,6 +9,7 @@ import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { useMusic } from "../context/MusicContext";
 import useProfile from "../hooks/useProfile";
+import useBodyScrollLock from "../hooks/useBodyScrollLock";
 
 // Rolls back and forth along the navbar's vertical midline between the logo
 // and the button cluster — random travel distance, random duration (slow to
@@ -51,6 +52,7 @@ function HourglassPendulum() {
 
 const Nav = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  useBodyScrollLock(isMenuOpen);
   const [scrolled, setScrolled] = useState(false);
   const { items: cartItems } = useCart();
   const { user } = useAuth();

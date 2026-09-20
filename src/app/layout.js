@@ -12,6 +12,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import CursorTrialWrapper from "./components/CursorTrialWrapper";
 import ProfileCompletionModal from "./components/ProfileCompletionModal";
+import GlobalMealDayModal from "./components/GlobalMealDayModal";
 import TeamNudgeWidget from "./components/TeamNudgeWidget";
 import NetworkStatusToast from "./components/NetworkStatusToast";
 import CartToast from "./components/CartToast";
@@ -78,6 +79,11 @@ const rubikMonoOne = Rubik_Mono_One({
   display: "swap",
 });
 
+export const metadata = {
+  title: "Conscientia 2026",
+  description: "Conscientia 2026",
+}
+
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -112,6 +118,7 @@ export default function RootLayout({ children }) {
               <MusicProvider>
                 <CursorTrialWrapper />
                 <ProfileCompletionModal />
+                <GlobalMealDayModal />
                 <TeamNudgeWidget />
                 <NetworkStatusToast />
                 <CartToast />

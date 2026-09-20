@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { FOOD_ADDONS, STAY_DATES } from '../accommodation/merchData';
+import useBodyScrollLock from '../hooks/useBodyScrollLock';
 
 const LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', accommodation: 'Accommodation' };
 
@@ -22,6 +23,7 @@ export default function MealDaySelectionModal({ email, items, onDone }) {
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  useBodyScrollLock(true);
 
   const toggle = (item, dateId) => {
     setSelections((prev) => {
@@ -61,13 +63,13 @@ export default function MealDaySelectionModal({ email, items, onDone }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#0b0f14] p-6">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/70 p-4 pt-24 sm:pt-24 lg:pt-28">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#0b0f14] p-6">
         <h3 className="mb-1 text-lg font-bold text-white">Which days did you book?</h3>
         <p className="mb-5 text-sm text-white/50">
-          We lost the day-level details for some of your paid meal/accommodation add-ons — you
-          already paid for these, we just need to know which days. Pick exactly the number you
-          booked for each.
+          We need a confirmation on the day-level details for some of your paid meal/accommodation
+          add-ons — you already paid for these, we just need to know which days. Pick exactly the
+          number you booked for each.
         </p>
 
         <div className="space-y-5">
