@@ -5,10 +5,14 @@
 -- Placeholder content is seeded here too (title/venue/timing/description)
 -- so these show up on the public site immediately — meant to be edited via
 -- the admin Catalog portal once final copy/pricing/images are ready.
+-- `on conflict do nothing` makes this re-runnable: these rows were already
+-- inserted by hand once (before this migration existed), so a straight
+-- insert would fail on the primary key.
 insert into public.tickets (id, type, cost, ticket_id) values
   ('kottayam_rocketry_pc', 'workshop', '₹0', 3330),
   ('prefest_aero_pc', 'workshop', '₹0', 3331),
-  ('prefest_robo_pc', 'workshop', '₹0', 3332);
+  ('prefest_robo_pc', 'workshop', '₹0', 3332)
+on conflict (id) do nothing;
 
 insert into public.catalog_items (
   id, kind, sort_order,
@@ -61,4 +65,5 @@ insert into public.catalog_items (
     '[]'::jsonb, '[]'::jsonb, '[]'::jsonb,
     'Offline', 'Physical Certificates will be provided', '[]'::jsonb,
     '{}'::jsonb, '[]'::jsonb
-  );
+  )
+on conflict (id) do nothing;
