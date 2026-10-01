@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabase } from '../../_supabase-server';
+import { labelWithDates, paidItemDates } from '@/lib/paidItemDates';
 
 /**
  * Participant list for one workshop/event, restricted to callers whose own
@@ -38,7 +39,7 @@ export async function GET(req) {
 
     const { data: item } = await supabase
       .from('catalog_items')
-      .select('id, kind, title, access')
+      .select('id, kind, title, access, group_size')
       .eq('id', itemId)
       .maybeSingle();
 
@@ -64,17 +65,33 @@ export async function GET(req) {
       : { data: [] };
     const profileByUserId = Object.fromEntries((profiles || []).map((p) => [p.user_id, p]));
 
+    const FOOD_IDS = [['breakfast', 'Breakfast'], ['lunch', 'Lunch'], ['dinner', 'Dinner']];
+
     const participants = (registrations || []).map((reg) => {
       const p = profileByUserId[reg.user_id];
+      const itemsPaid = Array.isArray(reg.details?.items_paid) ? reg.details.items_paid : [];
+      const ids = Array.isArray(reg.workshop_ids) ? reg.workshop_ids.map(String) : [];
+      const stay = paidItemDates(itemsPaid, 'accommodation');
+      const details = reg.details && typeof reg.details === 'object' ? reg.details : {};
       return {
-        name: p?.name || null,
-        phone: p?.phone || null,
-        college: p?.college || null,
-        city: p?.city || null,
+        food: FOOD_IDS.filter(([id]) => ids.includes(id))
+          .map(([id, label]) => labelWithDates(label, itemsPaid, id))
+          .join('; '),
+        accommodation: ids.includes('accommodation')
+          ? stay.dates.length
+            ? stay.dates.join(', ')
+            : 'date not chosen'
+          : '',
+        // Guest checkouts (no user_id, so no `profiles` row) still have
+        // name/phone/college/city recorded from the payment itself.
+        name: p?.name || details.name || null,
+        phone: p?.phone || details.phone || null,
+        college: p?.college || details.college || null,
+        city: p?.city || details.city || null,
         address: p?.address || null,
         gender: p?.gender || null,
         aadhaar_number: p?.aadhaar_number || null,
-        unique_code: p?.unique_code || null,
+        unique_code: p?.unique_code || details.unique_code || null,
         email: reg.email,
         payment_status: reg.payment_status,
         status: reg.status,
@@ -90,7 +107,7 @@ export async function GET(req) {
 
     return NextResponse.json({
       success: true,
-      data: { item: { id: item.id, kind: item.kind, title: item.title }, participants, teams: teams || [] },
+      data: { item: { id: item.id, kind: item.kind, title: item.title, group_size: item.group_size || 1 }, participants, teams: teams || [] },
     });
   } catch (err) {
     console.error('[data/registrants GET]', err);

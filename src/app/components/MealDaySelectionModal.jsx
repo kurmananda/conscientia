@@ -17,7 +17,7 @@ function datesFor(internalId) {
  * Forces exactly `qty` days (nights, for accommodation) picked per item
  * before it can be submitted.
  */
-export default function MealDaySelectionModal({ email, items, onDone }) {
+export default function MealDaySelectionModal({ userId, email, items, onDone }) {
   const [selections, setSelections] = useState(() =>
     Object.fromEntries(items.map((i) => [i.booking_uid, []]))
   );
@@ -50,7 +50,7 @@ export default function MealDaySelectionModal({ email, items, onDone }) {
       const res = await fetch('/api/profile/meal-days', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, resolutions }),
+        body: JSON.stringify({ user_id: userId, email, resolutions }),
       });
       const json = await res.json().catch(() => ({}));
       if (!json.success) throw new Error(json.message || 'Could not save your selection.');

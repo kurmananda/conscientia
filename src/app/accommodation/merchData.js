@@ -10,39 +10,15 @@ export const MERCH_ITEMS = [
     id: 'merch-tshirt',
     title: 'Conscientia Tee',
     subtitle: 'Official festival t-shirt',
-    imageFront: '/assets/wsfront.png',
-    imageBack: '/assets/wsback.png',
+    imageFront: '/merch/themefront.jpeg',
+    imageBack: '/merch/themeback.jpeg',
     sizes: SIZES,
     accentColor: '#2dd4bf',
   },
-  {
-    id: 'merch-hoodie',
-    title: 'Conscientia Hoodie',
-    subtitle: 'Heavyweight fleece pullover',
-    imageFront: '/assets/wsfront.png',
-    imageBack: '/assets/wsback.png',
-    sizes: SIZES,
-    accentColor: '#a78bfa',
-  },
-  {
-    id: 'merch-cap',
-    title: 'Conscientia Cap',
-    subtitle: 'Embroidered logo cap',
-    imageFront: '/assets/wsfront.png',
-    imageBack: '/assets/wsback.png',
-    sizes: ['One Size'],
-    accentColor: '#facc15',
-  },
-  {
-    id: 'merch-tote',
-    title: 'Conscientia Tote Bag',
-    subtitle: 'Canvas carry-all',
-    imageFront: '/assets/wsfront.png',
-    imageBack: '/assets/wsback.png',
-    sizes: ['One Size'],
-    accentColor: '#38bdf8',
-  },
 ];
+
+// Short reveal clip shown on the merch page above the product grid.
+export const MERCH_REVEAL_VIDEO = '/merch/merchvid.mp4';
 
 // Fest dates accommodation/food are booked per-day against.
 export const STAY_DATES = [

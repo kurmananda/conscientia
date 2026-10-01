@@ -132,7 +132,7 @@ function FoodAddon({ addon, price }) {
       qty: selected.length,
       details: { dates: selected },
     });
-    showCartToast('Added to cart — check it out there');
+    showCartToast('Added to cart');
   };
 
   const remove = async () => {
@@ -230,7 +230,7 @@ export default function AccommodationBooking() {
       qty: selected.length,
       details: { dates: selected },
     });
-    showCartToast('Added to cart — check it out there');
+    showCartToast('Added to cart');
   };
 
   const remove = async () => {

@@ -15,7 +15,7 @@ function fetchRegisteredIds(userId) {
         .then((res) => res.json())
         .then((json) => {
           const reg = json?.data;
-          return reg?.payment_status === 'paid' && Array.isArray(reg.workshop_ids)
+          return ['paid', 'team'].includes(reg?.payment_status) && Array.isArray(reg.workshop_ids)
             ? reg.workshop_ids
             : [];
         })

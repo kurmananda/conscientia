@@ -32,6 +32,7 @@ import Autoplay from "embla-carousel-autoplay";
 import Hyperspeed from "./components/Hyperspeed";
 import MerchPromoNotification from "./components/MerchPromoNotification";
 import FetchIntro from "./components/FetchIntro";
+import EventCountdown from "./components/EventCountdown";
 import { getCatalog } from "@/lib/catalogStore";
 import { getPromo, DEFAULT_PROMO } from "@/lib/promoStore";
 import { groupBySection } from "./lib/groupBySection";
@@ -213,6 +214,22 @@ export default function Home() {
 
       {/* --- HERO SECTION --- */}
       <section className="relative z-10 flex h-screen flex-col items-center justify-center px-6">
+        <motion.span
+          initial={{ opacity: 0, y: -8 }}
+          animate={catalogLoading ? undefined : { opacity: 0.9, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="absolute left-4 top-20 md:left-8 md:top-24 uppercase tracking-[0.2em] text-[10px] md:text-xs text-white/80 font-bold"
+        >
+          29 Oct – 1 Nov
+        </motion.span>
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={catalogLoading ? undefined : { opacity: 0.9, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="absolute right-4 top-20 md:right-8 md:top-24 text-right uppercase text-[10px] md:text-xs font-bold"
+        >
+          <EventCountdown className="tracking-[0.1em] text-cyan-300" />
+        </motion.div>
         <div className="relative space-y-10 text-center">
           <motion.div
             initial={{ opacity: 0, y: -8 }}

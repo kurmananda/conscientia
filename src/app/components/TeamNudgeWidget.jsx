@@ -63,8 +63,8 @@ export default function TeamNudgeWidget() {
               });
               const json = await res.json().catch(() => ({}));
               if (!json.success) return null;
-              const confirmed = !!json.data?.team?.confirmed;
-              return confirmed ? null : { id, title: catalogById.get(id)?.title || id };
+              const complete = (json.data?.team?.member_codes?.length || 0) >= (json.data?.groupSize || 1);
+              return complete ? null : { id, title: catalogById.get(id)?.title || id };
             } catch {
               return null;
             }

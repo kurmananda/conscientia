@@ -2,6 +2,7 @@
 
 import { NextResponse } from 'next/server';
 import { createServerSupabase } from '../_supabase-server';
+import { findRegistrationForUser } from '@/lib/registrationLookup';
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
@@ -13,11 +14,21 @@ export async function GET(req) {
   }
 
   const supabase = createServerSupabase();
-  const query = supabase.from('registrations').select('*');
 
-  const { data, error } = userId
-    ? await query.eq('user_id', userId).maybeSingle()
-    : await query.eq('email', email.toLowerCase()).maybeSingle();
+  if (userId) {
+    try {
+      const data = await findRegistrationForUser(supabase, userId);
+      return NextResponse.json({ success: true, data });
+    } catch (err) {
+      return NextResponse.json({ success: false, message: err.message });
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('registrations')
+    .select('*')
+    .eq('email', email.toLowerCase())
+    .maybeSingle();
 
   if (error) {
     return NextResponse.json({ success: false, message: error.message });

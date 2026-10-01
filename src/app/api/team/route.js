@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabase } from '../_supabase-server';
 import { addEventToUserRegistration, resolveMemberProfiles } from '@/lib/eventTeams';
+import { findRegistrationForUser } from '@/lib/registrationLookup';
 
 /**
  * User-facing team management for group-size events. The caller is always
@@ -68,11 +69,7 @@ export async function GET(req) {
     if (team) {
       role = team.leader_user_id === caller.id ? 'leader' : 'member';
     } else {
-      const { data: myRegistration } = await supabase
-        .from('registrations')
-        .select('workshop_ids')
-        .eq('user_id', caller.id)
-        .maybeSingle();
+      const myRegistration = await findRegistrationForUser(supabase, caller.id, caller.email, 'workshop_ids');
       const myIds = Array.isArray(myRegistration?.workshop_ids) ? myRegistration.workshop_ids : [];
       if (myIds.includes(eventId)) role = 'leader';
     }
@@ -87,11 +84,11 @@ export async function GET(req) {
   }
 }
 
-/** POST { eventId, memberCodes } — the registrant (leader) confirms their
- * team roster once. memberCodes is the OTHER participants' CNS-ids (the
- * leader's own code is added automatically). Locked after this — the user
- * can't call this again once a team row is confirmed; only an admin can
- * change it from here (see /api/admin/team). */
+/** POST { eventId, memberCode } — the registrant (leader) adds ONE teammate.
+ * Each add is saved immediately: the teammate gets the event on their own
+ * profile right away, and the team doesn't have to be full. The leader's own
+ * code is on the roster from the first add. Added teammates are locked —
+ * only an admin can remove one (see /api/admin/team). */
 export async function POST(req) {
   try {
     const supabase = createServerSupabase();
@@ -102,12 +99,13 @@ export async function POST(req) {
 
     const body = await req.json().catch(() => ({}));
     const eventId = (body.eventId || '').trim();
-    const memberCodes = Array.isArray(body.memberCodes)
-      ? body.memberCodes.map((c) => String(c).trim().toUpperCase()).filter(Boolean)
-      : [];
+    const memberCode = String(body.memberCode || '').trim().toUpperCase();
 
     if (!eventId) {
       return NextResponse.json({ success: false, message: 'eventId is required.' }, { status: 400 });
+    }
+    if (!memberCode) {
+      return NextResponse.json({ success: false, message: 'Enter a CNS-id.' }, { status: 400 });
     }
 
     const { data: catalogItem } = await supabase
@@ -125,11 +123,7 @@ export async function POST(req) {
     }
 
     // Must actually be registered (paid) for this event to be its leader.
-    const { data: myRegistration } = await supabase
-      .from('registrations')
-      .select('workshop_ids')
-      .eq('user_id', caller.id)
-      .maybeSingle();
+    const myRegistration = await findRegistrationForUser(supabase, caller.id, caller.email, 'workshop_ids');
     const myIds = Array.isArray(myRegistration?.workshop_ids) ? myRegistration.workshop_ids : [];
     if (!myIds.includes(eventId)) {
       return NextResponse.json(
@@ -145,34 +139,40 @@ export async function POST(req) {
       .eq('leader_user_id', caller.id)
       .maybeSingle();
 
-    if (existingTeam?.confirmed) {
+    const roster = existingTeam?.member_codes?.length ? existingTeam.member_codes : [caller.uniqueCode];
+
+    if (roster.includes(memberCode)) {
       return NextResponse.json(
-        { success: false, message: 'Your team is already confirmed and cannot be changed. Contact an event admin.' },
+        { success: false, message: 'That CNS-id is already on the team.' },
+        { status: 400 }
+      );
+    }
+    if (roster.length >= groupSize) {
+      return NextResponse.json(
+        { success: false, message: `The team is already full (${groupSize} participants).` },
         { status: 409 }
       );
     }
 
-    const fullRoster = [caller.uniqueCode, ...memberCodes.filter((c) => c !== caller.uniqueCode)];
-    const uniqueRoster = [...new Set(fullRoster)];
-
-    if (uniqueRoster.length !== groupSize) {
+    const { profiles: memberProfiles, missing } = await resolveMemberProfiles(supabase, [memberCode]);
+    if (missing.length > 0) {
       return NextResponse.json(
-        {
-          success: false,
-          message: `${catalogItem.title || 'This event'} needs exactly ${groupSize} participant${groupSize > 1 ? 's' : ''} (including you) — you supplied ${uniqueRoster.length}.`,
-        },
+        { success: false, message: `No account found for CNS-id ${memberCode}.` },
         { status: 400 }
       );
     }
 
-    // Every non-leader CNS-id must belong to a real account.
-    const otherCodes = uniqueRoster.filter((c) => c !== caller.uniqueCode);
-    const { profiles: memberProfiles, missing } = await resolveMemberProfiles(supabase, otherCodes);
-
-    if (missing.length > 0) {
+    // Teammates can only be on one team per event.
+    const { data: clash } = await supabase
+      .from('event_teams')
+      .select('id')
+      .eq('event_id', eventId)
+      .contains('member_codes', [memberCode])
+      .maybeSingle();
+    if (clash) {
       return NextResponse.json(
-        { success: false, message: `No account found for CNS-id${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}.` },
-        { status: 400 }
+        { success: false, message: `${memberCode} is already on a team for this event.` },
+        { status: 409 }
       );
     }
 
@@ -183,7 +183,7 @@ export async function POST(req) {
           event_id: eventId,
           leader_user_id: caller.id,
           leader_unique_code: caller.uniqueCode,
-          member_codes: uniqueRoster,
+          member_codes: [...roster, memberCode],
           confirmed: true,
           updated_at: new Date().toISOString(),
         },
@@ -196,11 +196,7 @@ export async function POST(req) {
       return NextResponse.json({ success: false, message: upsertError.message }, { status: 500 });
     }
 
-    // Register the event on every teammate's own profile too (the leader
-    // already has it via payment).
-    await Promise.all(
-      (memberProfiles || []).map((p) => addEventToUserRegistration(supabase, p.user_id, eventId))
-    );
+    await addEventToUserRegistration(supabase, memberProfiles[0].user_id, eventId);
 
     return NextResponse.json({ success: true, data: team });
   } catch (err) {

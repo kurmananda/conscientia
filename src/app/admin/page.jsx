@@ -34,6 +34,7 @@ import useBodyScrollLock from '../hooks/useBodyScrollLock';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { downloadAsExcel } from '@/lib/exportExcel';
+import { labelWithDates, paidItemDates } from '@/lib/paidItemDates';
 
 const ADMIN_HEADER = 'x-admin-callsign';
 
@@ -105,8 +106,10 @@ function paidBuckets(user) {
   const ids = paidIds(user).map(String);
   const workshops = ids.filter((id) => WORKSHOP_IDS.has(id)).map((id) => findCatalogItem(id)?.title || id);
   const events = ids.filter((id) => EVENT_IDS.has(id)).map((id) => findCatalogItem(id)?.title || id);
-  const food = ids.filter((id) => FOOD_ADDON_IDS.has(id)).map((id) => FOOD_LABELS[id] || id);
   const itemsPaid = Array.isArray(user.registration?.details?.items_paid) ? user.registration.details.items_paid : [];
+  const food = ids
+    .filter((id) => FOOD_ADDON_IDS.has(id))
+    .map((id) => labelWithDates(FOOD_LABELS[id] || id, itemsPaid, id));
   const other = ids
     .filter((id) => !WORKSHOP_IDS.has(id) && !EVENT_IDS.has(id) && !isKnownNonCatalogId(id))
     .map((id) => {
@@ -218,6 +221,15 @@ function accommodationStatus(user) {
   const inCart = (user.cart_items || []).some((c) => c.item_key === 'accommodation');
   if (inCart) return { label: 'In cart, not yet paid', tone: 'pending' };
   return { label: 'Not booked yet', tone: 'none' };
+}
+
+// Paid accommodation nights, e.g. "Oct 29, Oct 30" — or a note when it's paid
+// but the nights haven't been picked yet. Empty when not booked.
+function accommodationDates(user) {
+  const itemsPaid = Array.isArray(user.registration?.details?.items_paid) ? user.registration.details.items_paid : [];
+  const { booked, dates } = paidItemDates(itemsPaid, 'accommodation');
+  if (dates.length) return dates.join(', ');
+  return booked ? 'date not chosen' : '';
 }
 
 // Unpaid/in-progress cart contents — shown separately from the paid summary,
@@ -836,6 +848,7 @@ function AdminDashboard({ session, onLogout }) {
         Food: buckets.food.join('; '),
         'Other Paid (no catalog match)': buckets.other.join('; '),
         Accommodation: accommodationStatus(u).label,
+        'Accommodation Dates': accommodationDates(u),
       };
     });
     downloadAsExcel(rows, 'registrants.xlsx', 'Registrants');
@@ -1754,6 +1767,7 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
                     }
                   >
                     {status.label}
+                    {status.tone === 'booked' && accommodationDates(user) ? ` (${accommodationDates(user)})` : ''}
                   </span>
                 </p>
                 <p className="sm:col-span-2">
@@ -2734,6 +2748,7 @@ function ParticipantsPanel({ eventId, title, groupSize, ownerCode, session, push
 // unlocks chip-editing of exactly `groupSize` CNS-ids for that one team.
 function TeamRegistrationsPanel({ eventId, groupSize, session }) {
   const [teams, setTeams] = useState(null);
+  const [nameByCode, setNameByCode] = useState({});
   const [error, setError] = useState('');
 
   const load = () => {
@@ -2742,8 +2757,10 @@ function TeamRegistrationsPanel({ eventId, groupSize, session }) {
     })
       .then((res) => res.json())
       .then((json) => {
-        if (json.success) setTeams(json.data);
-        else setError(json.message || 'Failed to load teams.');
+        if (json.success) {
+          setTeams(json.data);
+          setNameByCode(json.nameByCode || {});
+        } else setError(json.message || 'Failed to load teams.');
       })
       .catch((err) => setError(err.message));
   };
@@ -2763,7 +2780,14 @@ function TeamRegistrationsPanel({ eventId, groupSize, session }) {
       ) : (
         <div className="space-y-2">
           {teams.map((team) => (
-            <TeamRow key={team.id} team={team} groupSize={groupSize} session={session} onSaved={load} />
+            <TeamRow
+              key={team.id}
+              team={team}
+              groupSize={groupSize}
+              session={session}
+              nameByCode={nameByCode}
+              onSaved={load}
+            />
           ))}
         </div>
       )}
@@ -2771,7 +2795,7 @@ function TeamRegistrationsPanel({ eventId, groupSize, session }) {
   );
 }
 
-function TeamRow({ team, groupSize, session, onSaved }) {
+function TeamRow({ team, groupSize, session, nameByCode, onSaved }) {
   const [editing, setEditing] = useState(false);
   const [codes, setCodes] = useState(team.member_codes || []);
   const [draft, setDraft] = useState('');
@@ -2814,7 +2838,10 @@ function TeamRow({ team, groupSize, session, onSaved }) {
   return (
     <div className="rounded-lg border border-white/10 bg-black/30 p-3">
       <div className="mb-1.5 flex items-center justify-between">
-        <p className="font-mono text-[10px] text-white/40">Leader: {team.leader_unique_code}</p>
+        <p className="font-mono text-[10px] text-white/40">
+          Leader: {team.leader_unique_code}
+          {nameByCode?.[team.leader_unique_code] ? ` — ${nameByCode[team.leader_unique_code]}` : ''}
+        </p>
         {!editing && (
           <button
             type="button"
@@ -2834,6 +2861,7 @@ function TeamRow({ team, groupSize, session, onSaved }) {
                 className="flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 font-mono text-[10px] text-cyan-300"
               >
                 {c}
+                {nameByCode?.[c] ? ` — ${nameByCode[c]}` : ''}
                 {c !== team.leader_unique_code && (
                   <button type="button" onClick={() => setCodes(codes.filter((x) => x !== c))} className="text-cyan-300/60 hover:text-white">
                     ×
@@ -2896,6 +2924,7 @@ function TeamRow({ team, groupSize, session, onSaved }) {
               className="rounded-full border border-white/15 bg-white/[0.03] px-2.5 py-0.5 font-mono text-[10px] text-white/60"
             >
               {c}
+              {nameByCode?.[c] ? ` — ${nameByCode[c]}` : ''}
             </span>
           ))}
         </div>

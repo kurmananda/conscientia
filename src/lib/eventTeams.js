@@ -8,11 +8,19 @@ export async function addEventToUserRegistration(supabase, userId, eventId) {
   if (authError || !authUser?.user?.email) return;
   const email = authUser.user.email.toLowerCase();
 
-  const { data: existing } = await supabase
+  // Match on user_id first: an account's registration row can carry a
+  // different email than its login email (e.g. imported bookings), and
+  // keying on the login email alone would create a second row for the same
+  // user, which breaks the single-row profile lookup.
+  let { data: existing } = await supabase
     .from('registrations')
     .select('*')
-    .eq('email', email)
+    .eq('user_id', userId)
+    .limit(1)
     .maybeSingle();
+  if (!existing) {
+    ({ data: existing } = await supabase.from('registrations').select('*').eq('email', email).maybeSingle());
+  }
 
   const existingIds = Array.isArray(existing?.workshop_ids) ? existing.workshop_ids : [];
   if (existingIds.includes(eventId)) return;
@@ -20,7 +28,7 @@ export async function addEventToUserRegistration(supabase, userId, eventId) {
   await supabase.from('registrations').upsert(
     [
       {
-        email,
+        email: existing?.email || email,
         user_id: userId,
         workshop_ids: [...new Set([...existingIds, eventId])],
         details: existing?.details || {},
@@ -46,9 +54,11 @@ export async function removeEventFromUserRegistration(supabase, userId, eventId)
 
   const { data: existing } = await supabase
     .from('registrations')
-    .select('workshop_ids')
-    .eq('email', email)
+    .select('email, workshop_ids')
+    .eq('user_id', userId)
+    .limit(1)
     .maybeSingle();
+  const rowEmail = existing?.email || email;
 
   const existingIds = Array.isArray(existing?.workshop_ids) ? existing.workshop_ids : [];
   if (!existingIds.includes(eventId)) return;
@@ -56,14 +66,15 @@ export async function removeEventFromUserRegistration(supabase, userId, eventId)
   await supabase
     .from('registrations')
     .update({ workshop_ids: existingIds.filter((id) => id !== eventId), updated_at: new Date().toISOString() })
-    .eq('email', email);
+    .eq('email', rowEmail);
 }
 
-/** Looks up a batch of CNS-ids and resolves them to { user_id, unique_code}
- * rows, for validating a team roster before writing it. */
+/** Looks up a batch of CNS-ids and resolves them to { user_id, unique_code,
+ * name } rows, for validating a team roster before writing it (and for
+ * displaying teammate names alongside their codes in the admin UI). */
 export async function resolveMemberProfiles(supabase, codes) {
   if (codes.length === 0) return { profiles: [], missing: [] };
-  const { data } = await supabase.from('profiles').select('user_id, unique_code').in('unique_code', codes);
+  const { data } = await supabase.from('profiles').select('user_id, unique_code, name').in('unique_code', codes);
   const found = new Set((data || []).map((p) => p.unique_code));
   return { profiles: data || [], missing: codes.filter((c) => !found.has(c)) };
 }

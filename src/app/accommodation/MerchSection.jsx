@@ -9,7 +9,7 @@ import { Check, ShoppingCart, Minus, Plus, Truck, Ruler, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import useProfile from '../hooks/useProfile';
-import { MERCH_ITEMS, ticketFor } from './merchData';
+import { MERCH_ITEMS, MERCH_REVEAL_VIDEO, ticketFor } from './merchData';
 import { getCostMap } from '@/lib/ticketStore';
 import { showCartToast } from '@/lib/cartToast';
 import useBodyScrollLock from '../hooks/useBodyScrollLock';
@@ -52,10 +52,54 @@ function QtyStepper({ qty, onChange, label }) {
   );
 }
 
-function MerchDialog({ item, profile, deliveryFee, onClose, onConfirm }) {
+function SizeChartZoom({ onClose }) {
+  useBodyScrollLock(true);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  return createPortal(
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+        onTouchStart={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+        className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+          className="relative h-[85vh] w-full max-w-2xl"
+        >
+          <Image
+            src="/assets/merch-size-guide.png"
+            alt="Merch size guide (zoomed)"
+            fill
+            className="object-contain"
+            sizes="90vw"
+          />
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
+  );
+}
+
+function MerchDialog({ item, initialSize, profile, deliveryFee, onClose, onConfirm }) {
   useBodyScrollLock(true);
   const [qty, setQty] = useState(1);
-  const [size, setSize] = useState(item.sizes[0]);
+  const [size, setSize] = useState(initialSize || item.sizes[0]);
+  const [sizeChartZoomed, setSizeChartZoomed] = useState(false);
   const [wantsDelivery, setWantsDelivery] = useState(null); // null | true | false
   const [addressSubmitted, setAddressSubmitted] = useState(false);
   const [address, setAddress] = useState({
@@ -122,7 +166,7 @@ function MerchDialog({ item, profile, deliveryFee, onClose, onConfirm }) {
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-cyan-400/90 mb-1">
-                {item.title}
+                {item.title} ({size})
               </p>
               <h2 className="text-xl font-bold text-white">Configure Your Order</h2>
             </div>
@@ -152,12 +196,16 @@ function MerchDialog({ item, profile, deliveryFee, onClose, onConfirm }) {
                   type="button"
                   aria-pressed={size === s}
                   onClick={() => setSize(s)}
-                  className={`chip cursor-pointer transition-colors ${
-                    size === s
-                      ? 'border-cyan-400/70 bg-cyan-400/15 text-cyan-300'
-                      : 'hover:border-white/30 hover:text-white'
+                  className={`chip cursor-pointer font-bold transition-all ${
+                    size === s ? 'scale-110 ring-2 ring-cyan-400' : 'hover:border-white/30 hover:text-white'
                   }`}
+                  style={
+                    size === s
+                      ? { borderColor: 'rgba(34,211,238,0.7)', background: 'rgba(34,211,238,0.15)', color: '#67e8f9' }
+                      : undefined
+                  }
                 >
+                  {size === s ? <Check size={12} /> : null}
                   {s}
                 </button>
               ))}
@@ -167,7 +215,12 @@ function MerchDialog({ item, profile, deliveryFee, onClose, onConfirm }) {
                 <Ruler size={14} className="text-cyan-400" />
                 Not sure of your size? Check the chart below.
               </div>
-              <div className="relative h-40 w-full overflow-hidden rounded-lg">
+              <button
+                type="button"
+                onClick={() => setSizeChartZoomed(true)}
+                className="relative block h-40 w-full cursor-zoom-in overflow-hidden rounded-lg"
+                aria-label="Zoom into size chart"
+              >
                 <Image
                   src="/assets/merch-size-guide.png"
                   alt="Merch size guide"
@@ -175,9 +228,11 @@ function MerchDialog({ item, profile, deliveryFee, onClose, onConfirm }) {
                   className="object-contain"
                   sizes="400px"
                 />
-              </div>
+              </button>
             </div>
           </div>
+
+          {sizeChartZoomed && <SizeChartZoom onClose={() => setSizeChartZoomed(false)} />}
 
           {/* Delivery */}
           <div className="mb-5">
@@ -279,6 +334,7 @@ function MerchDialog({ item, profile, deliveryFee, onClose, onConfirm }) {
 
 function MerchCard({ item, price, onSelect }) {
   const { hasItem } = useCart();
+  const [size, setSize] = useState(item.sizes[0]);
   const inCart = MERCH_SIZES(item).some((s) => hasItem(`merch:${item.id}:${s}`));
 
   return (
@@ -297,19 +353,46 @@ function MerchCard({ item, price, onSelect }) {
           <Image src={item.imageBack} alt={`${item.title} back`} fill className="object-cover" sizes="96px" />
         </motion.div>
       </div>
-      <h3 className="text-base font-semibold">{item.title}</h3>
+      <h3 className="text-base font-semibold">
+        {item.title} ({size})
+      </h3>
       <p className="text-xs text-slate-400">{item.subtitle}</p>
       <p className="mt-1 text-sm font-semibold" style={{ color: item.accentColor }}>
         &#8377;{price}
       </p>
 
       <div className="mt-4">
+        <p className="mb-2 text-[10px] uppercase tracking-[0.2em] text-white/40">Size</p>
+        <div className="flex flex-wrap gap-2">
+          {item.sizes.map((s) => (
+            <button
+              key={s}
+              type="button"
+              aria-pressed={size === s}
+              onClick={() => setSize(s)}
+              className={`chip cursor-pointer font-bold transition-all ${
+                size === s ? 'scale-110 ring-2 ring-cyan-400' : 'hover:border-white/30 hover:text-white'
+              }`}
+              style={
+                size === s
+                  ? { borderColor: 'rgba(34,211,238,0.7)', background: 'rgba(34,211,238,0.15)', color: '#67e8f9' }
+                  : undefined
+              }
+            >
+              {size === s ? <Check size={12} /> : null}
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4">
         <button
-          onClick={() => onSelect(item)}
+          onClick={() => onSelect(item, size)}
           className="btn-primary w-full text-[10px]"
         >
           {inCart ? <Check size={14} /> : <ShoppingCart size={14} />}
-          {inCart ? 'Add Another' : 'Select'}
+          {inCart ? 'Add Another' : 'Select'} ({size})
         </button>
       </div>
     </div>
@@ -326,6 +409,7 @@ export default function MerchSection() {
   const { profile, save } = useProfile();
   const router = useRouter();
   const [activeItem, setActiveItem] = useState(null);
+  const [activeSize, setActiveSize] = useState(null);
   const [prices, setPrices] = useState({});
 
   useEffect(() => {
@@ -340,12 +424,13 @@ export default function MerchSection() {
 
   const deliveryFee = prices.delivery || 0;
 
-  const handleSelect = (item) => {
+  const handleSelect = (item, size) => {
     if (!user) {
       router.push('/login?redirect=/merch');
       return;
     }
     setActiveItem(item);
+    setActiveSize(size);
   };
 
   const handleConfirm = async ({ qty, size, delivery }) => {
@@ -387,8 +472,9 @@ export default function MerchSection() {
       }
     }
 
-    showCartToast('Added to cart — check it out there');
+    showCartToast('Added to cart');
     setActiveItem(null);
+    setActiveSize(null);
   };
 
   return (
@@ -398,18 +484,37 @@ export default function MerchSection() {
         Gear up for Time Fall
       </h2>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8">
+      <div className="mx-auto grid max-w-sm grid-cols-1 gap-6">
         {MERCH_ITEMS.map((item) => (
           <MerchCard key={item.id} item={item} price={prices[item.id] || 0} onSelect={handleSelect} />
         ))}
       </div>
 
+      <div className="mx-auto mt-8 max-w-2xl overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+        <video
+          ref={(el) => {
+            if (el) el.volume = 0.5;
+          }}
+          src={MERCH_REVEAL_VIDEO}
+          autoPlay
+          loop
+          muted
+          playsInline
+          controls
+          className="h-auto w-full"
+        />
+      </div>
+
       {activeItem && (
         <MerchDialog
           item={activeItem}
+          initialSize={activeSize}
           profile={profile}
           deliveryFee={deliveryFee}
-          onClose={() => setActiveItem(null)}
+          onClose={() => {
+            setActiveItem(null);
+            setActiveSize(null);
+          }}
           onConfirm={handleConfirm}
         />
       )}

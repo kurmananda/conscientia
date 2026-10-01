@@ -61,7 +61,13 @@ export default function ProfilePage() {
   useEffect(() => {
     let active = true;
     Promise.all([getCatalog('workshop'), getCatalog('event')]).then(([workshops, events]) => {
-      if (active) setCatalog([...workshops, ...events]);
+      // Tag each with its kind so booked items can link to their detail page.
+      if (active) {
+        setCatalog([
+          ...workshops.map((w) => ({ ...w, kind: 'workshop' })),
+          ...events.map((e) => ({ ...e, kind: 'event' })),
+        ]);
+      }
     });
     return () => {
       active = false;
@@ -190,7 +196,8 @@ export default function ProfilePage() {
     );
   }
 
-  const isPaid = registration?.payment_status === 'paid';
+  // 'team' = added to someone else's confirmed team (see addEventToUserRegistration).
+  const isPaid = ['paid', 'team'].includes(registration?.payment_status);
   const bookedIds = isPaid && Array.isArray(registration?.workshop_ids) ? registration.workshop_ids : [];
   const bookedItems = bookedIds
     .map((raw) => findCatalogItem(String(raw).trim()))
@@ -578,6 +585,7 @@ export default function ProfilePage() {
 
       {showMealDayModal && pendingDaySelections.length > 0 && (
         <MealDaySelectionModal
+          userId={user.id}
           email={user.email}
           items={pendingDaySelections}
           onDone={async () => {
@@ -813,9 +821,6 @@ function StayMerchField({ label, value, span, adminManaged }) {
 function TeamPanel({ item, profile }) {
   const [status, setStatus] = useState(null); // { groupSize, role, team, yourCode }
   const [loading, setLoading] = useState(true);
-  // Confirmed teammate CNS-ids, added one at a time — not the fixed-length
-  // all-boxes-at-once array this used to be.
-  const [codes, setCodes] = useState([]);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -827,11 +832,7 @@ function TeamPanel({ item, profile }) {
       .then((res) => res.json())
       .then((json) => {
         if (!active) return;
-        if (json.success) {
-          setStatus(json.data);
-          setCodes([]);
-          setDraft('');
-        }
+        if (json.success) setStatus(json.data);
       })
       .finally(() => active && setLoading(false));
     return () => {
@@ -839,57 +840,27 @@ function TeamPanel({ item, profile }) {
     };
   }, [item.id]);
 
-  const neededCodes = Math.max(0, (status?.groupSize || 1) - 1);
-  const [checking, setChecking] = useState(false);
-
+  // Each teammate is saved the moment they're added — the team doesn't
+  // have to be full, and they get the event on their own profile right away.
   const handleAddTeammate = async (e) => {
     e.preventDefault();
     setError('');
     const trimmed = draft.trim().toUpperCase();
     if (!trimmed) return;
-    if (codes.includes(trimmed) || trimmed === (status?.yourCode || profile?.unique_code)) {
-      setError('That CNS-id is already on the team.');
-      return;
-    }
-    setChecking(true);
-    try {
-      const res = await authedFetch(`/api/team?checkCode=${encodeURIComponent(trimmed)}`);
-      const json = await res.json();
-      if (!json.success || !json.data?.exists) {
-        setError(`No account found for CNS-id ${trimmed}. Ask them to create a profile first.`);
-        return;
-      }
-      setCodes((prev) => [...prev, trimmed]);
-      setDraft('');
-    } finally {
-      setChecking(false);
-    }
-  };
-
-  const removeCode = (code) => {
-    setError('');
-    setCodes((prev) => prev.filter((c) => c !== code));
-  };
-
-  const handleConfirm = async () => {
-    setError('');
-    if (codes.length !== neededCodes) {
-      setError(`Add all ${neededCodes} teammate${neededCodes > 1 ? 's' : ''} first.`);
-      return;
-    }
     setSubmitting(true);
     try {
       const res = await authedFetch('/api/team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId: item.id, memberCodes: codes }),
+        body: JSON.stringify({ eventId: item.id, memberCode: trimmed }),
       });
       const json = await res.json();
       if (!json.success) {
-        setError(json.message || 'Could not confirm your team.');
+        setError(json.message || 'Could not add that teammate.');
         return;
       }
       setStatus((prev) => ({ ...prev, role: 'leader', team: json.data }));
+      setDraft('');
     } finally {
       setSubmitting(false);
     }
@@ -913,124 +884,98 @@ function TeamPanel({ item, profile }) {
     );
   }
 
-  if (role === 'leader' && !team?.confirmed) {
-    const filledCount = codes.length + 1; // + yourself
-    const allAdded = codes.length === neededCodes;
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-amber-300">Complete your team</p>
-          <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 font-mono text-[10px] text-amber-300">
-            {filledCount}/{groupSize}
-          </span>
-        </div>
+  if (role === 'none') return null;
 
-        <div className="flex flex-wrap gap-1.5">
-          <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 font-mono text-[10px] text-cyan-300">
-            {yourCode || profile?.unique_code} (you)
-          </span>
-          {codes.map((c) => (
-            <span
-              key={c}
-              className="inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 font-mono text-[10px] text-cyan-300"
-            >
-              {c}
-              <button
-                type="button"
-                onClick={() => removeCode(c)}
-                className="text-cyan-300/60 hover:text-white"
-                aria-label={`Remove ${c}`}
-              >
-                <X size={10} />
-              </button>
-            </span>
-          ))}
-        </div>
+  const roster = team?.member_codes?.length ? team.member_codes : [yourCode || profile?.unique_code];
+  const leaderCode = team?.leader_unique_code || yourCode;
+  const isFull = roster.length >= groupSize;
 
-        {!allAdded && (
-          <form onSubmit={handleAddTeammate} className="flex gap-2">
-            <input
-              type="text"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value.toUpperCase())}
-              placeholder={`Teammate ${filledCount + 1} CNS-id (e.g. CNS-AB12CD)`}
-              className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500/60"
-            />
-            <button
-              type="submit"
-              disabled={checking}
-              className="shrink-0 rounded-full border border-cyan-500/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300 hover:bg-cyan-500/10 disabled:opacity-60"
-            >
-              {checking ? 'Checking…' : 'Add'}
-            </button>
-          </form>
-        )}
-
-        {error && <p className="text-[11px] text-red-400">{error}</p>}
-
-        {allAdded && (
-          <>
-            <p className="text-[10px] text-white/30">
-              This cannot be changed once confirmed — double-check the CNS-ids before submitting.
-            </p>
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={submitting}
-              className="rounded-full bg-cyan-400 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-black transition-colors hover:bg-white disabled:opacity-60"
-            >
-              {submitting ? 'Confirming…' : 'Confirm Team'}
-            </button>
-          </>
-        )}
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-white/50">Team</p>
+        <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 font-mono text-[10px] text-amber-300">
+          {roster.length}/{groupSize}
+        </span>
       </div>
-    );
-  }
-
-  if (team?.confirmed) {
-    return (
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-white/50">
-          Team ({team.member_codes.length})
-        </p>
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {team.member_codes.map((code) => (
-            <span
-              key={code}
-              className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 font-mono text-[10px] text-cyan-300"
-            >
-              {code}
-              {code === yourCode ? ' (you)' : ''}
-            </span>
-          ))}
-        </div>
-        <p className="mt-2 text-[10px] text-white/30">
-          {role === 'leader'
-            ? 'Locked — not editable. Contact an event admin to make changes.'
-            : "You're part of this team — not editable by you. Contact an event admin to make changes."}
-        </p>
+      <div className="flex flex-wrap gap-1.5">
+        {roster.map((code) => (
+          <span
+            key={code}
+            className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 font-mono text-[10px] text-cyan-300"
+          >
+            {code}
+            {code === yourCode ? ' (you)' : ''}
+            {code === leaderCode ? ' · leader' : ''}
+          </span>
+        ))}
       </div>
-    );
-  }
 
+      {role === 'member' && (
+        <p className="text-[11px] text-white/50">
+          Team leader: <span className="font-mono text-cyan-300">{leaderCode}</span>
+        </p>
+      )}
+
+      {role === 'leader' && !isFull && (
+        <form onSubmit={handleAddTeammate} className="flex gap-2">
+          <input
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value.toUpperCase())}
+            placeholder={`Teammate ${roster.length + 1} CNS-id (e.g. CNS-AB12CD)`}
+            className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500/60"
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="shrink-0 rounded-full border border-cyan-500/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300 hover:bg-cyan-500/10 disabled:opacity-60"
+          >
+            {submitting ? 'Adding…' : 'Add'}
+          </button>
+        </form>
+      )}
+      {error && <p className="text-[11px] text-red-400">{error}</p>}
+
+      <p className="text-[10px] text-white/30">
+        {role === 'leader'
+          ? 'Each teammate is added immediately and gets this event on their profile. Added teammates can only be changed by an event admin.'
+          : "You're part of this team — not editable by you. Contact an event admin to make changes."}
+      </p>
+    </div>
+  );
+}
+
+// Workshops/events open their detail page; merch, food, accommodation etc.
+// have no page of their own.
+function detailHref(item) {
+  if (item.kind === 'workshop') return `/workshop/${item.id}`;
+  if (item.kind === 'event') return `/events/${item.id}`;
   return null;
 }
 
 function TicketCard({ item, status, onRemove, footer }) {
   const accent = item.accentColor || '#22d3ee';
+  const href = detailHref(item);
+  // Only the header is the link — the footer (TeamPanel) has its own
+  // inputs/buttons that mustn't navigate away.
+  const Header = href ? Link : 'div';
   return (
     <div
       className="relative overflow-hidden rounded-xl border p-4"
       style={{ borderColor: `${accent}40`, background: `${accent}0d` }}
     >
-      <div className="flex gap-3">
+      <Header
+        {...(href ? { href } : {})}
+        className={`flex gap-3 ${href ? 'group cursor-pointer' : ''}`}
+      >
         {item.image && (
           <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg">
             <Image src={item.image} alt={item.title} fill className="object-cover" sizes="64px" />
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold text-white">
+          <p className="truncate text-sm font-bold text-white group-hover:text-cyan-300 transition-colors">
             {item.title}
             {item.qty > 1 && <span className="ml-1.5 text-cyan-300">x{item.qty}</span>}
           </p>
@@ -1044,14 +989,19 @@ function TicketCard({ item, status, onRemove, footer }) {
         </div>
         {onRemove && (
           <button
-            onClick={onRemove}
+            onClick={(e) => {
+              // The button sits inside the header link.
+              e.preventDefault();
+              e.stopPropagation();
+              onRemove();
+            }}
             className="self-start text-white/30 hover:text-red-400 text-xs"
             aria-label="Remove from cart"
           >
             ✕
           </button>
         )}
-      </div>
+      </Header>
       {footer && <div className="mt-3 border-t border-white/10 pt-3">{footer}</div>}
     </div>
   );

@@ -57,11 +57,40 @@ function writeLocalCart(items) {
   window.dispatchEvent(new CustomEvent('cart:updated', { detail: items }));
 }
 
+// Booked per day — paying for some days must not stop someone adding more.
+const DAY_ITEM_IDS = new Set(['breakfast', 'lunch', 'dinner', 'accommodation']);
+
+/** { breakfast: Set(['2026-10-30', …]), … } from registrations.details.items_paid. */
+function paidDatesFrom(itemsPaid) {
+  const map = {};
+  for (const entry of Array.isArray(itemsPaid) ? itemsPaid : []) {
+    if (!DAY_ITEM_IDS.has(entry?.internal_id)) continue;
+    const set = (map[entry.internal_id] ??= new Set());
+    for (const d of Array.isArray(entry.dates) ? entry.dates : []) set.add(d);
+  }
+  return map;
+}
+
+/** Whether a cart line is already fully paid for and can be dropped. A day
+ * item only counts when every day in the cart line is already paid; a
+ * workshop/event/merch line counts as soon as its id is registered. */
+function isPaidCartItem(item, registeredIds, paidDates) {
+  if (DAY_ITEM_IDS.has(item.id)) {
+    const dates = item.details?.dates || [];
+    const paid = paidDates[item.id];
+    return dates.length > 0 && !!paid && dates.every((d) => paid.has(d));
+  }
+  if (registeredIds.has(String(item.id))) return true;
+  return Array.from(registeredIds).some((id) => item.key === id || item.key?.startsWith(`${id}:`));
+}
+
 export function CartProvider({ children }) {
   const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [registeredIds, setRegisteredIds] = useState(new Set());
+  const [paidDates, setPaidDates] = useState({});
   const syncedForUser = useRef(null);
+  const [registrationVersion, setRegistrationVersion] = useState(0);
 
   // Already-paid items shouldn't be addable to cart again — a re-add
   // attempt (e.g. clicking "Add to Cart" again on a workshop already
@@ -77,17 +106,37 @@ export function CartProvider({ children }) {
       .then((res) => res.json())
       .then((json) => {
         if (!active) return;
-        const paid = json?.data?.payment_status === 'paid';
+        const paid = ['paid', 'team'].includes(json?.data?.payment_status);
         const ids = paid && Array.isArray(json?.data?.workshop_ids) ? json.data.workshop_ids : [];
         setRegisteredIds(new Set(ids.map(String)));
+        setPaidDates(paid ? paidDatesFrom(json?.data?.details?.items_paid) : {});
       })
       .catch(() => {});
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [user, registrationVersion]);
 
   const isRegistered = useCallback((id) => registeredIds.has(String(id)), [registeredIds]);
+
+  // Called by /payment-success once a registration is saved, so the
+  // just-paid items get pruned from the cart below.
+  const refreshRegistered = useCallback(() => setRegistrationVersion((v) => v + 1), []);
+
+  // Drop anything already paid for from the signed-in cart. This runs
+  // whenever either side finishes loading, so it doesn't matter that
+  // /payment-success mounts before the remote cart or the registration
+  // have been fetched.
+  useEffect(() => {
+    if (!user || registeredIds.size === 0) return;
+    const paidKeys = items
+      .filter((item) => isPaidCartItem(item, registeredIds, paidDates))
+      .map((item) => item.key);
+    if (paidKeys.length === 0) return;
+    setItems((prev) => prev.filter((item) => !paidKeys.includes(item.key)));
+    // Supabase builders only execute once awaited/then'd.
+    supabase.from('cart_items').delete().eq('user_id', user.id).in('item_key', paidKeys).then(() => {});
+  }, [user, items, registeredIds, paidDates]);
 
   // Guest cart: mirror localStorage into state, reacting to other tabs.
   useEffect(() => {
@@ -125,38 +174,15 @@ export function CartProvider({ children }) {
         writeLocalCart([]);
       }
 
-      const [{ data, error }, { data: registration }] = await Promise.all([
-        supabase.from('cart_items').select('item_data').eq('user_id', user.id),
-        supabase
-          .from('registrations')
-          .select('workshop_ids, payment_status')
-          .eq('user_id', user.id)
-          .maybeSingle(),
-      ]);
+      const { data, error } = await supabase.from('cart_items').select('item_data').eq('user_id', user.id);
 
       if (!error) {
         const rawItems = (data || []).map((row) => row.item_data);
-        const normalized = normalizeItems(rawItems);
+        const kept = normalizeItems(rawItems);
 
-        // Anything already paid for shouldn't still be sitting in the
-        // cart — payment-success clears the matching items right after
-        // checkout, but this catches everything else that can leave a
-        // stale row behind (a team member added mid-checkout, an admin
-        // reassigning a registration, a cart synced from another device).
-        const paidIds =
-          registration?.payment_status === 'paid' && Array.isArray(registration.workshop_ids)
-            ? registration.workshop_ids
-            : [];
-        const isPaidItem = (item) =>
-          paidIds.includes(item.id) || paidIds.some((id) => item.key === id || item.key?.startsWith(`${id}:`));
-
-        const kept = normalized.filter((item) => !isPaidItem(item));
-        const removedKeys = normalized.filter((item) => isPaidItem(item)).map((item) => item.key);
-
+        // Already-paid lines are pruned by the registration effect above
+        // (date-aware for meals/accommodation) once this lands in state.
         setItems(kept);
-        if (removedKeys.length > 0) {
-          supabase.from('cart_items').delete().eq('user_id', user.id).in('item_key', removedKeys);
-        }
         // Persist the healed shape back so this doesn't need to re-run
         // every load, and so downstream reads (e.g. admin views) see it too.
         const staleRows = kept
@@ -166,7 +192,7 @@ export function CartProvider({ children }) {
           })
           .map((item) => ({ user_id: user.id, item_key: item.key, item_data: item }));
         if (staleRows.length > 0) {
-          supabase.from('cart_items').upsert(staleRows, { onConflict: 'user_id,item_key' });
+          supabase.from('cart_items').upsert(staleRows, { onConflict: 'user_id,item_key' }).then(() => {});
         }
       }
     })();
@@ -320,8 +346,8 @@ export function CartProvider({ children }) {
   // on any CartProvider render at all, not just ones where the cart
   // actually changed. Memoizing the value object fixes that.
   const value = useMemo(
-    () => ({ items, addItem, setItem, removeItem, updateQty, clear, hasItem, isRegistered }),
-    [items, addItem, setItem, removeItem, updateQty, clear, hasItem, isRegistered]
+    () => ({ items, addItem, setItem, removeItem, updateQty, clear, hasItem, isRegistered, refreshRegistered }),
+    [items, addItem, setItem, removeItem, updateQty, clear, hasItem, isRegistered, refreshRegistered]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

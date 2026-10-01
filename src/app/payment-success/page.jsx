@@ -7,13 +7,28 @@ import { motion } from 'framer-motion';
 import { useCart } from '../context/CartContext';
 import { CHECKOUT_STORAGE_KEYS } from '@/lib/checkout';
 
-// Cart item keys are `${kind}:${id}...`-shaped except plain workshop/event
-// items, which key off `id` directly — match either so a direct "buy now"
-// checkout (which never touches the shared cart) only clears the items it
-// actually booked, not whatever else is still sitting in the cart.
-function matchesBookedId(item, bookedIds) {
-  if (bookedIds.includes(item.id)) return true;
-  return bookedIds.some((id) => item.key === id || item.key?.startsWith(`${id}:`));
+// TiQR often still reports the booking as pending for a few seconds after
+// the gateway redirects back, so poll instead of giving up on the first
+// check (which left paid users unregistered with everything still in cart).
+const VERIFY_ATTEMPTS = 20;
+const VERIFY_INTERVAL_MS = 3000;
+const TERMINAL_FAILURE_STATUSES = ['failed', 'cancelled', 'canceled', 'expired', 'rejected'];
+
+async function verifyBooking(uid) {
+  let last = { status: 'unknown' };
+  for (let attempt = 0; attempt < VERIFY_ATTEMPTS; attempt += 1) {
+    try {
+      const res = await fetch(`/api/tiqr/verify-booking?uid=${encodeURIComponent(uid)}`);
+      const data = await res.json();
+      if (data.success && data.confirmed) return data;
+      last = data;
+      if (TERMINAL_FAILURE_STATUSES.includes(data.status)) return data;
+    } catch {
+      // Transient network/5xx — keep polling.
+    }
+    await new Promise((resolve) => setTimeout(resolve, VERIFY_INTERVAL_MS));
+  }
+  return last;
 }
 
 export default function PaymentSuccessPage() {
@@ -27,7 +42,7 @@ export default function PaymentSuccessPage() {
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { items, removeItem } = useCart();
+  const { refreshRegistered } = useCart();
   const [status, setStatus] = useState('verifying'); // verifying | success | failed
   const [message, setMessage] = useState('Confirming your payment…');
 
@@ -52,12 +67,15 @@ function PaymentSuccessContent() {
 
     (async () => {
       try {
-        const verifyRes = await fetch(`/api/tiqr/verify-booking?uid=${encodeURIComponent(uid)}`);
-        const verifyData = await verifyRes.json();
+        const verifyData = await verifyBooking(uid);
 
         if (!verifyData.success || !verifyData.confirmed) {
           setStatus('failed');
-          setMessage(`Payment not confirmed yet (status: ${verifyData.status || 'unknown'}).`);
+          setMessage(
+            TERMINAL_FAILURE_STATUSES.includes(verifyData.status)
+              ? `Payment was not completed (status: ${verifyData.status}).`
+              : 'Your payment is still being processed. It will appear on your profile once confirmed — you do not need to pay again.'
+          );
           return;
         }
 
@@ -65,11 +83,8 @@ function PaymentSuccessContent() {
         const workshopIds = JSON.parse(window.localStorage.getItem('selected_workshops') || '[]');
         const itemsMeta = JSON.parse(window.localStorage.getItem('selected_workshops_meta') || '[]');
         const details = JSON.parse(window.localStorage.getItem('registration_details') || '{}');
-        // Single-use — clear immediately once read so this data can't leak
-        // into a later session/checkout on the same browser.
-        CHECKOUT_STORAGE_KEYS.forEach((key) => window.localStorage.removeItem(key));
 
-        await fetch('/api/save-registration', {
+        const saveRes = await fetch('/api/save-registration', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -82,9 +97,20 @@ function PaymentSuccessContent() {
             amount: verifyData.amount || 0,
           }),
         });
+        const saveData = await saveRes.json().catch(() => ({}));
+        if (!saveRes.ok || !saveData.success) {
+          // Keep the checkout data so reloading this page retries the save.
+          throw new Error(
+            saveData.message ||
+              'Your payment went through but we could not save your registration. Please reload this page.'
+          );
+        }
 
-        const booked = items.filter((item) => matchesBookedId(item, workshopIds));
-        await Promise.all(booked.map((item) => removeItem(item.key)));
+        // Single-use — clear only once the save has succeeded so this data
+        // can't leak into a later checkout, but a failed save can retry.
+        CHECKOUT_STORAGE_KEYS.forEach((key) => window.localStorage.removeItem(key));
+        // CartContext prunes paid items once it sees the new registration.
+        refreshRegistered();
         setStatus('success');
         setMessage('Your registration is confirmed.');
       } catch (err) {

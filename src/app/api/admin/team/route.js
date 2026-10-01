@@ -32,8 +32,15 @@ export async function GET(req) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 
+  // Resolve every CNS-id across every returned team to its registrant's
+  // name in one batch, so the admin UI can show names alongside codes
+  // without a lookup per team row.
+  const allCodes = [...new Set((data || []).flatMap((t) => t.member_codes || []))];
+  const { profiles } = await resolveMemberProfiles(supabase, allCodes);
+  const nameByCode = Object.fromEntries(profiles.map((p) => [p.unique_code, p.name]));
+
   return NextResponse.json(
-    { success: true, data: data || [] },
+    { success: true, data: data || [], nameByCode },
     { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
   );
 }
@@ -81,9 +88,9 @@ export async function PATCH(req) {
       .maybeSingle();
     const groupSize = catalogItem?.group_size || 1;
 
-    if (memberCodes.length !== groupSize) {
+    if (memberCodes.length < 1 || memberCodes.length > groupSize) {
       return NextResponse.json(
-        { success: false, message: `This event needs exactly ${groupSize} participants — you supplied ${memberCodes.length}.` },
+        { success: false, message: `This event allows at most ${groupSize} participants — you supplied ${memberCodes.length}.` },
         { status: 400 }
       );
     }

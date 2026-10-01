@@ -381,7 +381,7 @@ export default function WorkshopDetailPage() {
   }, [id]);
 
   const { user } = useAuth();
-  const { items, addItem, hasItem } = useCart();
+  const { items, addItem, hasItem, isRegistered: isPaidFor } = useCart();
   const { profile } = useProfile();
   const [paidWorkshopIds, setPaidWorkshopIds] = useState([]);
 
@@ -457,13 +457,13 @@ export default function WorkshopDetailPage() {
     if (!card || inCart || isClosed || isRegistered) return;
     playGlitch();
     addItem(toCartItem());
-    showCartToast("Added to cart — check it out there");
+    showCartToast("Added to cart");
   };
 
   // Registering no longer books/pays instantly — it just adds the workshop
-  // to the shared cart, same as the cart icon button. If merch or
-  // accommodation isn't in the cart yet, send the user straight to that
-  // page next instead of leaving it to a dismissible reminder.
+  // to the shared cart, same as the cart icon button. If they have no merch yet
+  // (neither in the cart nor already bought), take them to /merch next;
+  // the toast stays up across the navigation with a link back to /cart.
   const handleRegisterNow = async () => {
     playClick();
     if (!card || isClosed || inCart || isRegistered) return;
@@ -478,11 +478,13 @@ export default function WorkshopDetailPage() {
     // Navigating away mid-request aborts the in-flight cart upsert (surfaces
     // as a "Failed to fetch" console error) — wait for it to land first.
     await addItem(toCartItem());
-    showCartToast("Added to cart — check it out there");
-    const missingMerch = !items.some((i) => i.kind === "merch");
-    const missingAccommodation = !items.some((i) => i.kind === "accommodation");
-    if (missingMerch) router.push("/merch");
-    else if (missingAccommodation) router.push("/accommodation");
+    const hasMerch = items.some((i) => i.kind === "merch") || isPaidFor("merch-tshirt");
+    if (hasMerch) {
+      showCartToast("Added to cart");
+    } else {
+      showCartToast("Added to cart — grab your fest merch too!");
+      router.push("/merch");
+    }
   };
 
   useEffect(() => {
