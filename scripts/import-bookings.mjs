@@ -4,7 +4,11 @@
 // `workshop_ids`, amounts summed (never overwritten), 0-amount rows kept as
 // real paid entries. Safe to re-run: it's idempotent per booking_id.
 //
-// Usage: node scripts/import-bookings.mjs [--dry-run]
+// Only ever appends: a row whose TQ booking_id is already stored anywhere is
+// skipped, and so is a row whose email already has a live-recorded item
+// (webhook/cart, keyed by TiQR uid instead of TQ id) for the same product.
+//
+// Usage: node scripts/import-bookings.mjs [path/to/export.tsv] [--dry-run]
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 
@@ -13,6 +17,10 @@ const getEnv = (k) => (envFile.match(new RegExp(`^${k}=(.*)$`, 'm')) || [])[1]?.
 const supabase = createClient(getEnv('NEXT_PUBLIC_SUPABASE_URL'), getEnv('SUPABASE_SERVICE_ROLE_KEY'));
 
 const DRY_RUN = process.argv.includes('--dry-run');
+const TSV_PATH = process.argv.slice(2).find((a) => !a.startsWith('--'));
+const SOURCE_TAG = TSV_PATH
+  ? `excel_import_${new Date().toISOString().slice(0, 10).replace(/-/g, '_')}`
+  : 'excel_import_2026_09_12';
 
 // Event title keyword -> catalog id (from catalog_items, kind=event/workshop).
 const EVENT_KEYWORDS = [
@@ -32,6 +40,12 @@ const EVENT_KEYWORDS = [
   [/hackorbital team/i, 'hackorbitalteam'],
   [/hackorbital.*individual/i, 'hackorbitalindividual'],
   [/stock odyss/i, 'stockodyssey'],
+  [/battle of bots/i, 'battleofbots'],
+  [/line follower/i, 'linefollower'],
+  [/robo\s*soccer/i, 'robosoccer'],
+  [/amphibot/i, 'amphibot'],
+  [/space quiz/i, 'spacequiz'],
+  [/general quiz/i, 'generalquiz'],
 ];
 
 // Direct/legacy ticket-type -> internal id. Items not in the current
@@ -46,6 +60,7 @@ const DIRECT_MAP = {
   'merch - tote bag': 'merch-tote',
   'merch - cap': 'merch-cap',
   'merch - tshirt [timefall]': 'merch-tshirt',
+  'merch delivery': 'delivery',
   merch: 'merch-legacy',
   cubesat: 'legacy_cubesat',
   launchvehicle: 'legacy_launchVehicle',
@@ -66,13 +81,15 @@ function mapTicketType(raw) {
   if (DIRECT_MAP[lower]) return { id: DIRECT_MAP[lower], title: t };
 
   // TiQR only ever gave these numbered "(id-N)" labels for pre-fest
-  // workshops; the real catalog id behind each ordinal is now known.
+  // workshops. The ordinal follows TiQR ticket id order (id-1 = 3140,
+  // id-11 = 3150, see the `tickets` table) and the prices confirm it:
+  // id-3 is the ₹299 3D CAD ticket, id-5 the ₹199 CubeSat (Grahaa) one.
   const FEST_WORKSHOP_ID_MAP = {
     1: 'astronomy_pc',
     2: 'astroph_pc',
-    3: 'cubesat_pc',
-    4: '3dcad_pc',
-    5: 'mun_pc',
+    3: '3dcad_pc',
+    4: 'mun_pc',
+    5: 'cubesat_pc',
     6: 'aero_pc',
     7: 'quant0to1',
     8: 'robo_pc',
@@ -126,9 +143,22 @@ function parseTsv(text) {
   return rows;
 }
 
+async function fetchAllRegistrations() {
+  const all = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from('registrations')
+      .select('id, email, workshop_ids, details, amount, user_id')
+      .range(from, from + 999);
+    if (error) throw error;
+    all.push(...data);
+    if (data.length < 1000) return all;
+  }
+}
+
 async function main() {
-  const raw = fs.readFileSync(new URL('./bookings.tsv', import.meta.url), 'utf8');
-  const rows = parseTsv(raw);
+  const tsvUrl = TSV_PATH ? new URL(TSV_PATH, `file://${process.cwd()}/`) : new URL('./bookings.tsv', import.meta.url);
+  const rows = parseTsv(fs.readFileSync(tsvUrl, 'utf8'));
   console.log(`Parsed ${rows.length} confirmed rows.`);
 
   const byEmail = new Map();
@@ -140,13 +170,20 @@ async function main() {
 
   console.log(`Grouped into ${byEmail.size} unique emails.`);
 
+  // A TQ booking id already stored on *any* row means it was imported before
+  // (possibly under a different email) — never add it again.
+  const existingRows = await fetchAllRegistrations();
+  const regByEmail = new Map(existingRows.map((r) => [String(r.email || '').toLowerCase(), r]));
+  const knownBookingIds = new Set();
+  for (const r of existingRows) {
+    for (const i of r.details?.items_paid || []) if (i.booking_id) knownBookingIds.add(i.booking_id);
+  }
+
   let updated = 0;
+  let skippedKnown = 0;
+  let skippedLive = 0;
   for (const [email, items] of byEmail.entries()) {
-    const { data: existing } = await supabase
-      .from('registrations')
-      .select('workshop_ids, details, amount, user_id')
-      .eq('email', email)
-      .maybeSingle();
+    const existing = regByEmail.get(email) || null;
 
     const existingIds = Array.isArray(existing?.workshop_ids) ? existing.workshop_ids : [];
     const existingDetails =
@@ -154,16 +191,37 @@ async function main() {
     const existingItemsPaid = Array.isArray(existingDetails.items_paid)
       ? existingDetails.items_paid
       : [];
-    const alreadyImportedBookingIds = new Set(
-      existingItemsPaid.map((i) => i.booking_id).filter(Boolean)
-    );
+
+    // Items recorded live (no TQ booking_id) can each "absorb" one export
+    // row for the same product, so purchases made through the site aren't
+    // counted twice. An id present in workshop_ids with no items_paid entry
+    // at all counts as one live purchase too.
+    const liveClaims = new Map();
+    for (const i of existingItemsPaid) {
+      if (i.booking_id || !i.internal_id) continue;
+      liveClaims.set(i.internal_id, (liveClaims.get(i.internal_id) || 0) + 1);
+    }
+    for (const id of existingIds) {
+      if (!existingItemsPaid.some((i) => i.internal_id === id) && !liveClaims.has(id)) {
+        liveClaims.set(id, 1);
+      }
+    }
 
     const newItemsPaid = [];
     let addedAmount = 0;
     const newIds = [];
 
     for (const item of items) {
-      if (alreadyImportedBookingIds.has(item.bookingId)) continue; // idempotent re-run
+      if (knownBookingIds.has(item.bookingId)) {
+        skippedKnown++;
+        continue;
+      }
+      if ((liveClaims.get(item.id) || 0) > 0) {
+        liveClaims.set(item.id, liveClaims.get(item.id) - 1);
+        skippedLive++;
+        console.log(`  skip ${item.bookingId} (${email} ${item.id}): already recorded live`);
+        continue;
+      }
       newIds.push(item.id);
       addedAmount += item.amount;
       newItemsPaid.push({
@@ -176,7 +234,7 @@ async function main() {
         amount: item.amount,
         name: item.name,
         phone: item.phone,
-        source: 'excel_import_2026_09_12',
+        source: SOURCE_TAG,
         needs_day_selection: MEAL_IDS.has(item.id) && item.qty > 0,
         dates: [],
       });
@@ -198,25 +256,34 @@ async function main() {
     };
 
     console.log(
-      `${DRY_RUN ? '[dry-run] ' : ''}${email}: +${newItemsPaid.length} item(s), +₹${addedAmount} (total ₹${finalAmount})`
+      `${DRY_RUN ? '[dry-run] ' : ''}${existing ? '' : '[new] '}${email}: +${newItemsPaid.length} item(s) [${newIds.join(', ')}], +₹${addedAmount} (total ₹${finalAmount})`
     );
 
     if (!DRY_RUN) {
-      const { error } = await supabase.from('registrations').upsert(
-        [
-          {
-            email,
-            user_id: existing?.user_id || null,
-            workshop_ids: finalWorkshopIds,
-            details,
-            amount: finalAmount,
-            status: 'confirmed',
-            payment_status: 'paid',
-            updated_at: new Date().toISOString(),
-          },
-        ],
-        { onConflict: 'email' }
-      );
+      // Existing rows: touch only these columns, by primary key, so status,
+      // payment fields and the row's original email casing stay as they were.
+      const { error } = existing
+        ? await supabase
+            .from('registrations')
+            .update({
+              workshop_ids: finalWorkshopIds,
+              details,
+              amount: finalAmount,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existing.id)
+        : await supabase.from('registrations').insert([
+            {
+              email,
+              user_id: null,
+              workshop_ids: finalWorkshopIds,
+              details,
+              amount: finalAmount,
+              status: 'confirmed',
+              payment_status: 'paid',
+              updated_at: new Date().toISOString(),
+            },
+          ]);
       if (error) {
         console.error(`  ERROR for ${email}:`, error.message);
         continue;
@@ -225,6 +292,7 @@ async function main() {
     updated++;
   }
 
+  console.log(`Skipped ${skippedKnown} rows already imported by booking id, ${skippedLive} already recorded live.`);
   console.log(`${DRY_RUN ? 'Would update' : 'Updated'} ${updated} registration rows.`);
 }
 
