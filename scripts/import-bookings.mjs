@@ -194,17 +194,12 @@ async function main() {
 
     // Items recorded live (no TQ booking_id) can each "absorb" one export
     // row for the same product, so purchases made through the site aren't
-    // counted twice. An id present in workshop_ids with no items_paid entry
-    // at all counts as one live purchase too.
+    // counted twice. A bare workshop_ids entry is NOT a purchase — being
+    // added as someone's teammate writes the event id there without paying.
     const liveClaims = new Map();
     for (const i of existingItemsPaid) {
       if (i.booking_id || !i.internal_id) continue;
       liveClaims.set(i.internal_id, (liveClaims.get(i.internal_id) || 0) + 1);
-    }
-    for (const id of existingIds) {
-      if (!existingItemsPaid.some((i) => i.internal_id === id) && !liveClaims.has(id)) {
-        liveClaims.set(id, 1);
-      }
     }
 
     const newItemsPaid = [];
