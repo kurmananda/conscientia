@@ -45,7 +45,7 @@ export const FOOD_ADDONS = [
     id: 'dinner',
     label: 'Dinner',
     description: 'Evening dinner, served daily.',
-    dates: ['2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01'],
+    dates: ['2026-10-30', '2026-10-31', '2026-11-01'],
   },
 ];
 
