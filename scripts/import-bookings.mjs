@@ -255,8 +255,11 @@ async function main() {
     );
 
     if (!DRY_RUN) {
-      // Existing rows: touch only these columns, by primary key, so status,
-      // payment fields and the row's original email casing stay as they were.
+      // Existing rows: touch only these columns, by primary key, so the
+      // payment ids and the row's original email casing stay as they were.
+      // The row now holds a real paid booking, so it must read as paid — the
+      // profile hides everything on a row whose payment_status isn't
+      // paid/team (a 'merged' or blank one would swallow these items).
       const { error } = existing
         ? await supabase
             .from('registrations')
@@ -264,6 +267,8 @@ async function main() {
               workshop_ids: finalWorkshopIds,
               details,
               amount: finalAmount,
+              status: 'confirmed',
+              payment_status: 'paid',
               updated_at: new Date().toISOString(),
             })
             .eq('id', existing.id)
