@@ -33,3 +33,23 @@ export async function assignGuestCnsId(supabase, { userId }) {
   while (takenCodes.has(code)) code = generateCode();
   return code;
 }
+
+export async function getRegistrationCnsId(supabase, { userId, existingCode }) {
+  if (userId) {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('unique_code')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (profile?.unique_code) return profile.unique_code;
+  }
+
+  if (existingCode) return existingCode;
+
+  const guestCode = await assignGuestCnsId(supabase, { userId });
+  if (guestCode) return guestCode;
+
+  throw new Error(`No CNS ID found for registered user ${userId}`);
+}

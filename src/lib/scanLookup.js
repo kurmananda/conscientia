@@ -1,7 +1,6 @@
 // Shared "resolve a CNS-id into a full attendee record" lookup, used by both
 // /api/scan (peer scanning on the profile page) and /api/admin/checkin (the
 // admin Check In tab) so the two scanners return the same shape of data.
-import { getCatalog } from './catalogStore';
 
 export async function lookupByUniqueCode(supabase, code) {
   const normalized = String(code || '').trim().toUpperCase();
@@ -20,25 +19,34 @@ export async function lookupByUniqueCode(supabase, code) {
   if (error) throw new Error(error.message);
   if (!profile) return null;
 
-  const { data: registration } = await supabase
+  const { data: registration, error: registrationError } = await supabase
     .from('registrations')
     .select('workshop_ids')
     .eq('user_id', profile.user_id)
     .maybeSingle();
 
-  const bookedIds = Array.isArray(registration?.workshop_ids) ? registration.workshop_ids : [];
+  if (registrationError) throw new Error(registrationError.message);
 
-  const [workshopCatalog, eventCatalog] = await Promise.all([
-    getCatalog('workshop'),
-    getCatalog('event'),
-  ]);
+  const bookedIds = Array.isArray(registration?.workshop_ids) ? registration.workshop_ids : [];
   const bookedIdSet = new Set(bookedIds.map(String));
-  const workshops = workshopCatalog
-    .filter((item) => bookedIdSet.has(String(item.id)))
-    .map((item) => item.title || item.id);
-  const events = eventCatalog
-    .filter((item) => bookedIdSet.has(String(item.id)))
-    .map((item) => item.title || item.id);
+
+  const [{ data: tickets, error: ticketsError }, { data: catalogItems, error: catalogError }] =
+    await Promise.all([
+      supabase.from('tickets').select('id, type').in('type', ['workshop', 'event']),
+      supabase.from('catalog_items').select('id, title'),
+    ]);
+
+  if (ticketsError) throw new Error(ticketsError.message);
+  if (catalogError) throw new Error(catalogError.message);
+
+  const titleById = new Map((catalogItems || []).map((item) => [String(item.id), item.title]));
+  const registeredTitles = (kind) =>
+    (tickets || [])
+      .filter((ticket) => ticket.type === kind && bookedIdSet.has(String(ticket.id)))
+      .map((ticket) => titleById.get(String(ticket.id)) || ticket.id);
+
+  const workshops = registeredTitles('workshop');
+  const events = registeredTitles('event');
 
   return {
     name: profile.name || null,

@@ -12,6 +12,7 @@ import useBodyScrollLock from '../hooks/useBodyScrollLock';
 
 const FLOATING_EMOJI = ['🍕', '🌮', '🍔', '🍟', '🍩', '🧋'];
 const ITEM_EMOJI = ['🍜', '🥘', '🍢', '🌯', '🧆', '🥟', '🍡', '🥪'];
+const FOODFEST_BOOKING_CLOSED = true;
 
 const ORDER_STAGES = {
   pending: { label: 'Order Placed', icon: '🧾', color: '#facc15' },
@@ -167,6 +168,22 @@ export default function FoodfestPage() {
 
   if (authLoading) {
     return <FetchIntro loading label="Loading Food Fest" accentColor="#ff6b35" />;
+  }
+
+  if (FOODFEST_BOOKING_CLOSED) {
+    return (
+      <div className="relative min-h-[calc(100dvh-12rem)] bg-[#0a0604] text-white overflow-hidden flex items-center justify-center px-6">
+        <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_90%_60%_at_50%_-10%,rgba(255,107,53,0.18),transparent_55%)]" />
+        <div className="relative z-10 glass-card rounded-2xl p-8 text-center max-w-md">
+          <p className="text-2xl mb-2">🍜</p>
+          <p className="text-xl font-semibold mb-2">Food Fest</p>
+          <p className="text-white/60 mb-4">Food ordering is currently closed.</p>
+          <span className="inline-flex rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-amber-200">
+            Closed
+          </span>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {

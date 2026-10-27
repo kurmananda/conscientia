@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabase } from '../../_supabase-server';
 import { getTiqrBookingByUid } from '@/lib/tiqr';
-import { assignGuestCnsId } from '@/lib/guestCns';
+import { getRegistrationCnsId } from '@/lib/guestCns';
 
 /**
  * TiQR webhook: only upsert when booking_status is confirmed.
@@ -140,11 +140,10 @@ async function processBookingNotification(supabase, notification) {
   };
 
   const finalUserId = bookingMeta.user_id || existing?.user_id || null;
-  if (existingDetails.unique_code) {
-    details.unique_code = existingDetails.unique_code;
-  } else if (!finalUserId) {
-    details.unique_code = await assignGuestCnsId(supabase, { userId: finalUserId });
-  }
+  details.unique_code = await getRegistrationCnsId(supabase, {
+    userId: finalUserId,
+    existingCode: existingDetails.unique_code || bookingMeta.unique_code,
+  });
 
   const { error } = await supabase.from('registrations').upsert(
     [
@@ -192,7 +191,9 @@ export async function POST(req) {
     }
 
     const anySaved = results.some((r) => r.saved);
-    const anyErrored = results.some((r) => !r.saved && r.reason === 'supabase_error');
+    const anyErrored = results.some(
+      (r) => !r.saved && ['supabase_error', 'exception'].includes(r.reason)
+    );
 
     return NextResponse.json(
       { received: true, saved: anySaved, results },

@@ -105,7 +105,7 @@ function isKnownNonCatalogId(id) {
 function paidBuckets(user) {
   const ids = paidIds(user).map(String);
   const workshops = ids.filter((id) => WORKSHOP_IDS.has(id)).map((id) => findCatalogItem(id)?.title || id);
-  const events = ids.filter((id) => EVENT_IDS.has(id)).map((id) => findCatalogItem(id)?.title || id);
+  const events = registeredEventIds(user).map((id) => findCatalogItem(id)?.title || id);
   const itemsPaid = Array.isArray(user.registration?.details?.items_paid) ? user.registration.details.items_paid : [];
   const food = ids
     .filter((id) => FOOD_ADDON_IDS.has(id))
@@ -166,8 +166,17 @@ function paidIds(user) {
   return Array.isArray(user.registration?.workshop_ids) ? user.registration.workshop_ids : [];
 }
 
+function registeredEventIds(user) {
+  const status = user.registration?.payment_status;
+  if (status !== 'paid' && status !== 'team') return [];
+  const ids = Array.isArray(user.registration?.workshop_ids) ? user.registration.workshop_ids : [];
+  return ids
+    .filter((id) => status === 'team' || EVENT_IDS.has(String(id)))
+    .map(String);
+}
+
 function hasEventReg(user) {
-  return paidIds(user).some((id) => EVENT_IDS.has(String(id)));
+  return registeredEventIds(user).length > 0;
 }
 
 function hasWorkshopReg(user) {
@@ -765,7 +774,7 @@ function AdminDashboard({ session, onLogout }) {
     const eq = eventSearch.trim().toLowerCase();
     if (eq) {
       list = list.filter((u) =>
-        paidIds(u)
+        [...new Set([...paidIds(u).map(String), ...registeredEventIds(u)])]
           .map(String)
           .some((id) => (findCatalogItem(id)?.title || '').toLowerCase().includes(eq))
       );
@@ -1653,9 +1662,13 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
   });
   const status = accommodationStatus(user);
   const buckets = paidBuckets(user);
-  const eventEntries = paidIds(user)
-    .map(String)
-    .filter((id) => WORKSHOP_IDS.has(id) || EVENT_IDS.has(id))
+  const eventEntries = [...new Set([...paidIds(user).map(String), ...registeredEventIds(user)])]
+    .filter(
+      (id) =>
+        WORKSHOP_IDS.has(id) ||
+        EVENT_IDS.has(id) ||
+        user.registration?.payment_status === 'team'
+    )
     .map((id) => {
       const item = findCatalogItem(id);
       return { id, title: item?.title || id, groupSize: Number(item?.groupSize) || 1 };

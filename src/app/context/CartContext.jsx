@@ -8,6 +8,18 @@ import { useAuth } from './AuthContext';
 const STORAGE_KEY = 'conscientia_cart';
 const FOOD_IDS = ['breakfast', 'lunch', 'dinner'];
 
+function isClosedBookingItem(item) {
+  return (
+    item?.kind === 'accommodation' ||
+    item?.kind === 'food' ||
+    item?.id === 'accommodation' ||
+    item?.key === 'accommodation' ||
+    FOOD_IDS.includes(item?.id) ||
+    FOOD_IDS.includes(item?.key) ||
+    item?.key?.startsWith('foodfest:')
+  );
+}
+
 // Self-heals cart rows that were written before `kind`/`unitPrice` were
 // fixed up (e.g. accommodation/food items saved with the old generic
 // kind: 'addon', or workshop/event items saved with no unitPrice at all).
@@ -29,7 +41,7 @@ function normalizeItem(item) {
 }
 
 function normalizeItems(items) {
-  return (items || []).map(normalizeItem);
+  return (items || []).map(normalizeItem).filter((item) => !isClosedBookingItem(item));
 }
 const CartContext = createContext({
   items: [],
@@ -53,8 +65,15 @@ function readLocalCart() {
 }
 
 function writeLocalCart(items) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  window.dispatchEvent(new CustomEvent('cart:updated', { detail: items }));
+  const availableItems = items.filter((item) => !isClosedBookingItem(item));
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(availableItems));
+  window.dispatchEvent(new CustomEvent('cart:updated', { detail: availableItems }));
+}
+
+function cleanLocalItems(items) {
+  const availableItems = normalizeItems(items);
+  if (availableItems.length !== items.length) writeLocalCart(availableItems);
+  return availableItems;
 }
 
 // Booked per day — paying for some days must not stop someone adding more.
@@ -142,10 +161,10 @@ export function CartProvider({ children }) {
   useEffect(() => {
     if (user) return;
     syncedForUser.current = null;
-    setItems(normalizeItems(readLocalCart()));
-    const onUpdate = (e) => setItems(normalizeItems(e.detail || readLocalCart()));
+    setItems(cleanLocalItems(readLocalCart()));
+    const onUpdate = (e) => setItems(cleanLocalItems(e.detail || readLocalCart()));
     const onStorage = (e) => {
-      if (e.key === STORAGE_KEY) setItems(normalizeItems(readLocalCart()));
+      if (e.key === STORAGE_KEY) setItems(cleanLocalItems(readLocalCart()));
     };
     window.addEventListener('cart:updated', onUpdate);
     window.addEventListener('storage', onStorage);
@@ -162,26 +181,42 @@ export function CartProvider({ children }) {
     syncedForUser.current = user.id;
 
     (async () => {
-      const guestItems = readLocalCart();
+      const rawGuestItems = readLocalCart();
+      const guestItems = normalizeItems(rawGuestItems);
 
-      if (guestItems.length > 0) {
-        const rows = guestItems.map((item) => ({
-          user_id: user.id,
-          item_key: item.key,
-          item_data: item,
-        }));
-        await supabase.from('cart_items').upsert(rows, { onConflict: 'user_id,item_key' });
+      if (rawGuestItems.length > 0) {
+        if (guestItems.length > 0) {
+          const rows = guestItems.map((item) => ({
+            user_id: user.id,
+            item_key: item.key,
+            item_data: item,
+          }));
+          await supabase.from('cart_items').upsert(rows, { onConflict: 'user_id,item_key' });
+        }
         writeLocalCart([]);
       }
 
-      const { data, error } = await supabase.from('cart_items').select('item_data').eq('user_id', user.id);
+      const { data, error } = await supabase.from('cart_items').select('item_key,item_data').eq('user_id', user.id);
 
       if (!error) {
-        const rawItems = (data || []).map((row) => row.item_data);
+        const rows = data || [];
+        const rawItems = rows.map((row) => row.item_data);
+        const closedKeys = rows
+          .filter((row) => isClosedBookingItem(normalizeItem(row.item_data)))
+          .map((row) => row.item_key);
         const kept = normalizeItems(rawItems);
 
-        // Already-paid lines are pruned by the registration effect above
-        // (date-aware for meals/accommodation) once this lands in state.
+        if (closedKeys.length > 0) {
+          const { error: deleteError } = await supabase
+            .from('cart_items')
+            .delete()
+            .eq('user_id', user.id)
+            .in('item_key', closedKeys);
+          if (deleteError) {
+            console.error('Failed to remove closed booking items from cart:', deleteError);
+          }
+        }
+
         setItems(kept);
         // Persist the healed shape back so this doesn't need to re-run
         // every load, and so downstream reads (e.g. admin views) see it too.
@@ -200,6 +235,9 @@ export function CartProvider({ children }) {
 
   const addItem = useCallback(
     async (item) => {
+      if (isClosedBookingItem(item)) {
+        return { bookingClosed: true };
+      }
       if (registeredIds.has(String(item.id))) {
         return { alreadyRegistered: true };
       }
@@ -244,6 +282,9 @@ export function CartProvider({ children }) {
   // quantities. Always overwrites the existing item_data if the key exists.
   const setItem = useCallback(
     async (item) => {
+      if (isClosedBookingItem(item)) {
+        return { bookingClosed: true };
+      }
       if (registeredIds.has(String(item.id))) {
         return { alreadyRegistered: true };
       }
@@ -269,6 +310,7 @@ export function CartProvider({ children }) {
 
   const updateQty = useCallback(
     async (key, qty) => {
+      if (isClosedBookingItem(items.find((item) => item.key === key))) return;
       const nextQty = Math.max(1, Number(qty) || 1);
       if (user) {
         let updatedItem = null;
@@ -294,7 +336,7 @@ export function CartProvider({ children }) {
       writeLocalCart(next);
       setItems(next);
     },
-    [user]
+    [user, items]
   );
 
   // Delivery is a shared add-on across all merch items, not its own

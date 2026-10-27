@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabase } from '../_supabase-server';
 import { verifyTiqrBookingConfirmed } from '@/lib/tiqr';
-import { assignGuestCnsId } from '@/lib/guestCns';
+import { getRegistrationCnsId } from '@/lib/guestCns';
 
 export async function POST(req) {
   try {
@@ -159,11 +159,10 @@ export async function POST(req) {
       registrationDetails.items_paid = existingItemsPaid;
     }
 
-    if (!registrationDetails.unique_code && !existingUser?.details?.unique_code) {
-      registrationDetails.unique_code = await assignGuestCnsId(supabase, { userId: finalUserId });
-    } else if (existingUser?.details?.unique_code) {
-      registrationDetails.unique_code = existingUser.details.unique_code;
-    }
+    registrationDetails.unique_code = await getRegistrationCnsId(supabase, {
+      userId: finalUserId,
+      existingCode: existingUser?.details?.unique_code || registrationDetails.unique_code,
+    });
 
     const row = {
       email: email.toLowerCase(),
