@@ -52,7 +52,12 @@ export function ProfileProvider({ children }) {
       if (!profile) {
         const { data, error } = await supabase
           .from('profiles')
-          .insert({ user_id: user.id, unique_code: generateUniqueCode(), email: user.email || null, ...fields })
+          .insert({
+            user_id: user.id,
+            unique_code: generateUniqueCode(),
+            email: user.email?.toLowerCase() || null,
+            ...fields,
+          })
           .select()
           .maybeSingle();
         if (error) return { error: error.message };
@@ -62,7 +67,11 @@ export function ProfileProvider({ children }) {
 
       const { data, error } = await supabase
         .from('profiles')
-        .update({ ...fields, updated_at: new Date().toISOString() })
+        .update({
+          ...fields,
+          email: user.email?.toLowerCase() || null,
+          updated_at: new Date().toISOString(),
+        })
         .eq('user_id', user.id)
         .select()
         .maybeSingle();

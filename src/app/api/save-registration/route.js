@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerSupabase } from '../_supabase-server';
 import { verifyTiqrBookingConfirmed } from '@/lib/tiqr';
 import { getRegistrationCnsId } from '@/lib/guestCns';
+import { findAuthUserIdByEmail } from '@/lib/registrationLookup';
 
 export async function POST(req) {
   try {
@@ -87,7 +88,10 @@ export async function POST(req) {
       .eq('email', email.toLowerCase())
       .maybeSingle();
 
-    const finalUserId = user_id || existingUser?.user_id || null;
+    const finalUserId =
+      user_id ||
+      existingUser?.user_id ||
+      (await findAuthUserIdByEmail(supabase, email));
 
     let existingIds = [];
 

@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { FOOD_ADDONS } from '../accommodation/merchData';
 import MealDaySelectionModal from '../components/MealDaySelectionModal';
 import useBodyScrollLock from '../hooks/useBodyScrollLock';
+import { DAY_PASSES } from '../data/festivalDays';
 
 async function authedFetch(url, options = {}) {
   const { data } = await supabase.auth.getSession();
@@ -34,6 +35,7 @@ const GENDER_LABELS = {
   male: 'Male',
   female: 'Female',
   other: 'Other',
+  rather_not_say: 'Prefer not to say',
 };
 
 export default function ProfilePage() {
@@ -66,6 +68,12 @@ export default function ProfilePage() {
         setCatalog([
           ...workshops.map((w) => ({ ...w, kind: 'workshop' })),
           ...events.map((e) => ({ ...e, kind: 'event' })),
+          ...DAY_PASSES.map((pass) => ({
+            ...pass,
+            kind: 'day-pass',
+            subtitle: `Valid for Conscientia 2026 · Day ${pass.day}`,
+            accentColor: '#33d6ff',
+          })),
         ]);
       }
     });
@@ -355,6 +363,7 @@ export default function ProfilePage() {
                   <option value="male">Male</option>
                   <option value="female">Female</option>
                   <option value="other">Other</option>
+                  <option value="rather_not_say">Prefer not to say</option>
                 </select>
               </Field>
               <Field label="Address (optional)">
@@ -529,7 +538,7 @@ export default function ProfilePage() {
                   key={item.id}
                   item={item}
                   status="Confirmed"
-                  footer={<TeamPanel item={item} profile={profile} />}
+                  footer={item.kind === 'day-pass' ? null : <TeamPanel item={item} profile={profile} />}
                 />
               ))}
             </div>
@@ -949,6 +958,7 @@ function TeamPanel({ item, profile }) {
 // Workshops/events open their detail page; merch, food, accommodation etc.
 // have no page of their own.
 function detailHref(item) {
+  if (item.kind === 'day-pass') return `/events?day=${item.day}`;
   if (item.kind === 'workshop') return `/workshop/${item.id}`;
   if (item.kind === 'event') return `/events/${item.id}`;
   return null;

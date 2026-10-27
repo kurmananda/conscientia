@@ -92,6 +92,7 @@ export async function POST(req) {
           const { error: profileError } = await admin.from('profiles').insert({
             user_id: userId,
             unique_code: generateUniqueCode(),
+            email,
             ...(googleName ? { name: googleName } : {}),
           });
           if (!profileError) break;

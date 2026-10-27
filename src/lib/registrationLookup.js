@@ -1,5 +1,18 @@
 // Shared by /api/get-registrations and /api/team.
 
+export async function findAuthUserIdByEmail(supabase, email) {
+  const normalized = email?.trim().toLowerCase();
+  if (!normalized) return null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('user_id')
+    .eq('email', normalized)
+    .limit(2);
+  if (error) throw error;
+  return data?.length === 1 ? data[0].user_id : null;
+}
+
 /**
  * Finds an account's registrations row. Rows are keyed on email, and many
  * were written without a user_id (imported bookings, webhook saves where the

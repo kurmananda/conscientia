@@ -70,6 +70,7 @@ export async function POST(req) {
         const { error: profileError } = await admin.from('profiles').insert({
           user_id: newUserId,
           unique_code: generateUniqueCode(),
+          email: trimmedEmail,
         });
         if (!profileError) {
           inserted = true;

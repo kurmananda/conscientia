@@ -4,6 +4,7 @@ import { motion, useScroll, useTransform, AnimatePresence, } from "framer-motion
 import { useRef, useState, useCallback, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowUpRight,
   Rocket,
@@ -37,6 +38,11 @@ import { getCatalog } from "@/lib/catalogStore";
 import { getPromo, DEFAULT_PROMO } from "@/lib/promoStore";
 import { groupBySection } from "./lib/groupBySection";
 import useBodyScrollLock from "./hooks/useBodyScrollLock";
+import { useAuth } from "./context/AuthContext";
+import { useCart } from "./context/CartContext";
+import useProfile from "./hooks/useProfile";
+import { startTiqrCheckout } from "@/lib/checkout";
+import { DAY_PASSES, FESTIVAL_DAYS } from "./data/festivalDays";
 
 /** Memoized — Hyperspeed re-inits WebGL when this object identity changes (see reactbits.dev). */
 const HYPERSPEED_OPTIONS = {
@@ -94,6 +100,10 @@ const WORKSHOP_ICONS = {
 const EMPTY_SECTION = { section: "", color: "#33d6ff", cards: [] };
 
 export default function Home() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  const { isRegistered } = useCart();
+  const { profile } = useProfile();
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -106,6 +116,8 @@ export default function Home() {
   const [featuredEventSection, setFeaturedEventSection] = useState(EMPTY_SECTION);
   const [promo, setPromo] = useState(DEFAULT_PROMO);
   const [catalogLoading, setCatalogLoading] = useState(true);
+  const [checkoutPassId, setCheckoutPassId] = useState(null);
+  const [passCheckoutError, setPassCheckoutError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -197,6 +209,54 @@ export default function Home() {
   */
 
   const workshopCartel = featuredWorkshopSection.cards.slice(0, 4);
+
+  const buyDayPass = async (pass) => {
+    setPassCheckoutError('');
+    if (!user) {
+      router.push(`/login?redirect=${encodeURIComponent('/#day-passes')}`);
+      return;
+    }
+    if (
+      !profile?.name ||
+      !profile?.phone ||
+      !profile?.college ||
+      !profile?.college_id ||
+      !profile?.aadhaar_number ||
+      !profile?.gender
+    ) {
+      router.push('/profile');
+      return;
+    }
+    if (isRegistered(pass.id) || checkoutPassId) return;
+
+    setCheckoutPassId(pass.id);
+    try {
+      await startTiqrCheckout(
+        [
+          {
+            id: pass.id,
+            kind: 'day-pass',
+            ticketId: pass.ticketId,
+            title: pass.title,
+            qty: 1,
+            unitPrice: pass.price,
+          },
+        ],
+        {
+          name: profile.name,
+          email: user.email,
+          phone: profile.phone,
+          college: profile.college,
+          city: profile.city || '',
+          gender: profile.gender,
+          userId: user.id,
+        }
+      );
+    } catch (error) {
+      setPassCheckoutError(error.message || 'Could not start day-pass checkout.');
+      setCheckoutPassId(null);
+    }
+  };
 
   return (
     <main className="bg-[#050505] min-h-screen text-white selection:bg-cyan-500/30 overflow-x-hidden relative">
@@ -294,6 +354,68 @@ export default function Home() {
               <span className="font-syncopate text-sm tracking-[0.5em] text-white/40 group-hover:text-cyan-400 transition-colors uppercase">Register for an event</span>
             </button>
           </motion.div>
+        </div>
+      </section>
+
+      <section id="day-passes" className="relative z-10 px-4 py-16 sm:px-6 md:py-24">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-10 text-center">
+            <span className="section-eyebrow text-cyan-300">Choose your days</span>
+            <h2 className="section-heading mt-3 text-3xl md:text-5xl">
+              Conscientia Day Passes
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-sm text-white/55">
+              Buy a pass directly and find your confirmed ticket in your profile. Day passes go straight to checkout, not your cart.
+            </p>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-3">
+            {DAY_PASSES.map((pass) => {
+              const owned = isRegistered(pass.id);
+              const busy = checkoutPassId === pass.id;
+              return (
+                <article
+                  key={pass.id}
+                  className="glass-card flex flex-col rounded-3xl border border-cyan-400/20 p-6"
+                >
+                  <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-cyan-300">
+                    {FESTIVAL_DAYS.find((day) => day.day === pass.day)?.title}
+                  </p>
+                  <h3 className="mt-3 font-syncopate text-xl font-bold uppercase">{pass.title}</h3>
+                  <p className="mt-3 text-3xl font-black text-white">{pass.priceLabel}</p>
+                  <ul className="mt-5 flex-1 space-y-3 border-t border-white/10 pt-5 text-sm text-white/65">
+                    {FESTIVAL_DAYS.find((day) => day.day === pass.day)?.events.map((event) => (
+                      <li key={event.title} className="flex items-start gap-2">
+                        <span className="mt-1 text-cyan-300" aria-hidden="true">◆</span>
+                        <span>{event.title}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    href={`/events?day=${pass.day}`}
+                    className="mt-5 inline-flex items-center gap-2 self-start rounded-full border border-purple-400/40 px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] text-purple-200 transition-colors hover:border-purple-300 hover:bg-purple-400/10"
+                  >
+                    More events <ArrowUpRight size={14} />
+                  </Link>
+                  <button
+                    type="button"
+                    disabled={authLoading || busy || !!checkoutPassId || owned}
+                    onClick={() => buyDayPass(pass)}
+                    className="mt-5 w-full rounded-full bg-cyan-400 px-5 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-black transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {owned ? 'Pass in Your Profile' : busy ? 'Connecting to TiQR…' : 'Get Day Pass'}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+
+          {passCheckoutError && (
+            <p role="alert" className="mt-5 text-center text-sm text-red-300">
+              {passCheckoutError}
+            </p>
+          )}
+
         </div>
       </section>
 

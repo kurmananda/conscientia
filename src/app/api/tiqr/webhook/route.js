@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerSupabase } from '../../_supabase-server';
 import { getTiqrBookingByUid } from '@/lib/tiqr';
 import { getRegistrationCnsId } from '@/lib/guestCns';
+import { findAuthUserIdByEmail } from '@/lib/registrationLookup';
 
 /**
  * TiQR webhook: only upsert when booking_status is confirmed.
@@ -139,7 +140,10 @@ async function processBookingNotification(supabase, notification) {
     phone: bookingMeta.phone || booking.phone_number || '',
   };
 
-  const finalUserId = bookingMeta.user_id || existing?.user_id || null;
+  const finalUserId =
+    bookingMeta.user_id ||
+    existing?.user_id ||
+    (await findAuthUserIdByEmail(supabase, email));
   details.unique_code = await getRegistrationCnsId(supabase, {
     userId: finalUserId,
     existingCode: existingDetails.unique_code || bookingMeta.unique_code,

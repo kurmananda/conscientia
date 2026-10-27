@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import ParallaxCard from "../components/parallax/ParallaxCard";
 import FetchIntro from "../components/FetchIntro";
 import { getCatalog } from "@/lib/catalogStore";
 import { groupBySection } from "../lib/groupBySection";
 import useSound from "../hooks/useSound";
+import { FESTIVAL_DAYS } from "../data/festivalDays";
 
 function CardWrapper({ card, index }) {
   return <ParallaxCard card={card} index={index} basePath="/events" width="100%" />;
@@ -60,11 +62,24 @@ function SectionHeading({ title, accentColor, count }) {
 }
 
 export default function EventsPage() {
+  return (
+    <Suspense fallback={null}>
+      <EventsListPage />
+    </Suspense>
+  );
+}
+
+function EventsListPage() {
   const playGlitch = useSound("/sounds/glitch.wav", 0.1, 0.15);
   const playClick = useSound("/sounds/click.wav", 0.125, 0.08);
+  const searchParams = useSearchParams();
   const [eventCards, setEventCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const requestedDay = Number(searchParams.get("day"));
+  const selectedDay = FESTIVAL_DAYS.some((festivalDay) => festivalDay.day === requestedDay)
+    ? requestedDay
+    : null;
 
   useEffect(() => {
     let active = true;
@@ -80,11 +95,19 @@ export default function EventsPage() {
   }, []);
 
   const query = search.trim().toLowerCase();
-  const filteredCards = query
-    ? eventCards.filter((c) =>
-        [c.title, c.subtitle, c.section, c.type].filter(Boolean).some((v) => v.toLowerCase().includes(query))
-      )
-    : eventCards;
+  const selectedFestivalDay = FESTIVAL_DAYS.find((festivalDay) => festivalDay.day === selectedDay);
+  const dayEventIds = selectedFestivalDay
+    ? new Set(selectedFestivalDay.events.flatMap((event) => event.ids))
+    : null;
+  const filteredCards = eventCards.filter((card) => {
+    const matchesDay = !dayEventIds || dayEventIds.has(card.id);
+    const matchesSearch =
+      !query ||
+      [card.title, card.subtitle, card.section, card.type]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(query));
+    return matchesDay && matchesSearch;
+  });
 
   const sections = groupBySection(filteredCards);
 
@@ -216,7 +239,7 @@ export default function EventsPage() {
                 marginBottom: "1rem",
               }}
             >
-              Conscientia · {eventCards.length} Events
+              Conscientia · {selectedFestivalDay ? `${filteredCards.length} Day ${selectedDay} Events` : `${eventCards.length} Events`}
             </div>
             <h1
               style={{
@@ -294,6 +317,33 @@ export default function EventsPage() {
                 </button>
               )}
             </div>
+
+            <nav aria-label="Filter events by festival day" className="mt-5 flex flex-wrap gap-2">
+              <Link
+                href="/events"
+                className={`rounded-full border px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] transition-colors ${
+                  selectedDay ? "border-white/15 text-white/55 hover:border-cyan-300/50" : "border-cyan-300/50 bg-cyan-300/10 text-cyan-200"
+                }`}
+              >
+                All events
+              </Link>
+              {FESTIVAL_DAYS.map((day) => (
+                <Link
+                  key={day.day}
+                  href={`/events?day=${day.day}`}
+                  className={`rounded-full border px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] transition-colors ${
+                    selectedDay === day.day ? "border-purple-300/50 bg-purple-300/10 text-purple-200" : "border-white/15 text-white/55 hover:border-purple-300/50"
+                  }`}
+                >
+                  {day.title}
+                </Link>
+              ))}
+            </nav>
+            {selectedFestivalDay && (
+              <p className="mt-4 text-sm text-white/50">
+                Showing all events scheduled for {selectedFestivalDay.title}.
+              </p>
+            )}
           </div>
 
           {!loading && query && filteredCards.length === 0 && (
