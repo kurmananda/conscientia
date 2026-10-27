@@ -35,6 +35,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { downloadAsExcel } from '@/lib/exportExcel';
 import { labelWithDates, paidItemDates } from '@/lib/paidItemDates';
+import { DAY_PASSES } from '../data/festivalDays';
 
 const ADMIN_HEADER = 'x-admin-callsign';
 
@@ -60,6 +61,8 @@ let CATALOG = [];
 let WORKSHOP_IDS = new Set();
 let EVENT_IDS = new Set();
 const FOOD_ADDON_IDS = new Set(FOOD_ADDONS.map((f) => f.id));
+const DAY_PASS_LABELS = new Map(DAY_PASSES.map((pass) => [pass.id, pass.title]));
+const DAY_PASS_IDS = new Set(DAY_PASS_LABELS.keys());
 
 function findCatalogItem(id) {
   return CATALOG.find((c) => c.id === String(id));
@@ -106,17 +109,24 @@ function paidBuckets(user) {
   const ids = paidIds(user).map(String);
   const workshops = ids.filter((id) => WORKSHOP_IDS.has(id)).map((id) => findCatalogItem(id)?.title || id);
   const events = registeredEventIds(user).map((id) => findCatalogItem(id)?.title || id);
+  const dayPasses = ids.filter((id) => DAY_PASS_IDS.has(id)).map((id) => DAY_PASS_LABELS.get(id));
   const itemsPaid = Array.isArray(user.registration?.details?.items_paid) ? user.registration.details.items_paid : [];
   const food = ids
     .filter((id) => FOOD_ADDON_IDS.has(id))
     .map((id) => labelWithDates(FOOD_LABELS[id] || id, itemsPaid, id));
   const other = ids
-    .filter((id) => !WORKSHOP_IDS.has(id) && !EVENT_IDS.has(id) && !isKnownNonCatalogId(id))
+    .filter(
+      (id) =>
+        !WORKSHOP_IDS.has(id) &&
+        !EVENT_IDS.has(id) &&
+        !DAY_PASS_IDS.has(id) &&
+        !isKnownNonCatalogId(id)
+    )
     .map((id) => {
       const paidItem = itemsPaid.find((it) => it.internal_id === id);
       return paidItem ? `${cleanItemTitle(paidItem)} (${id})` : id;
     });
-  return { workshops, events, food, other };
+  return { workshops, events, dayPasses, food, other };
 }
 
 const STAY_DATE_LABELS = Object.fromEntries(STAY_DATES.map((d) => [d.id, d.label]));
@@ -181,6 +191,10 @@ function hasEventReg(user) {
 
 function hasWorkshopReg(user) {
   return paidIds(user).some((id) => WORKSHOP_IDS.has(String(id)));
+}
+
+function hasDayPass(user) {
+  return paidIds(user).some((id) => DAY_PASS_IDS.has(String(id)));
 }
 
 function hasAccommodation(user) {
@@ -465,6 +479,7 @@ const CATALOG_COLOR_FIELDS = [
 const FILTERS = [
   { key: 'event', label: 'Has Event', icon: Sparkles, test: hasEventReg },
   { key: 'workshop', label: 'Has Workshop', icon: ListChecks, test: hasWorkshopReg },
+  { key: 'day-pass', label: 'Has Day Pass', icon: CalendarClock, test: hasDayPass },
   { key: 'food', label: 'Has Food', icon: UtensilsCrossed, test: hasFood },
   { key: 'accommodation', label: 'Has Accommodation', icon: BedDouble, test: hasAccommodation },
 ];
@@ -711,7 +726,7 @@ function AdminDashboard({ session, onLogout }) {
     setError('');
     try {
       const [res] = await Promise.all([
-        fetch('/api/admin/users', { headers: adminHeaders(session) }),
+        fetch('/api/admin/users', { headers: adminHeaders(session), cache: 'no-store' }),
         loadCatalogSets(),
       ]);
       const data = await res.json().catch(() => ({}));
@@ -768,7 +783,18 @@ function AdminDashboard({ session, onLogout }) {
     let list = users;
     if (q) {
       list = list.filter((u) =>
-        [u.name, u.unique_code, u.phone, u.email].some((v) => (v || '').toLowerCase().includes(q))
+        [
+          u.name,
+          u.unique_code,
+          u.phone,
+          u.email,
+          u.registration?.details?.unique_code,
+          u.registration?.details?.name,
+          u.registration?.details?.phone,
+          u.college,
+          u.gender,
+          u.aadhaar_number,
+        ].some((v) => String(v || '').toLowerCase().includes(q))
       );
     }
     const eq = eventSearch.trim().toLowerCase();
@@ -776,7 +802,9 @@ function AdminDashboard({ session, onLogout }) {
       list = list.filter((u) =>
         [...new Set([...paidIds(u).map(String), ...registeredEventIds(u)])]
           .map(String)
-          .some((id) => (findCatalogItem(id)?.title || '').toLowerCase().includes(eq))
+          .some((id) =>
+            (findCatalogItem(id)?.title || DAY_PASS_LABELS.get(id) || '').toLowerCase().includes(eq)
+          )
       );
     }
     if (activeFilters.length > 0) {
@@ -828,6 +856,7 @@ function AdminDashboard({ session, onLogout }) {
     return {
       workshop: users.filter(hasWorkshopReg).length,
       event: users.filter(hasEventReg).length,
+      dayPass: users.filter(hasDayPass).length,
       food: users.filter(hasFood).length,
       foodBreakdown: food,
       accommodation: users.filter(hasAccommodation).length,
@@ -854,6 +883,7 @@ function AdminDashboard({ session, onLogout }) {
         'Amount Paid': u.registration?.amount ?? 0,
         Workshops: buckets.workshops.join('; '),
         Events: buckets.events.join('; '),
+        'Day Passes': buckets.dayPasses.join('; '),
         Food: buckets.food.join('; '),
         'Other Paid (no catalog match)': buckets.other.join('; '),
         Accommodation: accommodationStatus(u).label,
@@ -861,6 +891,28 @@ function AdminDashboard({ session, onLogout }) {
       };
     });
     downloadAsExcel(rows, 'registrants.xlsx', 'Registrants');
+  };
+
+  const exportAccommodation = () => {
+    const accommodationUsers = users.filter(hasAccommodation);
+    const rows = accommodationUsers.map((u) => ({
+      Name: u.name || u.registration?.details?.name || '',
+      'CNS-id': u.unique_code || u.registration?.details?.unique_code || '',
+      Email: u.email || '',
+      Phone: u.phone || u.registration?.details?.phone || '',
+      Gender: u.gender || u.registration?.details?.gender || '',
+      College: u.college || u.registration?.details?.college || '',
+      City: u.city || u.registration?.details?.city || '',
+      'Aadhaar Number': u.aadhaar_number || '',
+      Accommodation: accommodationStatus(u).label,
+      Room: u.accommodation_room || '',
+      'Check-in': u.accommodation_checkin || '',
+      'Check-out': u.accommodation_checkout || '',
+      'Accommodation Dates': accommodationDates(u),
+      'Payment Status': u.registration?.payment_status || '',
+      'Amount Paid': u.registration?.amount ?? 0,
+    }));
+    downloadAsExcel(rows, 'accommodation-registrants.xlsx', 'Accommodation');
   };
 
   const eventFilterActive = activeFilters.includes('event');
@@ -1233,6 +1285,7 @@ function AdminDashboard({ session, onLogout }) {
               <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
                 <StatCard icon={ListChecks} label="Workshops" value={stats.workshop} />
                 <StatCard icon={Sparkles} label="Events" value={stats.event} />
+                <StatCard icon={CalendarClock} label="Day Passes" value={stats.dayPass} />
                 <StatCard
                   icon={UtensilsCrossed}
                   label="Food"
@@ -1298,6 +1351,15 @@ function AdminDashboard({ session, onLogout }) {
                 >
                   <FileSpreadsheet size={13} />
                   Download as Excel
+                </button>
+                <button
+                  type="button"
+                  onClick={exportAccommodation}
+                  title="Download all accommodation registrants with attendee and stay details"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/40 bg-cyan-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300 transition-colors hover:border-cyan-300 hover:bg-cyan-400/20"
+                >
+                  <BedDouble size={13} />
+                  Download Accommodation
                 </button>
               </div>
 
@@ -1741,6 +1803,11 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
             {user.unique_code || '—'} · {user.phone || user.email || '—'}
             {subtitle ? ` · ${subtitle}` : ''}
           </p>
+          <p className="mt-1 truncate text-[11px] text-white/50">
+            {user.college || user.registration?.details?.college || 'College —'} ·{' '}
+            {user.gender || user.registration?.details?.gender || 'Gender —'} · Aadhaar{' '}
+            {user.aadhaar_number || user.registration?.details?.aadhaar_number || '—'}
+          </p>
         </div>
         {hasAccommodation(user) && (
           <BedDouble size={13} className="shrink-0 text-cyan-400/70" />
@@ -1763,10 +1830,12 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
             <div className="px-4 py-4">
               <div className="mb-5 grid grid-cols-1 gap-2.5 rounded-lg border border-white/5 bg-white/[0.02] p-3 text-xs text-white/60 sm:grid-cols-2">
                 <p className="sm:col-span-2">Email: {user.email || '—'}</p>
-                <p>College: {user.college || '—'}</p>
-                <p>City: {user.city || '—'}</p>
-                <p>Gender: {user.gender || '—'}</p>
-                <p>Aadhaar: {user.aadhaar_number || '—'}</p>
+                <p>College: {user.college || user.registration?.details?.college || '—'}</p>
+                <p>City: {user.city || user.registration?.details?.city || '—'}</p>
+                <p>Gender: {user.gender || user.registration?.details?.gender || '—'}</p>
+                <p>
+                  Aadhaar: {user.aadhaar_number || user.registration?.details?.aadhaar_number || '—'}
+                </p>
                 <p>Payment status: {user.registration?.payment_status || '—'}</p>
                 <p>
                   Accommodation:{' '}
@@ -1788,6 +1857,9 @@ function UserRow({ user, session, expanded, onToggle, onSaved, pushToast, subtit
                 </p>
                 <p className="sm:col-span-2">
                   Events: {buckets.events.join(', ') || '—'}
+                </p>
+                <p className="sm:col-span-2">
+                  Day Passes: {buckets.dayPasses.join(', ') || '—'}
                 </p>
                 <p className="sm:col-span-2">
                   Food: {buckets.food.join(', ') || '—'}

@@ -106,8 +106,19 @@ export async function GET(req) {
           registrationsByUser.get(profile.user_id) ||
           (authEmail ? registrationsByUser.get(authEmail) : null) ||
           null;
+        const registrationDetails =
+          registration?.details && typeof registration.details === 'object'
+            ? registration.details
+            : {};
         return {
           ...profile,
+          name: profile.name || registrationDetails.name || '',
+          phone: profile.phone || registrationDetails.phone || '',
+          college: profile.college || registrationDetails.college || '',
+          city: profile.city || registrationDetails.city || '',
+          gender: profile.gender || registrationDetails.gender || '',
+          aadhaar_number: profile.aadhaar_number || registrationDetails.aadhaar_number || '',
+          unique_code: profile.unique_code || registrationDetails.unique_code || null,
           // Prefer the profile's own stored email (reliable), then a live
           // auth lookup, then whatever email the registration itself was
           // recorded under, rather than ever showing a blank email.
@@ -145,9 +156,10 @@ export async function GET(req) {
         user_id: reg.user_id || `guest:${reg.email}`,
         name: reg.details?.name || '',
         phone: reg.details?.phone || '',
-        college: '',
-        city: '',
-        gender: '',
+        college: reg.details?.college || '',
+        city: reg.details?.city || '',
+        gender: reg.details?.gender || '',
+        aadhaar_number: reg.details?.aadhaar_number || '',
         // Guests (no account) get a CNS id too, one per email — never
         // shared across a phone number match (see src/lib/guestCns.js).
         unique_code: reg.details?.unique_code || null,
