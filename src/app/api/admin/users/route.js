@@ -2,6 +2,24 @@ import { NextResponse } from 'next/server';
 import { createServerSupabase } from '../../_supabase-server';
 import { requireAdmin } from '@/lib/adminAuth';
 
+const ROWS_PER_PAGE = 1000;
+
+async function fetchAllRows(queryForPage, label) {
+  const rows = [];
+  for (let from = 0; ; from += ROWS_PER_PAGE) {
+    const { data, error } = await queryForPage()
+      .range(from, from + ROWS_PER_PAGE - 1);
+    if (error) {
+      console.error(`[admin/users] Failed to load ${label} starting at row ${from}`, error);
+      throw new Error(`Failed to load ${label}: ${error.message}`);
+    }
+
+    rows.push(...(data || []));
+    if (!data || data.length < ROWS_PER_PAGE) break;
+  }
+  return rows;
+}
+
 /**
  * `profiles` has no email column (see supabase_profile_setup.sql — it only
  * ever stores user_id/unique_code/name/phone/college/city); the account's
@@ -45,25 +63,18 @@ export async function GET(req) {
     }
 
 
-    const [
-      { data: profiles, error: profilesError },
-      { data: registrations, error: regError },
-      { data: cartItems, error: cartError },
-      authUsers,
-    ] = await Promise.all([
-      supabase.from('profiles').select('*').order('updated_at', { ascending: false }),
-      supabase.from('registrations').select('*').order('updated_at', { ascending: false }),
-      supabase.from('cart_items').select('*'),
+    const [profiles, registrations, cartItems, authUsers] = await Promise.all([
+      fetchAllRows(
+        () => supabase.from('profiles').select('*').order('updated_at', { ascending: false }),
+        'profiles'
+      ),
+      fetchAllRows(
+        () => supabase.from('registrations').select('*').order('updated_at', { ascending: false }),
+        'registrations'
+      ),
+      fetchAllRows(() => supabase.from('cart_items').select('*'), 'cart items'),
       listAllAuthUsers(supabase),
     ]);
-
-    if (profilesError || regError || cartError) {
-      console.error('[admin/users]', profilesError || regError || cartError);
-      return NextResponse.json(
-        { success: false, message: (profilesError || regError || cartError).message },
-        { status: 500 }
-      );
-    }
 
     // Phone number is NOT used to correlate a registration to a profile —
     // it's not a safe identity boundary (typed at checkout, easy to get
@@ -72,14 +83,14 @@ export async function GET(req) {
     // strictly by CNS id / user_id / email: a real account (user_id) or a
     // guest booking's own email, each of which has exactly one owner.
     const registrationsByUser = new Map();
-    for (const reg of registrations || []) {
+    for (const reg of registrations) {
       const key = reg.user_id || reg.email;
       // registrations is already ordered newest-first, keep the first hit per user.
       if (key && !registrationsByUser.has(key)) registrationsByUser.set(key, reg);
     }
 
     const cartByUser = new Map();
-    for (const item of cartItems || []) {
+    for (const item of cartItems) {
       const list = cartByUser.get(item.user_id) || [];
       list.push(item);
       cartByUser.set(item.user_id, list);
@@ -87,7 +98,7 @@ export async function GET(req) {
 
     const authById = new Map(authUsers.map((u) => [u.id, u]));
 
-    const users = (profiles || [])
+    const users = profiles
       // A profile row is created the moment someone signs in, before
       // ProfileCompletionModal runs — so a profile with no name never
       // finished it, never got past the modal, and has no registration or
@@ -147,7 +158,7 @@ export async function GET(req) {
     // money, real booking, just no account. Surface them as guest rows so
     // admins can actually see every paid booking, not only ones tied to a
     // finished profile.
-    const guestUsers = (registrations || [])
+    const guestUsers = registrations
       .filter((reg) => {
         const key = reg.user_id || reg.email;
         return key && !usedRegistrationKeys.has(key) && reg.payment_status === 'paid';
